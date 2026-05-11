@@ -2,7 +2,9 @@ include_guard(GLOBAL)
 
 include(utils/add_git_dependency)
 include(utils/disable_warnings)
-include(gamespy)
+if(NOT VITA)
+    include(gamespy)
+endif()
 
 set(COMMON_SOURCES
     ${SOURCE_DIR}/qcommon/alias.c
@@ -28,12 +30,22 @@ set(COMMON_SOURCES
     ${SOURCE_DIR}/qcommon/memory.c
     ${SOURCE_DIR}/qcommon/msg.cpp
     ${SOURCE_DIR}/qcommon/net_chan.c
-    ${SOURCE_DIR}/qcommon/net_ip.c
     ${SOURCE_DIR}/qcommon/q_math.c
     ${SOURCE_DIR}/qcommon/q_shared.c
     ${SOURCE_DIR}/qcommon/unzip.c
-    ${SOURCE_DIR}/gamespy/q_gamespy.c
 )
+
+if(VITA)
+    list(APPEND COMMON_SOURCES
+        ${SOURCE_DIR}/gamespy/gamespy_vita_stub.c
+        ${SOURCE_DIR}/qcommon/net_vita.c
+    )
+else()
+    list(APPEND COMMON_SOURCES
+        ${SOURCE_DIR}/gamespy/q_gamespy.c
+        ${SOURCE_DIR}/qcommon/net_ip.c
+    )
+endif()
 
 disable_warnings(
     ${SOURCE_DIR}/qcommon/unzip.c
@@ -96,11 +108,15 @@ list(APPEND COMMON_SOURCES
 )
 
 # Gamespy
+# Stubbed out on Vita — vitasdk lacks BSD sockets and the GameSpy master
+# servers are offline anyway.
 
-list(APPEND SERVER_SOURCES
-	${SOURCE_DIR}/gamespy/sv_gamespy.c
-	${SOURCE_DIR}/gamespy/sv_gqueryreporting.c
-)
+if(NOT VITA)
+    list(APPEND SERVER_SOURCES
+        ${SOURCE_DIR}/gamespy/sv_gamespy.c
+        ${SOURCE_DIR}/gamespy/sv_gqueryreporting.c
+    )
+endif()
 
 include_directories(${SOURCE_DIR}/qcommon)
 include_directories(${SOURCE_DIR}/script)

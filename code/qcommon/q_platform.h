@@ -409,6 +409,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #endif
 
+//=============================================================== PSVITA ===
+
+#ifdef __vita__
+
+#define OS_STRING "psvita"
+#define ID_INLINE inline
+#define PATH_SEP '/'
+
+#define ARCH_STRING "arm"
+
+#define Q3_LITTLE_ENDIAN
+
+#define DLL_EXT ".suprx"
+
+#endif
+
 //================================================================== Q3VM ===
 
 #ifdef Q3_VM

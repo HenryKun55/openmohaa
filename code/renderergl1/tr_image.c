@@ -32,7 +32,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  * You may also wish to include "jerror.h".
  */
 
-#define JPEG_INTERNALS
+/* JPEG_INTERNALS exposes private struct members. Nothing in this file
+ * actually uses them — the JPEG calls below are all public API — and
+ * defining it forces jpeglib.h to pull in jpegint.h, which isn't shipped
+ * by libjpeg-turbo on most platforms (vitasdk included). */
 #include <jpeglib.h>
 
 

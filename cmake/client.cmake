@@ -38,11 +38,23 @@ set(CLIENT_SOURCES
     ${SOURCE_DIR}/client/cl_uimpmappicker.cpp
     ${SOURCE_DIR}/client/cl_uiplayermodelpicker.cpp
     ${SOURCE_DIR}/client/cl_uiradar.cpp
-    ${SOURCE_DIR}/client/cl_uiserverlist.cpp
     ${SOURCE_DIR}/client/cl_uisoundpicker.cpp
     ${SOURCE_DIR}/client/cl_uistd.cpp
     ${SOURCE_DIR}/client/cl_uiview3d.cpp
-    ${SOURCE_DIR}/client/libmumblelink.c
+)
+
+# Files that need POSIX bits vitasdk lacks. cl_uiserverlist pulls
+# gamespy/goaceng.h → gsPlatform.h (BSD sockets). libmumblelink.c
+# wants sys/mman.h. Both belong to features (MP browser, voice chat)
+# already disabled on Vita.
+if(NOT VITA)
+    list(APPEND CLIENT_SOURCES
+        ${SOURCE_DIR}/client/cl_uiserverlist.cpp
+        ${SOURCE_DIR}/client/libmumblelink.c
+    )
+endif()
+
+list(APPEND CLIENT_SOURCES
     ${SOURCE_DIR}/client/qal.c
     ${SOURCE_DIR}/client/snd_codec_mp3.c
     ${SOURCE_DIR}/client/snd_codec_ogg.c
@@ -60,10 +72,11 @@ set(CLIENT_SOURCES
     ${CLIENT_PLATFORM_SOURCES}
 )
 
-# Gamespy
-list(APPEND CLIENT_SOURCES
-	${SOURCE_DIR}/gamespy/cl_gamespy.c
-)
+# Gamespy SDK glue — only built on platforms with BSD sockets.
+# Vita uses gamespy_vita_stub.c added by shared_sources.cmake.
+if(NOT VITA)
+    list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/gamespy/cl_gamespy.c)
+endif()
 
 file(GLOB_RECURSE UI_SOURCES "${SOURCE_DIR}/uilib/*.c" "${SOURCE_DIR}/uilib/*.cpp")
 
