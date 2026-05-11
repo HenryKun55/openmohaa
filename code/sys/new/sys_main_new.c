@@ -224,7 +224,9 @@ void Sys_UnloadGame(void)
     Com_Printf("------ Unloading Game ------\n");
 
     if (game_library) {
+#ifndef __vita__
         Sys_UnloadLibrary(game_library);
+#endif
     }
 
     game_library = NULL;
@@ -235,8 +237,25 @@ void Sys_UnloadGame(void)
 Sys_GetGameAPI
 =================
 */
+#ifdef __vita__
+/* On Vita, fgame is statically linked into the eboot (see basegame.cmake
+ * and client.cmake). SDL_LoadObject isn't implemented on SDL2-Vita, so
+ * the dlopen path below is unreachable — call the embedded GetGameAPI
+ * directly. The function is declared extern "C" in g_main.cpp. */
+extern void *GetGameAPI(void *import);
+#endif
+
 void* Sys_GetGameAPI(void* parms)
 {
+#ifdef __vita__
+    if (game_library)
+        Com_Error(ERR_FATAL, "Sys_GetGameAPI without calling Sys_UnloadGame");
+    /* Mark as loaded with a sentinel so Sys_UnloadGame can run without
+     * actually freeing anything (the symbols live in the eboot). */
+    game_library = (void *)1;
+    Com_Printf("Sys_GetGameAPI: static link, calling GetGameAPI directly\n");
+    return GetGameAPI(parms);
+#else
     void* (*GetGameAPI) (void*);
     const char* gamename = "game" DLL_SUFFIX DLL_EXT;
 
@@ -261,6 +280,7 @@ void* Sys_GetGameAPI(void* parms)
     }
 
     return GetGameAPI(parms);
+#endif
 }
 
 /*
@@ -273,7 +293,9 @@ void Sys_UnloadCGame(void)
     Com_Printf("------ Unloading ClientGame ------\n");
 
     if (cgame_library) {
+#ifndef __vita__
         Sys_UnloadLibrary(cgame_library);
+#endif
     }
 
     cgame_library = NULL;
@@ -284,8 +306,22 @@ void Sys_UnloadCGame(void)
 Sys_GetCGameAPI
 =================
 */
+#ifdef __vita__
+/* Same story as GetGameAPI but for the client game module. cg_main.c
+ * declares this with no args (clientGameExport_t *GetCGameAPI(void)). */
+extern void *GetCGameAPI(void);
+#endif
+
 void* Sys_GetCGameAPI(void* parms)
 {
+#ifdef __vita__
+    (void)parms;
+    if (cgame_library)
+        Com_Error(ERR_FATAL, "Sys_GetCGameAPI without calling Sys_UnloadCGame");
+    cgame_library = (void *)1;
+    Com_Printf("Sys_GetCGameAPI: static link, calling GetCGameAPI directly\n");
+    return GetCGameAPI();
+#else
     void* (*GetCGameAPI) (void*);
     const char* gamename = "cgame" DLL_SUFFIX DLL_EXT;
 
@@ -310,6 +346,7 @@ void* Sys_GetCGameAPI(void* parms)
     }
 
     return GetCGameAPI(parms);
+#endif
 }
 
 void VM_Forced_Unload_Start(void) {

@@ -21,6 +21,7 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
     ${SOURCE_DIR}/sys/new/sys_unix_new.c
     ${SOURCE_DIR}/sys/con_passive.c
     ${SOURCE_DIR}/sys/sys_vita.c
+    ${SOURCE_DIR}/sys/vita_corepp_shims.cpp
 )
 
 # Provide GL stubs that vitaGL doesn't expose (used by the renderer's
@@ -36,7 +37,11 @@ set(BUILD_SERVER OFF CACHE INTERNAL "")
 set(BUILD_RENDERER_GL2 OFF CACHE INTERNAL "")
 set(USE_RENDERER_DLOPEN OFF CACHE INTERNAL "")
 set(USE_OPENAL_DLOPEN OFF CACHE INTERNAL "")
-set(BUILD_GAME_LIBRARIES OFF CACHE INTERNAL "")
+# Game modules are built as STATIC libraries on Vita (see basegame.cmake)
+# and pulled into the eboot via client.cmake's target_link_libraries.
+# SDL_LoadObject() isn't implemented on SDL2-Vita, so the desktop
+# .suprx/.so dlopen path is unreachable.
+set(BUILD_GAME_LIBRARIES ON CACHE INTERNAL "")
 set(BUILD_GAME_QVMS OFF CACHE INTERNAL "")
 set(USE_HTTP OFF CACHE INTERNAL "")
 # Note on audio: snd_openal_new.cpp is OpenMoHAA's new sound layer and
@@ -85,6 +90,27 @@ add_compile_options(
     -fno-short-enums
     -ffast-math
     -Wl,-q
+    # Suppress C++ unwind table generation. fgame's scriptmaster.cpp and
+    # cgame's cg_commands.cpp use try/catch around ScriptException; the
+    # resulting .ARM.exidx / .ARM.extab sections produce R_ARM_BASE_PREL
+    # (reloc type 25) which vita-elf-create rejects. Without these
+    # tables an unhandled C++ exception terminates the process — which
+    # is what a Vita would do anyway.
+    -fno-unwind-tables
+    -fno-asynchronous-unwind-tables
+    # Per-function/data sections + --gc-sections in the linker so dead
+    # code (and the GOT references it generates) actually gets dropped
+    # from the final ELF. Without this, every helper in fgame stays in
+    # and pulls along stuff that emits R_ARM_BASE_PREL (reloc 25)
+    # against _GLOBAL_OFFSET_TABLE_, which vita-elf-create rejects.
+    -ffunction-sections
+    -fdata-sections
+    # Belt-and-braces against GOT-emitting codegen. Newer GCCs default to
+    # PIC on ARM in places where vitasdk's older vita-elf-create can't
+    # cope — force everything to absolute addressing.
+    -fno-pic
+    -fno-PIC
+    -fno-pie
     # vitaGL drops a few `const` qualifiers and uses uint32_t where desktop
     # headers use GLenum; the qgl* assignments still bind to the same
     # callable, but -Werror would otherwise reject them.
@@ -95,6 +121,14 @@ add_compile_options(
 add_link_options(
     -Wl,-q
     -Wl,--allow-multiple-definition
+    # Static executable, no PIE — keeps the linker from synthesising
+    # GOT slots that would emit R_ARM_BASE_PREL (reloc 25) into
+    # .rel.text. vita-elf-create only knows the absolute reloc types
+    # (TARGET1/TARGET2/ABS32/THM_*/PREL31). With the larger fgame +
+    # cgame static libs now linked in, the GOT was getting populated
+    # and triggering the reject.
+    -static
+    -Wl,--no-eh-frame-hdr
 )
 
 # vitasdk libraries OpenMoHAA links against. The renderer pulls in vitaGL
@@ -178,6 +212,12 @@ function(package_vita_vpk)
 
     set(VITA_SCE_DIR ${CMAKE_SOURCE_DIR}/misc/vita/sce_sys)
 
+    # vita-elf-create chokes on R_ARM_BASE_PREL (reloc 25) emitted by the
+    # C++ unwind tables (.ARM.exidx / .ARM.extab) — fgame and cgame both
+    # use try/catch for ScriptException, which is enough to generate
+    # those sections. Strip them before vita-elf-create; the engine
+    # doesn't depend on stack-unwinding (an unhandled C++ exception
+    # would terminate the process anyway on a constrained device).
     add_custom_command(TARGET ${CLIENT_BINARY} POST_BUILD
         COMMAND ${CMAKE_STRIP} -g ${ELF_FILE}
         COMMAND ${VITA_ELF_CREATE} ${ELF_FILE} ${VELF_FILE}
