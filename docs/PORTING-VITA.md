@@ -133,33 +133,49 @@ different layout.
   `this->m_pResponseDefs[event]` with `m_pResponseDefs == NULL`,
   called from `ScriptCompiler::EmitField`.
 
-  Root cause: `class ClassDef` and `class Listener` in `corepp/` have
-  layout-affecting members and virtuals gated behind
-  `#ifdef WITH_SCRIPT_ENGINE`. fgame is compiled with the define;
-  cgame and the engine aren't. On upstream's SHARED build each
-  binary has its own private corepp and the layouts never need to
-  agree. In our static-link build the same `ClassDef::classlist`
-  ends up linked into one chain with instances constructed by two
-  different layouts, so `m_pResponseDefs` lands at a different offset
-  depending on whose code reads it.
+  Diagnosed via `vita-parse-core` against the psp2dmp file:
+  ```
+  PC: ClassDef::GetDef(int) at "ldr.w r0, [r3, r1, lsl #2]"
+      r0 = this  (heap, 0x83b9c8e0)
+      r1 = eventnum (0x330)
+      r3 = this->responseLookup  ← NULL → crash
+  LR: ScriptCompiler::EmitField
+  ```
 
-  The fix needs `WITH_SCRIPT_ENGINE` (and matching `ARCHIVE_SUPPORTED`)
-  to be uniform across the engine + cgame + game compilation. A
-  straightforward `add_compile_definitions(WITH_SCRIPT_ENGINE)` in
-  `vita.cmake` cascades into errors from fgame headers that depend
-  on `GAME_DLL` being set as well — specifically
-  `fgame/g_utils.h:212` accesses `g_entities[].entity` which only
-  exists when `GAME_DLL` is defined. A proper fix is one of:
-    - Split corepp into its own STATIC lib built with
-      `WITH_SCRIPT_ENGINE ARCHIVE_SUPPORTED`, shared between engine
-      and game module, plus enough header reorganisation so that
-      compiling corepp in isolation doesn't pull in
-      `fgame/g_utils.h` (it currently does through
-      `script/scriptvm.h` → `fgame/gamescript.h`).
-    - Or build only the engine with `WITH_SCRIPT_ENGINE` and rely on
-      the fact that cgame doesn't construct fgame's ClassDef
-      instances at runtime (only iterates them via the shared
-      `classlist`).
+  `responseLookup` is allocated by `ClassDef::BuildResponseList()`
+  which iterates `ClassDef::classlist` during `L_InitEvents()`. So
+  the crash means BuildResponseList didn't run for this ClassDef
+  *or* `this` is a stale/duplicate instance not in `classlist`.
+
+  Things that did **not** turn out to be the cause (already tested
+  and reverted):
+    - `WITH_SCRIPT_ENGINE` struct-layout drift between TUs: we
+      hypothesised that fgame's view of `ClassDef` (with
+      `waitTillSet`) put `responseLookup` at a different offset to
+      the engine's view (without `waitTillSet`). Disassembly of
+      both compiled GetDef bodies shows both compilers read
+      `[r0, #24]` — `waitTillSet` is declared *after*
+      `responseLookup` in the struct, so its presence/absence does
+      not shift the field. The layout was consistent all along.
+
+  More likely causes for the next attempt:
+    - `corepp/class.cpp` is linked into the eboot three times
+      (engine, cgame, game). Each TU has its own static `classlist`
+      / `classroot` pointer initialiser. With
+      `-Wl,--allow-multiple-definition` ld keeps the first, but the
+      C++ static initialisers in `.init_array` from all three TUs
+      *do* run — `ClassDef` constructors push to whatever `classlist`
+      symbol resolves at their TU's relocation, which may not be the
+      same address. The chain visible to `L_InitEvents` may be
+      missing some ClassDefs.
+    - This points to the proper fix: split corepp into its own
+      static library used by both the engine and the game module
+      so there's exactly one set of static initialisers, mirroring
+      the upstream SHARED-lib semantics.
+    - The `this = 0x83b9c8e0` being on the heap (vs the data section
+      where static `ClassInfo` instances should live) is also worth
+      investigating — that pointer may be coming from a copy/move
+      of a static ClassDef, or from a heap-allocated transient.
 - **Vita3K compatibility**: the binary boots and reaches `vglInitExtended`,
   but Vita3K's GXM emulation is incomplete and the renderer hangs there.
   Real Vita hardware works because vitaGL talks to GXM directly.
