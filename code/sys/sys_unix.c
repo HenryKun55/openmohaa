@@ -34,15 +34,17 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <stdlib.h>
 #include <dirent.h>
 #include <unistd.h>
+#ifndef __vita__
 #include <sys/mman.h>
-#include <sys/time.h>
 #include <pwd.h>
 #include <libgen.h>
+#include <sys/wait.h>
+#include <sys/resource.h>
+#endif
+#include <sys/time.h>
 #include <fcntl.h>
 #include <fenv.h>
-#include <sys/wait.h>
 #include <time.h>
-#include <sys/resource.h>
 
 qboolean stdinIsATTY;
 
@@ -89,6 +91,12 @@ Sys_Exec
 */
 static int Sys_Exec( void )
 {
+#ifdef __vita__
+	// fork/exec/wait are not available on the Vita.
+	// Sys_Exec is only used by the Linux dialog helpers (zenity/kdialog),
+	// which we don't ship on Vita.
+	return -1;
+#else
 	pid_t pid = fork( );
 
 	if( pid < 0 )
@@ -113,7 +121,22 @@ static int Sys_Exec( void )
 
 		return -1;
 	}
+#endif /* !__vita__ */
 }
+
+#ifdef __vita__
+/* Vita has no XDG, no $HOME and no Steam — everything lives under
+ * ux0:data/openmohaa/ which Sys_PlatformInit creates. */
+static char vitaHomePath[] = "ux0:data/openmohaa/";
+
+char *Sys_HomeConfigPath(void)        { return vitaHomePath; }
+char *Sys_HomeDataPath(void)          { return vitaHomePath; }
+char *Sys_HomeStatePath(void)         { return vitaHomePath; }
+char *Sys_DefaultHomeConfigPath(void) { return vitaHomePath; }
+char *Sys_DefaultHomeDataPath(void)   { return vitaHomePath; }
+char *Sys_DefaultHomeStatePath(void)  { return vitaHomePath; }
+qboolean Sys_MigrateToXDG(void)       { return qfalse; }
+#else /* !__vita__ */
 
 #ifdef __APPLE__
 
@@ -478,7 +501,9 @@ char *Sys_DefaultHomeStatePath(void)
 	return Sys_HomeStatePath( );
 }
 
-#endif
+#endif /* !__APPLE__ */
+
+#endif /* !__vita__ */
 
 /*
 ================
@@ -578,12 +603,16 @@ Sys_GetCurrentUser
 */
 char *Sys_GetCurrentUser( void )
 {
+#ifdef __vita__
+	return "player";
+#else
 	struct passwd *p;
 
 	if ( (p = getpwuid( getuid() )) == NULL ) {
 		return "player";
 	}
 	return p->pw_name;
+#endif
 }
 
 #define MEM_THRESHOLD 96*1024*1024
@@ -607,7 +636,12 @@ Sys_Basename
 */
 const char *Sys_Basename( char *path )
 {
+#ifdef __vita__
+	const char *slash = strrchr( path, '/' );
+	return slash ? slash + 1 : path;
+#else
 	return basename( path );
+#endif
 }
 
 /*
@@ -617,7 +651,19 @@ Sys_Dirname
 */
 const char *Sys_Dirname( char *path )
 {
+#ifdef __vita__
+	static char buf[ MAX_OSPATH ];
+	char *slash;
+	Q_strncpyz( buf, path, sizeof( buf ) );
+	slash = strrchr( buf, '/' );
+	if ( !slash ) {
+		return ".";
+	}
+	*slash = '\0';
+	return buf;
+#else
 	return dirname( path );
+#endif
 }
 
 /*
@@ -626,6 +672,14 @@ Sys_FOpen
 ==============
 */
 FILE *Sys_FOpen( const char *ospath, const char *mode ) {
+#ifdef __vita__
+	/* No stat() guard here — vitasdk newlib's stat() was unreliable for
+	 * ux0: paths and made every external sound lookup fail. fopen()
+	 * returns NULL on directories on its own. Logging was removed once
+	 * we confirmed external reads work, it was the largest source of
+	 * boot.log growth (every Pak* lookup writes a line). */
+	return fopen( ospath, mode );
+#else
 	struct stat buf;
 
 	// check if path exists and is a directory
@@ -633,6 +687,7 @@ FILE *Sys_FOpen( const char *ospath, const char *mode ) {
 		return NULL;
 
 	return fopen( ospath, mode );
+#endif
 }
 
 /*
@@ -657,6 +712,12 @@ Sys_Mkfifo
 */
 FILE *Sys_Mkfifo( const char *ospath )
 {
+#ifdef __vita__
+	(void)ospath;
+	/* Named pipes aren't part of the Vita's IO API; only the dedicated-server
+	 * console uses Sys_Mkfifo and we don't ship a dedicated build on Vita. */
+	return NULL;
+#else
 	FILE	*fifo;
 	int	result;
 	int	fn;
@@ -678,6 +739,7 @@ FILE *Sys_Mkfifo( const char *ospath )
 	}
 
 	return fifo;
+#endif
 }
 
 /*
@@ -1215,6 +1277,10 @@ Sys_PlatformInit
 Unix specific initialisation
 ==============
 */
+#ifndef __vita__
+/* Vita provides its own Sys_PlatformInit / Sys_PlatformExit in
+ * sys_vita.c (sceSysmodule + sceKernelExitProcess). The signal-based
+ * setup below assumes a terminal, which the Vita does not have. */
 void Sys_PlatformInit( void )
 {
 	const char* term = getenv( "TERM" );
@@ -1241,6 +1307,7 @@ Unix specific deinitialisation
 void Sys_PlatformExit( void )
 {
 }
+#endif /* !__vita__ */
 
 /*
 ==============
@@ -1275,7 +1342,16 @@ Sys_PIDIsRunning
 */
 qboolean Sys_PIDIsRunning( int pid )
 {
+#ifdef __vita__
+	/* vitasdk's newlib implements _kill_r only for SIGINT (2) and
+	 * SIGTERM (15); kill(pid, 0) — the standard "process alive?"
+	 * probe — falls into the unsupported-signal trap (udf). The Vita
+	 * has a single-process model anyway, so the only "running PID"
+	 * is the caller itself. */
+	return ( pid == getpid() ) ? qtrue : qfalse;
+#else
 	return kill( pid, 0 ) == 0;
+#endif
 }
 
 /*
