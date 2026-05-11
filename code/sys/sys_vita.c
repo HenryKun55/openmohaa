@@ -59,6 +59,14 @@ void Sys_PlatformInit(void)
 
     fprintf(stdout, "=== OpenMoHAA Vita boot.log ===\n");
     fflush(stdout);
+
+    /* Tell Sys_LoadDll where to find the game / cgame .suprx modules.
+     * They live at the root of the installed app (app0:/) alongside
+     * eboot.bin — see vita.cmake's VPK packaging step. FS_Startup also
+     * uses Sys_BinaryPath as the install-side base, appending "/main"
+     * to find autoexec.cfg there; "app0:" satisfies both. */
+    extern void Sys_SetBinaryPath(const char *path);
+    Sys_SetBinaryPath("app0:");
 }
 
 void Sys_PlatformExit(void)

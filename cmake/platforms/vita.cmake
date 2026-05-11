@@ -237,6 +237,11 @@ function(package_vita_vpk)
                     --add ${VITA_SCE_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
                     --add ${VITA_SCE_DIR}/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg=main/autoexec.cfg
+                    # Game / cgame PRX modules at the VPK root so they
+                    # sit next to eboot.bin and Sys_LoadDll finds them
+                    # via Sys_BinaryPath = "app0:" (set in sys_vita.c).
+                    --add ${CMAKE_BINARY_DIR}/game_suprx=game.suprx
+                    --add ${CMAKE_BINARY_DIR}/cgame_suprx=cgame.suprx
                     ${VPK_FILE}
         COMMENT "Packaging ${VPK_FILE}"
         VERBATIM

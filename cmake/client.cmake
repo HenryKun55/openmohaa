@@ -142,23 +142,10 @@ if(NOT USE_RENDERER_DLOPEN)
     target_link_libraries(      ${CLIENT_BINARY} PRIVATE ${RENDERER_LIBRARIES})
 endif()
 
-if(VITA AND BUILD_GAME_LIBRARIES)
-    # SDL_LoadObject() isn't implemented on SDL2-Vita, so cgame/game are
-    # built as STATIC libs (see basegame.cmake) and wholly linked into
-    # the eboot here. --whole-archive keeps GetGameAPI/GetCGameAPI from
-    # being stripped (the engine reaches them through Sys_GetGameAPI,
-    # not a direct reference visible to the linker at archive-merge
-    # time). corepp_shared is the single copy of corepp/* shared with
-    # the engine — without --whole-archive on it, listener.cpp's symbols
-    # would be picked archive-style (only ones referenced by names),
-    # which is fine for us.
-    target_link_libraries(${CLIENT_BINARY} PRIVATE
-        -Wl,--whole-archive
-        cgame
-        game
-        -Wl,--no-whole-archive
-    )
-endif()
+# On Vita the modules are real .suprx PRX files (see basegame.cmake),
+# loaded at runtime via code/sys/psp2/dll_psp2.c. basegame.cmake runs
+# *after* this file, so the add_dependencies call that wires the
+# eboot's VPK step to the modules' build lives there.
 
 foreach(LIBRARY IN LISTS CLIENT_DEPLOY_LIBRARIES)
     add_custom_command(TARGET ${CLIENT_BINARY} POST_BUILD

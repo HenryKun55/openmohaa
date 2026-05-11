@@ -76,38 +76,73 @@ if(BUILD_GAME_LIBRARIES)
         set(UI_MODULE_BINARY_BASEGAME ${UI_MODULE_BINARY})
     endif()
 
-    # Vita can't dlopen a .suprx through SDL_LoadObject (SDL2-Vita has it
-    # stubbed). Build cgame/game as STATIC libraries instead so the main
-    # eboot can link them directly; client.cmake hooks a Vita-specific
-    # target_link_libraries that pulls them in.
+    # On Vita the modules are built as real .suprx PRX files loaded via
+    # sceKernelLoadStartModule (see code/sys/psp2/). Each module gets the
+    # psp2_dll_hacks.c shim that provides module_start / module_stop and
+    # the psp2_exports[] table, plus a -include of psp2_dll_defs.h to
+    # remap libc allocation/IO to the engine's heap via sysfuncs_t.
+    #
+    # The recipe mirrors what vitaQuakeIII and vitaRTCW use. Output is
+    # game.suprx / cgame.suprx, packed into the VPK at module/ for the
+    # engine to dlopen at runtime.
     if(VITA)
-        set(GAME_MODULE_LIBTYPE STATIC)
+        # vita_create_self / vita_create_stubs etc. live in vita.cmake,
+        # which isn't auto-loaded by the toolchain — pull it in here.
+        include("${VITASDK}/share/vita.cmake")
+        set(VITA_PSP2_DIR ${SOURCE_DIR}/sys/psp2)
+        set(VITA_MODULE_HACKS  ${VITA_PSP2_DIR}/psp2_dll_hacks.c)
+        set(VITA_MODULE_DEFS   ${VITA_PSP2_DIR}/psp2_dll_defs.h)
+        set(VITA_MODULE_FLAGS  -include ${VITA_MODULE_DEFS} -nostartfiles)
+        # cgame .suprx ---------------------------------------------------
+        add_executable(${CGAME_MODULE_BINARY_BASEGAME}.elf
+            ${CGAME_SOURCES_BASEGAME} ${BG_SOURCES} ${CGAME_BINARY_SOURCES}
+            ${VITA_MODULE_HACKS})
+        target_compile_definitions(${CGAME_MODULE_BINARY_BASEGAME}.elf PRIVATE CGAME_DLL)
+        target_compile_options(    ${CGAME_MODULE_BINARY_BASEGAME}.elf PRIVATE ${VITA_MODULE_FLAGS})
+        target_include_directories(${CGAME_MODULE_BINARY_BASEGAME}.elf PRIVATE ${VITA_PSP2_DIR})
+        target_link_options(       ${CGAME_MODULE_BINARY_BASEGAME}.elf PRIVATE -nostartfiles)
+        target_link_libraries(     ${CGAME_MODULE_BINARY_BASEGAME}.elf PRIVATE
+            SceLibKernel_stub_weak SceKernelModulemgr_stub_weak)
+        vita_create_self(cgame_suprx ${CGAME_MODULE_BINARY_BASEGAME}.elf
+            UNSAFE STRIPPED
+            MODULE_ENTRY "module_start,module_stop,module_exit")
+        # game .suprx ----------------------------------------------------
+        add_executable(${GAME_MODULE_BINARY_BASEGAME}.elf
+            ${GAME_SOURCES_BASEGAME} ${BG_SOURCES} ${GAME_BINARY_SOURCES}
+            ${VITA_MODULE_HACKS})
+        target_compile_definitions(${GAME_MODULE_BINARY_BASEGAME}.elf
+            PRIVATE GAME_DLL WITH_SCRIPT_ENGINE ARCHIVE_SUPPORTED)
+        target_compile_options(    ${GAME_MODULE_BINARY_BASEGAME}.elf PRIVATE ${VITA_MODULE_FLAGS})
+        target_include_directories(${GAME_MODULE_BINARY_BASEGAME}.elf PRIVATE ${VITA_PSP2_DIR})
+        target_link_options(       ${GAME_MODULE_BINARY_BASEGAME}.elf PRIVATE -nostartfiles)
+        target_link_libraries(     ${GAME_MODULE_BINARY_BASEGAME}.elf PRIVATE
+            RecastNavigation::Detour RecastNavigation::DetourCrowd RecastNavigation::Recast
+            SceLibKernel_stub_weak SceKernelModulemgr_stub_weak)
+        vita_create_self(game_suprx ${GAME_MODULE_BINARY_BASEGAME}.elf
+            UNSAFE STRIPPED
+            MODULE_ENTRY "module_start,module_stop,module_exit")
+        # vita_create_self creates suffixed targets (foo-velf / foo-self).
+        # The final -self target produces the .suprx file we ship.
+        if(TARGET ${CLIENT_BINARY})
+            add_dependencies(${CLIENT_BINARY} cgame_suprx-self game_suprx-self)
+        endif()
     else()
-        set(GAME_MODULE_LIBTYPE SHARED)
-    endif()
-
-    add_library(                ${CGAME_MODULE_BINARY_BASEGAME} ${GAME_MODULE_LIBTYPE} ${CGAME_SOURCES_BASEGAME} ${BG_SOURCES} ${CGAME_BINARY_SOURCES})
-    target_compile_definitions( ${CGAME_MODULE_BINARY_BASEGAME} PRIVATE CGAME_DLL)
-    target_link_libraries(      ${CGAME_MODULE_BINARY_BASEGAME} PRIVATE ${COMMON_LIBRARIES})
-    set_target_properties(      ${CGAME_MODULE_BINARY_BASEGAME} PROPERTIES OUTPUT_NAME ${CGAME_MODULE_BINARY})
-    set_output_dirs(            ${CGAME_MODULE_BINARY_BASEGAME} SUBDIRECTORY ${BASEGAME})
-
-
-    if(NOT VITA)
+        add_library(                ${CGAME_MODULE_BINARY_BASEGAME} SHARED ${CGAME_SOURCES_BASEGAME} ${BG_SOURCES} ${CGAME_BINARY_SOURCES})
+        target_compile_definitions( ${CGAME_MODULE_BINARY_BASEGAME} PRIVATE CGAME_DLL)
+        target_link_libraries(      ${CGAME_MODULE_BINARY_BASEGAME} PRIVATE ${COMMON_LIBRARIES})
+        set_target_properties(      ${CGAME_MODULE_BINARY_BASEGAME} PROPERTIES OUTPUT_NAME ${CGAME_MODULE_BINARY})
+        set_output_dirs(            ${CGAME_MODULE_BINARY_BASEGAME} SUBDIRECTORY ${BASEGAME})
         INSTALL(TARGETS ${CGAME_MODULE_BINARY_BASEGAME} DESTINATION ${INSTALL_LIBDIR_FULL})
         if(MSVC)
             INSTALL(FILES $<TARGET_PDB_FILE:${CGAME_MODULE_BINARY_BASEGAME}> DESTINATION ${INSTALL_LIBDIR_FULL} OPTIONAL)
         endif()
-    endif()
 
-    add_library(                ${GAME_MODULE_BINARY_BASEGAME} ${GAME_MODULE_LIBTYPE} ${GAME_SOURCES_BASEGAME} ${BG_SOURCES} ${GAME_BINARY_SOURCES})
-    target_compile_definitions( ${GAME_MODULE_BINARY_BASEGAME} PRIVATE GAME_DLL WITH_SCRIPT_ENGINE ARCHIVE_SUPPORTED)
-    target_link_libraries(      ${GAME_MODULE_BINARY_BASEGAME} PRIVATE RecastNavigation::Detour RecastNavigation::DetourCrowd RecastNavigation::Recast)
-    target_link_libraries(      ${GAME_MODULE_BINARY_BASEGAME} PRIVATE ${COMMON_LIBRARIES})
-    set_target_properties(      ${GAME_MODULE_BINARY_BASEGAME} PROPERTIES OUTPUT_NAME ${GAME_MODULE_BINARY})
-    set_output_dirs(            ${GAME_MODULE_BINARY_BASEGAME} SUBDIRECTORY ${BASEGAME})
-
-    if(NOT VITA)
+        add_library(                ${GAME_MODULE_BINARY_BASEGAME} SHARED ${GAME_SOURCES_BASEGAME} ${BG_SOURCES} ${GAME_BINARY_SOURCES})
+        target_compile_definitions( ${GAME_MODULE_BINARY_BASEGAME} PRIVATE GAME_DLL WITH_SCRIPT_ENGINE ARCHIVE_SUPPORTED)
+        target_link_libraries(      ${GAME_MODULE_BINARY_BASEGAME} PRIVATE RecastNavigation::Detour RecastNavigation::DetourCrowd RecastNavigation::Recast)
+        target_link_libraries(      ${GAME_MODULE_BINARY_BASEGAME} PRIVATE ${COMMON_LIBRARIES})
+        set_target_properties(      ${GAME_MODULE_BINARY_BASEGAME} PROPERTIES OUTPUT_NAME ${GAME_MODULE_BINARY})
+        set_output_dirs(            ${GAME_MODULE_BINARY_BASEGAME} SUBDIRECTORY ${BASEGAME})
         INSTALL(TARGETS ${GAME_MODULE_BINARY_BASEGAME} DESTINATION ${INSTALL_LIBDIR_FULL})
         if(MSVC)
             INSTALL(FILES $<TARGET_PDB_FILE:${GAME_MODULE_BINARY_BASEGAME}> DESTINATION ${INSTALL_LIBDIR_FULL} OPTIONAL)
