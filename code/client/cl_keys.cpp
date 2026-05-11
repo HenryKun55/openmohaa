@@ -1128,6 +1128,28 @@ void CL_KeyEvent(int key, qboolean down, unsigned time)
         ctrlkeys[key].down = down;
     }
 
+#ifdef __vita__
+    /* The MOHAA UI is cursor-based (war room is point-and-click): clicks
+     * go through K_MOUSE1 at (cl.mousex, cl.mousey), not K_ENTER. Map
+     * the X (Cross) button to K_MOUSE1 so the user can click whatever
+     * the cursor is hovering. K_PAD0_B and START close menus.
+     *
+     * D-pad still translates to arrow keys for list-style sub-menus
+     * (controls/options) that genuinely use keyboard nav. */
+    if ((Key_GetCatcher() & KEYCATCH_UI) && !UI_BindActive()) {
+        switch (key) {
+            case K_PAD0_A:           key = K_MOUSE1;    break;
+            case K_PAD0_B:           key = K_ESCAPE;    break;
+            case K_PAD0_START:       key = K_ESCAPE;    break;
+            case K_PAD0_DPAD_UP:     key = K_UPARROW;   break;
+            case K_PAD0_DPAD_DOWN:   key = K_DOWNARROW; break;
+            case K_PAD0_DPAD_LEFT:   key = K_LEFTARROW; break;
+            case K_PAD0_DPAD_RIGHT:  key = K_RIGHTARROW;break;
+            default:                                    break;
+        }
+    }
+#endif
+
     if (key == K_ENTER) {
         if (down) {
             if (keys[K_ALT].down) {

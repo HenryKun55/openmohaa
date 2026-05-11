@@ -265,7 +265,18 @@ void UIWindowManager::UpdateViews(void)
             VectorSet4(col, 1, 1, 1, 1);
             uii.Rend_SetColor(col);
 
-            uii.Rend_DrawPicStretched(uid.mouseX, uid.mouseY, 0, 0, 0, 0, 1, 1, m_cursor->GetMaterial());
+            /* OPM upstream draws a 0x0 quad here — invisible cursor.
+             * mouse_cursor.tga is 32x32; scale to 48 for Vita's small
+             * physical display so the cursor is comfortably visible.
+             *
+             * Hotspot is the top-left pixel (the arrow's tip). Draw the
+             * quad with top-left exactly at (uid.mouseX, uid.mouseY) so
+             * the tip lines up with the click position. The quad will
+             * extend off-screen at the right/bottom edges, which is the
+             * intended behaviour — clicks at the corner (e.g. the QUIT
+             * button bottom-right) must still register, and the user is
+             * looking at the tip, not the cursor body. */
+            uii.Rend_DrawPicStretched(uid.mouseX, uid.mouseY, 48, 48, 0, 0, 1, 1, m_cursor->GetMaterial());
         }
 
         m_font->setColor(UWhite);

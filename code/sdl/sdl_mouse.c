@@ -66,5 +66,15 @@ void IN_FreeCursor() {
 
 qboolean IN_IsCursorActive()
 {
+#ifdef __vita__
+    /* Upstream returns true only when relative mouse mode is on, because
+     * on desktop that implies the OS cursor is hidden and the engine has
+     * to draw its own. We disable relative mode on Vita so finger taps
+     * deliver absolute coordinates, but the Vita has no OS cursor at
+     * all — the engine must always draw the UI cursor when active. */
+    extern qboolean in_guimouse;
+    return in_guimouse;
+#else
     return SDL_GetRelativeMouseMode() == SDL_TRUE;
+#endif
 }

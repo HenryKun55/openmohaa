@@ -449,6 +449,21 @@ void CL_MouseEvent( int dx, int dy, int time ) {
 
 		if( cl.mousey > cls.glconfig.vidHeight )
 			cl.mousey = cls.glconfig.vidHeight;
+
+#ifdef __vita__
+		/* Engine upstream allows cl.mousex == vidWidth (one column past
+		 * the last visible pixel) because the click hotspot is the
+		 * top-left of the cursor and a desktop OS cursor would still be
+		 * visible past the framebuffer. Vita renders the whole cursor
+		 * into the framebuffer, so a hotspot at vidWidth means the
+		 * arrow's tip pixel is off-screen. Clamp 4 px inside the edge
+		 * so the tip always lands on a visible pixel — matches what the
+		 * user sees on the physical Vita display. */
+		if( cl.mousex > cls.glconfig.vidWidth  - 4 )
+			cl.mousex = cls.glconfig.vidWidth  - 4;
+		if( cl.mousey > cls.glconfig.vidHeight - 4 )
+			cl.mousey = cls.glconfig.vidHeight - 4;
+#endif
 	}
 	else if ( !paused->integer )
 	{

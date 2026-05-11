@@ -358,8 +358,17 @@ static void IN_ActivateMouse( qboolean isFullscreen )
 
 	if( !mouseActive )
 	{
+#ifdef __vita__
+		/* The Vita has no real mouse — input comes from the front/back
+		 * touchpads. SDL_SetRelativeMouseMode(SDL_TRUE) on SDL2-Vita hides
+		 * the cursor and gives only deltas, which means absolute-position
+		 * touch events stop generating useful SDL_MOUSEMOTION. Keep
+		 * absolute mode so finger taps translate to a cursor position. */
+		SDL_SetRelativeMouseMode( SDL_FALSE );
+#else
 		SDL_SetRelativeMouseMode( SDL_TRUE );
 		SDL_SetWindowGrab( SDL_window, SDL_TRUE );
+#endif
 
 		IN_GobbleMotionEvents( );
 	}
@@ -1028,6 +1037,75 @@ static void IN_JoyMove( void )
 	stick_state.oldaxes = axes;
 }
 
+#ifdef __vita__
+#include <psp2/touch.h>
+/*
+===============
+IN_VitaPollTouch
+
+SDL2-Vita exposes the front + back touchpads (SDL_GetNumTouchDevices ==
+2) but its VITA_PumpEvents never calls sceTouchPeek, so finger taps
+generate no SDL_FINGER* or SDL_MOUSE* events. Poll the hardware ourselves
+each frame and synthesise mouse events: SDL_WarpMouseInWindow drives the
+SDL_MOUSEMOTION the engine already handles, and SDL_PushEvent emits the
+button down/up that becomes K_MOUSE1.
+
+Front pad raw range is 0..1920 / 0..1088 (2x oversample over the 960x544
+display), so divide by 2 to land in screen pixels. We poll FRONT only —
+the rear pad is small and easy to bump accidentally; the room-menu UI is
+better with front taps anyway.
+===============
+*/
+static void IN_PushMotion( int xrel, int yrel )
+{
+	SDL_Event ev;
+	SDL_memset( &ev, 0, sizeof(ev) );
+	ev.type = SDL_MOUSEMOTION;
+	ev.motion.xrel = xrel;
+	ev.motion.yrel = yrel;
+	SDL_PushEvent( &ev );
+}
+
+static void IN_PushButton( int down, int x, int y )
+{
+	SDL_Event ev;
+	SDL_memset( &ev, 0, sizeof(ev) );
+	ev.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+	ev.button.state = down ? SDL_PRESSED : SDL_RELEASED;
+	ev.button.button = SDL_BUTTON_LEFT;
+	ev.button.clicks = 1;
+	ev.button.x = x;
+	ev.button.y = y;
+	SDL_PushEvent( &ev );
+}
+
+static void IN_VitaPollTouch( void )
+{
+	/* Right analog stick → UI cursor. Sensibility kept at the value the
+	 * user already liked (*10). No local clamp/tracking: the engine
+	 * (CL_MouseEvent) clamps cl.mousex/y to 0..vidWidth / 0..vidHeight
+	 * itself; tracking our own clamp here caused the cursor to "stick"
+	 * one pixel short of the real edge because our local copy stayed
+	 * frozen while the engine kept absorbing further deltas, desyncing
+	 * the two cursors. */
+	if ( gamepad == NULL || !( Key_GetCatcher() & KEYCATCH_UI ) )
+		return;
+
+	int rx = SDL_GameControllerGetAxis( gamepad, SDL_CONTROLLER_AXIS_RIGHTX );
+	int ry = SDL_GameControllerGetAxis( gamepad, SDL_CONTROLLER_AXIS_RIGHTY );
+	const int dead = 32767 * 15 / 100;
+	int dx = 0, dy = 0;
+	if ( rx > dead )       dx = ( rx - dead ) * 10 / 32768;
+	else if ( rx < -dead ) dx = ( rx + dead ) * 10 / 32768;
+	if ( ry > dead )       dy = ( ry - dead ) * 10 / 32768;
+	else if ( ry < -dead ) dy = ( ry + dead ) * 10 / 32768;
+	if ( !dx && !dy )
+		return;
+
+	IN_PushMotion( dx, dy );
+}
+#endif /* __vita__ */
+
 /*
 ===============
 IN_ProcessEvents
@@ -1041,6 +1119,10 @@ static void IN_ProcessEvents( void )
 
 	if( !SDL_WasInit( SDL_INIT_VIDEO ) )
 			return;
+
+#ifdef __vita__
+	IN_VitaPollTouch();
+#endif
 
 	while( SDL_PollEvent( &e ) )
 	{
@@ -1255,6 +1337,13 @@ void IN_Frame( void )
 
 	// update isFullscreen since it might of changed since the last vid_restart
 	cls.glconfig.isFullscreen = Cvar_VariableIntegerValue( "r_fullscreen" ) != 0;
+#ifdef __vita__
+	/* The Vita has no window manager — there is always only one app on
+	 * screen, and SDL2-Vita reports r_fullscreen=0 because the "window"
+	 * doesn't go through a fullscreen toggle. Pin isFullscreen=true so
+	 * IN_Frame doesn't deactivate the mouse the moment a menu opens. */
+	cls.glconfig.isFullscreen = qtrue;
+#endif
 
 	if( !cls.glconfig.isFullscreen && ( Key_GetCatcher( ) & (KEYCATCH_CONSOLE|KEYCATCH_UI) ) )
 	{
@@ -1266,11 +1355,13 @@ void IN_Frame( void )
 		// Loading in windowed mode
 		IN_DeactivateMouse( cls.glconfig.isFullscreen );
 	}
+#ifndef __vita__
 	else if( !( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_INPUT_FOCUS ) )
 	{
 		// Window not got focus
 		IN_DeactivateMouse( cls.glconfig.isFullscreen );
 	}
+#endif
 	else
 		IN_ActivateMouse( cls.glconfig.isFullscreen );
 
