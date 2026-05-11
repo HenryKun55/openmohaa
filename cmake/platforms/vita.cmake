@@ -22,6 +22,10 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
     ${SOURCE_DIR}/sys/con_passive.c
     ${SOURCE_DIR}/sys/sys_vita.c
     ${SOURCE_DIR}/sys/vita_corepp_shims.cpp
+    # Custom dlopen wrapping sceKernelLoadStartModule for .suprx — used
+    # by sys_loadlib.h on Vita (SDL_LoadObject is stubbed in SDL2-Vita).
+    # Same pattern as vitaQuakeIII / vitaRTCW.
+    ${SOURCE_DIR}/sys/psp2/dll_psp2.c
 )
 
 # Provide GL stubs that vitaGL doesn't expose (used by the renderer's

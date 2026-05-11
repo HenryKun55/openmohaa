@@ -35,17 +35,34 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #		define Sys_LibraryError() dlerror()
 #	endif
 #else
-#	ifdef USE_INTERNAL_SDL_HEADERS
-#		include "SDL.h"
-#		include "SDL_loadso.h"
+#	ifdef __vita__
+/* SDL2-Vita has SDL_LoadObject stubbed. Use the custom dlopen wrapper
+ * around sceKernelLoadStartModule (psp2/dll_psp2.c) for module
+ * loading. We still pull SDL.h in because Sys_*Clipboard/etc. callers
+ * via sys_loadlib.h's inclusion chain expect SDL to be visible. */
+#		ifdef USE_INTERNAL_SDL_HEADERS
+#			include "SDL.h"
+#		else
+#			include <SDL.h>
+#		endif
+#		include "psp2/dll_psp2.h"
+#		define Sys_LoadLibrary(f) dlopen(f, RTLD_NOW)
+#		define Sys_UnloadLibrary(h) dlclose(h)
+#		define Sys_LoadFunction(h,fn) dlsym(h,fn)
+#		define Sys_LibraryError() dlerror()
 #	else
-#		include <SDL.h>
-#		include <SDL_loadso.h>
+#		ifdef USE_INTERNAL_SDL_HEADERS
+#			include "SDL.h"
+#			include "SDL_loadso.h"
+#		else
+#			include <SDL.h>
+#			include <SDL_loadso.h>
+#		endif
+#		define Sys_LoadLibrary(f) SDL_LoadObject(f)
+#		define Sys_UnloadLibrary(h) SDL_UnloadObject(h)
+#		define Sys_LoadFunction(h,fn) SDL_LoadFunction(h,fn)
+#		define Sys_LibraryError() SDL_GetError()
 #	endif
-#	define Sys_LoadLibrary(f) SDL_LoadObject(f)
-#	define Sys_UnloadLibrary(h) SDL_UnloadObject(h)
-#	define Sys_LoadFunction(h,fn) SDL_LoadFunction(h,fn)
-#	define Sys_LibraryError() SDL_GetError()
 #endif
 
 void * QDECL Sys_LoadDll(const char *name, qboolean useSystemLib);
