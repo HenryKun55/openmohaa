@@ -124,6 +124,42 @@ different layout.
 
 ## Known issues
 
+- **In-game gameplay crashes at script compilation.** The menu, audio,
+  cinematics and renderer are all working on real hardware. Selecting
+  Single Player → a mission successfully loads `game.suprx` (statically
+  linked into the eboot — see `cmake/basegame.cmake` and
+  `code/sys/new/sys_main_new.c`) and `G_InitGame` runs cleanly. The
+  briefing map then crashes inside `ClassDef::GetDef(int)` at
+  `this->m_pResponseDefs[event]` with `m_pResponseDefs == NULL`,
+  called from `ScriptCompiler::EmitField`.
+
+  Root cause: `class ClassDef` and `class Listener` in `corepp/` have
+  layout-affecting members and virtuals gated behind
+  `#ifdef WITH_SCRIPT_ENGINE`. fgame is compiled with the define;
+  cgame and the engine aren't. On upstream's SHARED build each
+  binary has its own private corepp and the layouts never need to
+  agree. In our static-link build the same `ClassDef::classlist`
+  ends up linked into one chain with instances constructed by two
+  different layouts, so `m_pResponseDefs` lands at a different offset
+  depending on whose code reads it.
+
+  The fix needs `WITH_SCRIPT_ENGINE` (and matching `ARCHIVE_SUPPORTED`)
+  to be uniform across the engine + cgame + game compilation. A
+  straightforward `add_compile_definitions(WITH_SCRIPT_ENGINE)` in
+  `vita.cmake` cascades into errors from fgame headers that depend
+  on `GAME_DLL` being set as well — specifically
+  `fgame/g_utils.h:212` accesses `g_entities[].entity` which only
+  exists when `GAME_DLL` is defined. A proper fix is one of:
+    - Split corepp into its own STATIC lib built with
+      `WITH_SCRIPT_ENGINE ARCHIVE_SUPPORTED`, shared between engine
+      and game module, plus enough header reorganisation so that
+      compiling corepp in isolation doesn't pull in
+      `fgame/g_utils.h` (it currently does through
+      `script/scriptvm.h` → `fgame/gamescript.h`).
+    - Or build only the engine with `WITH_SCRIPT_ENGINE` and rely on
+      the fact that cgame doesn't construct fgame's ClassDef
+      instances at runtime (only iterates them via the shared
+      `classlist`).
 - **Vita3K compatibility**: the binary boots and reaches `vglInitExtended`,
   but Vita3K's GXM emulation is incomplete and the renderer hangs there.
   Real Vita hardware works because vitaGL talks to GXM directly.
