@@ -35,6 +35,27 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../sys/sys_local.h"
 #include "sdl_icon.h"
 
+#ifdef __vita__
+/*
+ * Forward-declare vitaGL/GXM bits we need without dragging the full
+ * vitaGL.h header in. vitaGL.h re-declares standard gl* prototypes with
+ * non-const GLfloat / GLint parameters that conflict with SDL_opengl.h.
+ * Function-pointer assignments still resolve at link time because
+ * vitaGL is statically linked into the binary.
+ */
+typedef enum { SCE_GXM_MULTISAMPLE_NONE = 0 } VitaGxmMsaa;
+extern int vglInitExtended(int legacy_pool_size, int width, int height,
+                           int ram_threshold, VitaGxmMsaa msaa);
+/* GL2 entry points vitaGL omits; implementations live in vita_gl_stubs.c */
+extern void glDetachShader(unsigned int program, unsigned int shader);
+extern void glValidateProgram(unsigned int program);
+/* GL ES 1.x float-suffix entry points vitaGL provides directly but
+ * desktop GL headers (SDL_opengl_glext.h) don't declare. */
+extern void glClipPlanef(unsigned int plane, const float *equation);
+extern void glFrustumf(float l, float r, float b, float t, float n, float f);
+extern void glOrthof(float l, float r, float b, float t, float n, float f);
+#endif
+
 typedef enum
 {
 	RSERR_OK,
@@ -264,7 +285,11 @@ static qboolean GLimp_GetProcAddresses( qboolean fixedFunction ) {
 	const char *version;
 
 #ifdef __SDL_NOGETPROCADDR__
-#define GLE( ret, name, ... ) qgl##name = gl#name;
+/* Static-link path used on Vita where the GL implementation (vitaGL)
+ * is statically linked into the binary — there is no SDL_GL_GetProcAddress
+ * to resolve at runtime. Original code shipped with `gl#name` (a stray
+ * stringification) which would never have compiled if anyone enabled it. */
+#define GLE( ret, name, ... ) qgl##name = gl##name;
 #else
 #define GLE( ret, name, ... ) qgl##name = (name##proc *) SDL_GL_GetProcAddress("gl" #name); \
 	if ( qgl##name == NULL ) { \
@@ -312,6 +337,19 @@ static qboolean GLimp_GetProcAddresses( qboolean fixedFunction ) {
 			QGL_ES_1_1_FIXED_FUNCTION_PROCS;
 			// error so this doesn't segfault due to NULL desktop GL functions being used
 			Com_Error( ERR_FATAL, "Unsupported OpenGL Version: %s", version );
+#ifdef __vita__
+		} else if ( qglesMajorVersion >= 2 ) {
+			// vitaGL reports as "OpenGL ES 2.0 VitaGL" but still
+			// implements the GL 1.x fixed-function entry points
+			// (glBegin/glEnd, glMatrixMode, ...). Load both the
+			// 1.1 desktop and ES 1.1 proc tables — qgl* are
+			// statically linked through __SDL_NOGETPROCADDR__ so
+			// missing entries from the ES set are filled by vitaGL.
+			QGL_1_1_PROCS;
+			QGL_1_1_FIXED_FUNCTION_PROCS;
+			QGL_DESKTOP_1_1_PROCS;
+			QGL_DESKTOP_1_1_FIXED_FUNCTION_PROCS;
+#endif
 		} else {
 			Com_Error( ERR_FATAL, "Unsupported OpenGL Version (%s), OpenGL 1.1 is required", version );
 		}
@@ -399,6 +437,48 @@ GLimp_SetMode
 */
 static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qboolean fixedFunction)
 {
+#ifdef __vita__
+	/* On the Vita the GL implementation is vitaGL, which talks to GXM
+	 * directly. There is no system OpenGL provider and SDL_GL_CreateContext
+	 * has nothing to back it, so the desktop-style context-loop below would
+	 * hang trying every fallback. Instead create a fullscreen 960x544
+	 * SDL window (purely for input/event delivery) and bring vitaGL up
+	 * via vglInit*; qgl* pointers are statically wired to gl* by the
+	 * __SDL_NOGETPROCADDR__ branch in GLimp_GetProcAddresses.
+	 *
+	 * Memory pool is 16 MB — gives the renderer enough room for typical
+	 * Q3-class scene draw calls without starving the rest of the heap. */
+	(void)mode; (void)fullscreen; (void)noborder; (void)fixedFunction;
+
+	if ( !SDL_window ) {
+		SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE,
+			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			960, 544,
+			SDL_WINDOW_FULLSCREEN | SDL_WINDOW_OPENGL );
+	}
+
+	/* legacy_pool_size = 4 MB feeds glBegin/glEnd, glMaterial*, glLight*
+	 * style immediate-mode state. Passing 0 here leaves the legacy
+	 * state pointer NULL inside vitaGL and the first glMaterialf null-
+	 * derefs. ram_threshold = 16 MB caps the GXM memory pool. */
+	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
+
+	glConfig.vidWidth         = 960;
+	glConfig.vidHeight        = 544;
+	glConfig.windowAspect     = 960.0f / 544.0f;
+	glConfig.colorBits        = 32;
+	glConfig.depthBits        = 24;
+	glConfig.stencilBits      = 8;
+	glConfig.displayFrequency = 60;
+	glConfig.isFullscreen     = qtrue;
+
+	if ( !GLimp_GetProcAddresses( fixedFunction ) ) {
+		ri.Printf( PRINT_ALL, "vitaGL proc-address resolution failed\n" );
+		return RSERR_INVALID_MODE;
+	}
+
+	return RSERR_OK;
+#else
 	struct GLimp_ContextType {
 		int profileMask;
 		int majorVersion;
@@ -837,6 +917,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	ri.Printf( PRINT_ALL, "GL_RENDERER: %s\n", glstring );
 
 	return RSERR_OK;
+#endif /* __vita__ */
 }
 
 /*
@@ -852,6 +933,20 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 	{
 		const char *driverName;
 
+#ifdef __vita__
+		/* Per SDL2 docs:
+		 *   SDL_HINT_TOUCH_MOUSE_EVENTS — default "1", but no synthetic
+		 *     mouse events were arriving from finger taps on Vita in our
+		 *     earlier boot.log capture, so pin it on explicitly.
+		 *   SDL_HINT_VITA_TOUCH_MOUSE_DEVICE — "0"=front (default), "1"=
+		 *     back, "2"=both. The MOHAA menu UI is a spatial point-and-
+		 *     click layout (war room desk) so we want the front touch to
+		 *     drive the cursor; "2" also lets the rear pad work.
+		 * Hints must be set BEFORE SDL_Init reads them. */
+		SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+		SDL_SetHint(SDL_HINT_VITA_TOUCH_MOUSE_DEVICE, "2");
+#endif
+
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
 			ri.Printf( PRINT_ALL, "SDL_Init( SDL_INIT_VIDEO ) FAILED (%s)\n", SDL_GetError());
@@ -861,6 +956,13 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 		driverName = SDL_GetCurrentVideoDriver( );
 		ri.Printf( PRINT_ALL, "SDL using driver \"%s\"\n", driverName );
 		ri.Cvar_Set( "r_sdlDriver", driverName );
+
+#ifdef __vita__
+		/* Verify the touch subsystem actually came up. SDL_GetNumTouchDevices
+		 * should be >= 1 on Vita (front pad, optionally rear). If it's 0,
+		 * synthetic mouse events will never fire regardless of hints. */
+		ri.Printf( PRINT_ALL, "SDL touch devices: %d\n", SDL_GetNumTouchDevices() );
+#endif
 	}
 
 	if (fullscreen && ri.Cvar_VariableIntegerValue( "in_nograb" ) )
@@ -1187,12 +1289,28 @@ GLimp_EndFrame
 Responsible for doing a swapbuffers
 ===============
 */
+#ifdef __vita__
+extern void vglSwapBuffers(unsigned char has_commondialog);
+#endif
+
 void GLimp_EndFrame( void )
 {
 	// don't flip if drawing to front buffer
 	if ( Q_stricmp( r_drawBuffer->string, "GL_FRONT" ) != 0 )
 	{
+#ifdef __vita__
+		/* SDL_GL_SwapWindow is a no-op on the Vita because SDL2-Vita
+		 * never owned a real GL context. vitaGL provides its own
+		 * presentation primitive that asks GXM to flip the back buffer
+		 * onto the display surface. The bool argument enables Sony's
+		 * common-dialog overlay (PS button menu); pass GL_TRUE so
+		 * vitaGL retains its full present pipeline (matches what
+		 * vitaQuakeIII does — Vita3K is known to miss the present
+		 * with GL_FALSE). */
+		vglSwapBuffers( 1 );
+#else
 		SDL_GL_SwapWindow( SDL_window );
+#endif
 	}
 
 	if( r_fullscreen->modified )

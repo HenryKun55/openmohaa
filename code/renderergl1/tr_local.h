@@ -49,8 +49,18 @@ QGL_3_0_PROCS;
 extern "C" {
 #endif
 
+#ifdef __vita__
+/* vitaGL's 32-bit indexed-draw path is documented as buggy in vitaGL's
+ * README ("32-bit indexed draws potentially cause glitches"). Working
+ * Q3-derived ports on Vita (vitaQuakeIII, vitaRTCW) use 16-bit indices.
+ * SHADER_MAX_VERTEXES = 2048 fits trivially in uint16_t, so on Vita we
+ * land on vitaGL's stable SCE_GXM_INDEX_FORMAT_U16 codepath. */
+#define GL_INDEX_TYPE		GL_UNSIGNED_SHORT
+typedef unsigned short glIndex_t;
+#else
 #define GL_INDEX_TYPE		GL_UNSIGNED_INT
 typedef unsigned int glIndex_t;
+#endif
 
 // fast float to int conversion
 #if id386 && !( (defined __linux__ || defined __FreeBSD__ ) && (defined __i386__ ) ) // rb010123
