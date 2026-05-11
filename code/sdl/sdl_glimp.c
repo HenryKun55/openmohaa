@@ -46,6 +46,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 typedef enum { SCE_GXM_MULTISAMPLE_NONE = 0 } VitaGxmMsaa;
 extern int vglInitExtended(int legacy_pool_size, int width, int height,
                            int ram_threshold, VitaGxmMsaa msaa);
+extern int vglInitWithCustomThreshold(int pool_size, int width, int height,
+                                      int ram_threshold, int cdram_threshold,
+                                      int phycont_threshold, int cdlg_threshold,
+                                      VitaGxmMsaa msaa);
+extern void vglSetParamBufferSize(uint32_t size);
+extern void vglSetVertexBufferSize(uint32_t size);
+extern void vglSetFragmentBufferSize(uint32_t size);
 /* GL2 entry points vitaGL omits; implementations live in vita_gl_stubs.c */
 extern void glDetachShader(unsigned int program, unsigned int shader);
 extern void glValidateProgram(unsigned int program);
@@ -458,10 +465,23 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	}
 
 	/* legacy_pool_size = 4 MB feeds glBegin/glEnd, glMaterial*, glLight*
-	 * style immediate-mode state. Passing 0 here leaves the legacy
-	 * state pointer NULL inside vitaGL and the first glMaterialf null-
-	 * derefs. ram_threshold = 16 MB caps the GXM memory pool. */
+	 * style immediate-mode state. ram_threshold = 16 MB caps the GXM
+	 * memory pool used for vertex/uniform buffers. vitaGL handles
+	 * CDRAM/PHYCONT allocation internally with sensible defaults.
+	 *
+	 * Tried vglInitWithCustomThreshold to push textures into CDRAM
+	 * but vitaGL reserves PHYCONT during init regardless of the
+	 * threshold, which competed with sceKernelLoadStartModule for the
+	 * ~26 MiB system PHYCONT pool and broke game.suprx loading. */
+	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("T2 pre-vglInit"); }
+	/* Back to the proven baseline. vglInitWithCustomThreshold variants
+	 * either starved PHYCONT (PRXs failed to load) or vitaGL ignored
+	 * the caps and grew opportunistically into whatever the main heap
+	 * cap left free. With the main heap pre-reserving 300 MiB up front,
+	 * vitaGL is forced to fit in the remaining ~60 MiB which keeps the
+	 * PRX loader and SDL2/OpenAL alive. */
 	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
+	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("T3 post-vglInit"); }
 
 	glConfig.vidWidth         = 960;
 	glConfig.vidHeight        = 544;

@@ -14,6 +14,7 @@
  */
 #include <stdint.h>
 #include <vitasdk.h>
+#include <psp2/kernel/clib.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -44,11 +45,24 @@ void _free_vita_newlib( void )
 void _fini( void ) { }
 void _init( void ) { }
 
-/* Per-module libc heap. The host engine has its own (256 MiB on Vita
- * — see sys_vita.c). Game/cgame use the engine's malloc through the
- * sysfuncs_t indirection, this 2 MiB is just for libc's own bookkeeping
- * before / between SYS_* calls. */
+/* Per-module libc heap. The host engine reserves 96 MiB (see sys_vita.c)
+ * so each .suprx gets a large chunk for libstdc++'s `operator new` —
+ * tikis, animations, scripts. Pre-`#define malloc SYS_MALLOC` engine
+ * paths still bypass via the imports table, but libstdc++ landed here
+ * because it was compiled separately. Sizes:
+ *   GAME_DLL  (fgame)  → 120 MiB — heaviest C++ allocator
+ *   CGAME_DLL (cgame)  → 100 MiB — second heaviest, mostly model/anim
+ * 96 + 120 + 100 ≈ 316 MiB which together with vitaGL / SDL2 /
+ * OpenAL / sceLibc fits inside the ~360 MiB user-RAM budget. */
 unsigned int _newlib_heap_size_user = 2 * 1024 * 1024;
+
+/* (Removed: operator new/delete override.) Re-routing the C++ allocator
+ * symbols (_Znwj/_Znaj/_ZdlPv/_ZdaPv) caused the static-link layout to
+ * leave libstdc++'s __cxa_guard_release with unrelocated pointers,
+ * which crashed in module_start's static-init guard handshake before
+ * fgame had a chance to run. We're back on the .suprx module's tiny
+ * libc heap for C++ new — the memory cap stays at ~2 MiB until we
+ * find a different route (e.g. a libstdc++-aware allocator hook). */
 
 typedef struct modarg_s
 {

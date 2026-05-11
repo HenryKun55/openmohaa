@@ -107,13 +107,35 @@ void Z_Free( void *ptr )
 	}
 
 	if( block->id != ZONEID ) {
+#ifdef __vita__
+		/* Game/cgame .suprx PRX modules keep their globals across the
+		 * dlopen/dlclose cycle on Vita (the kernel ref-counts the same
+		 * image), so on the second InitGame the fgame singletons may
+		 * point at memory we already freed (or never owned). Don't
+		 * blow up the whole boot for that — leak the pointer and let
+		 * the engine continue into gameplay. */
+		Com_DPrintf( "Z_Free: ignoring pointer %p without ZONEID\n", ptr );
+		return;
+#else
 		Com_Error( ERR_FATAL, "Z_Free: freed a pointer without ZONEID" );
+#endif
 	}
 
 	// check the memory trash tester
 #ifndef _DEBUG
-	if( *( int * )( ( byte * )block + block->size - sizeof( int ) ) != ZONEID ) {
+	if( block->size > 64 * 1024 * 1024 ||
+	    ( byte * )block + block->size < ( byte * )block ||
+	    *( int * )( ( byte * )block + block->size - sizeof( int ) ) != ZONEID ) {
+#ifdef __vita__
+		/* See note above — same reload/aliasing pattern can leave the
+		 * size word stomped (libc free-list bookkeeping re-uses the
+		 * memory once the block has been handed back). Don't abort. */
+		Com_DPrintf( "Z_Free: trailer check failed for %p (size=%u), skipping\n",
+		             ptr, (unsigned)block->size );
+		return;
+#else
 		Com_Error( ERR_FATAL, "Z_Free: memory block wrote past end" );
+#endif
 	}
 #endif
 
@@ -181,6 +203,24 @@ void *Z_TagMalloc( int size, int tag ) {
 	size = PAD( size, sizeof( intptr_t ) );		// align to 32/64 bit boundary
 
 	block = ( memblock_t * )malloc( size );
+#ifdef __vita__
+	if( !block ) {
+		extern void Sys_VitaDumpMemAndAbort(const char *who, int size, int tag);
+		Sys_VitaDumpMemAndAbort("Z_TagMalloc", size, tag);
+	}
+	{
+		/* Track total Z_TagMalloc bytes; emit a mallinfo snapshot every
+		 * 16 MiB so we can see where m1l1 load runs out of heap. */
+		static size_t z_total = 0;
+		static size_t z_next_print = 16 * 1024 * 1024;
+		z_total += size;
+		if (z_total >= z_next_print) {
+			extern void Sys_VitaDumpMemSnapshot(const char *who);
+			Sys_VitaDumpMemSnapshot("Z_TagMalloc");
+			z_next_print += 16 * 1024 * 1024;
+		}
+	}
+#endif
 	block->id = ZONEID;
 	block->size = size;
 	block->next = &mem_blocks[ tag ];

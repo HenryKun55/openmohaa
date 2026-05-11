@@ -17,45 +17,59 @@
 
 qboolean Sys_StringToAdr(const char *s, netadr_t *a, netadrtype_t family)
 {
-    (void)s; (void)family;
-    if (a) memset(a, 0, sizeof(*a));
-    return qfalse;
+    (void)family;
+    if (!a) return qfalse;
+    memset(a, 0, sizeof(*a));
+    /* All networking on Vita is loopback (same-process client+server).
+     * "localhost" / "127.0.0.1" / "0.0.0.0" / anything else → loopback. */
+    if (s && (!Q_stricmp(s, "localhost") || strstr(s, "127.0.0.1"))) {
+        a->type = NA_LOOPBACK;
+        return qtrue;
+    }
+    /* Unknown remote hosts can't be reached on Vita anyway; report
+     * them as resolvable to loopback so the single-player codepath
+     * (which uses "localhost") just works. */
+    a->type = NA_LOOPBACK;
+    return qtrue;
 }
 
 qboolean NET_CompareBaseAdrMask(netadr_t a, netadr_t b, int netmask)
 {
-    (void)a; (void)b; (void)netmask;
+    (void)netmask;
+    if (a.type != b.type)
+        return qfalse;
+    if (a.type == NA_LOOPBACK)
+        return qtrue;
     return qfalse;
 }
 
 qboolean NET_CompareBaseAdr(netadr_t a, netadr_t b)
 {
-    (void)a; (void)b;
-    return qfalse;
+    return NET_CompareBaseAdrMask(a, b, -1);
 }
 
 const char *NET_AdrToString(netadr_t a)
 {
-    (void)a;
+    if (a.type == NA_LOOPBACK) return "loopback";
+    if (a.type == NA_BOT) return "bot";
     return "0.0.0.0";
 }
 
 const char *NET_AdrToStringwPort(netadr_t a)
 {
-    (void)a;
+    if (a.type == NA_LOOPBACK) return "loopback";
+    if (a.type == NA_BOT) return "bot";
     return "0.0.0.0:0";
 }
 
 qboolean NET_CompareAdr(netadr_t a, netadr_t b)
 {
-    (void)a; (void)b;
-    return qfalse;
+    return NET_CompareBaseAdr(a, b);
 }
 
 qboolean NET_IsLocalAddress(netadr_t adr)
 {
-    (void)adr;
-    return qtrue;
+    return adr.type == NA_LOOPBACK;
 }
 
 qboolean NET_GetPacket(netadr_t *net_from, msg_t *net_message, fd_set *fdr)

@@ -1594,8 +1594,19 @@ void SV_ShutdownGameProgs( void ) {
 	ge->Shutdown();
 	Sys_UnloadGame();
 
+#ifndef __vita__
 	// Free all memory allocated by the game module
 	Z_FreeTags(TAG_GAME);
+#else
+	/* On Vita, game.suprx is loaded once and stays in memory: our PRX
+	 * dlopen/dlclose just refcounts the same kernel module, so a
+	 * subsequent dlopen does NOT re-run the C++ static initialisers.
+	 * That means fgame's globals (Director.StringDict, level.m_Vars,
+	 * etc.) keep pointing at the gi.Malloc blocks they allocated for
+	 * the previous map. If we wipe those blocks via Z_FreeTags(TAG_GAME),
+	 * the next InitGame's Reset() walks dangling hash chains and crashes.
+	 * Skip the tag purge: fgame's own Reset() frees its per-map data. */
+#endif
 
 	ge = NULL;
 }

@@ -278,7 +278,11 @@ but not on every player enter or exit.
 ================
 */
 void SV_MasterHeartbeat( void ) {
-	if (!sv_gamespy->integer) {
+	/* sv_gamespy is registered by SV_GameSpy_Init in gamespy/sv_gamespy.c,
+	 * which Vita stubs out (no BSD sockets, masters offline). Treat the
+	 * NULL cvar pointer as gamespy-disabled rather than crashing in
+	 * SV_Frame's master-heartbeat tick. */
+	if (!sv_gamespy || !sv_gamespy->integer) {
 		return;
 	}
 
