@@ -1875,6 +1875,12 @@ void RB_EndSurface( void ) {
 	// clear shader so we can tell we don't have any unclosed surfaces
 	tess.numIndexes = 0;
 
+	/* (Removed Vita-only vertex-state reset attempt. Per-surface reset
+	 * broke the "press fire to continue" prompt at level start and
+	 * didn't reliably stop the m1l1 vertex artefacts either. The real
+	 * fix likely lives at the TIKI→world transition specifically;
+	 * needs further investigation with a GL frame capture.) */
+
 	GLimp_LogComment( "----------\n" );
 }
 

@@ -1153,6 +1153,19 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 		}
 
 		// GL_EXT_compiled_vertex_array
+#ifdef __vita__
+		/* Match vitaQuakeIII / vitaRTCW: force-disable
+		 * glLockArraysEXT / glUnlockArraysEXT on Vita. Their
+		 * implementation in vitaGL is known to scramble vertex
+		 * layouts between batches, which is the suspected source of
+		 * the m1l1 "broken vertices after the inspection scene"
+		 * artefact. Skipping the extension makes the engine fall
+		 * back to direct-pointer draws — slower in theory, but the
+		 * Vita is GPU-bound elsewhere anyway. */
+		ri.Printf( PRINT_ALL, "...forcing GL_EXT_compiled_vertex_array off on Vita\n" );
+		qglLockArraysEXT   = NULL;
+		qglUnlockArraysEXT = NULL;
+#else
 		if ( SDL_GL_ExtensionSupported( "GL_EXT_compiled_vertex_array" ) )
 		{
 			if ( r_ext_compiled_vertex_array->value )
@@ -1174,6 +1187,7 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 		{
 			ri.Printf( PRINT_ALL, "...GL_EXT_compiled_vertex_array not found\n" );
 		}
+#endif
 	}
 
 	textureFilterAnisotropic = qfalse;
