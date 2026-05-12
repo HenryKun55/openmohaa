@@ -9,7 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### Server
+#### Platform (PS Vita port)
+
+- Initial PlayStation Vita Fat port (`vita-port` branch). Targets vitasdk + vitaGL with a Q3-derived FFP renderer path on the SGX543MP4+.
+- `vita_skip_mask` cvar — a 9-bit bisect bitmask that selectively disables individual surface iterators (`SF_TIKI_SKEL`, `SF_TIKI_STATIC`, `SF_SWIPE`, `SF_SPRITE`, `SF_TERRAIN`, sky, `SF_FACE`, `SF_TRIANGLES`, `SF_GRID`). Used to isolate the m1l1 vertex-corruption artefact to the BSP brush iterators.
+- DXT/.dds offline pre-compression pipeline (`tools/dxt_pak.py`) that adds `.dds` siblings to every `.tga` / `.jpg` inside a `.pk3` without dropping the originals.
+- Vita-aware control bindings shipped in `misc/vita/main/autoexec.cfg` (Cross = use, Circle = crouch, Square = reload, Triangle = jump, L = ironsights, R = fire, D-pad = weapon cycle / console).
+
+### Changed
+
+#### Platform (PS Vita port)
+
+- `glIndex_t` becomes `uint16_t` on Vita so the engine lands on vitaGL's stable `SCE_GXM_INDEX_FORMAT_U16` codepath (vitaGL's README documents the 32-bit indexed-draw path as glitch-prone).
+- `RB_SurfaceFace` rewritten on Vita to mirror `RB_DrawTerrainTris`: forward index iteration, explicit `(glIndex_t)` cast, always-initialised `tess.normal`, and explicit `xyz[3] = 1.0` / `normal[3] = 0.0` to clear stale `vec4_t` W components.
+- `GL_EXT_compiled_vertex_array` (`glLockArraysEXT`) force-disabled on Vita to match vitaQuakeIII / vitaRTCW.
+- C++ allocator unified onto the engine's 240 MiB heap via `g_engsysfuncs` so libstdc++ no longer competes with the renderer for memory.
+- Briefing → `m1l1` transition redirected through `SV_Map_f` to avoid the historical crash path.
+
+### Fixed
+
+#### Platform (PS Vita port)
+
+- All MOHAA retail audio (1979 WAV + 125 MP3 + 3 RoQ + 1 MPG = 2630 media files) now load from `ux0:/data/openmohaa/main/{sound,music,video}/` in the original disc layout. Previously the install was missing `sound/amb_stereo/` (per-mission ambient) and the dialog tree was flattened under the wrong prefix, causing 74+ "Failed to open sound" warnings per boot.
+
+
 
 - Feature to name bots (most requested bot feature). See the [bot documentation](https://github.com/openmoh/openmohaa/blob/main/docs/markdown/03-configuration/01-configuration.md#bots). This may change in the future.
 - More settings for bots. See the [documentation](https://github.com/openmoh/openmohaa/blob/main/docs/markdown/03-configuration/03-configuration-bots.md) for settings.
