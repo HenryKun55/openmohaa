@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Platform (PS Vita port)
 
 - All MOHAA retail audio (1979 WAV + 125 MP3 + 3 RoQ + 1 MPG = 2630 media files) now load from `ux0:/data/openmohaa/main/{sound,music,video}/` in the original disc layout. Previously the install was missing `sound/amb_stereo/` (per-mission ambient) and the dialog tree was flattened under the wrong prefix, causing 74+ "Failed to open sound" warnings per boot.
+- MP3 playback (in-game music, ambient stereo, video audio tracks) now works on Vita. The `libmad.a` shipped via vdpm was built with the ARM EABI default `-fshort-enums`, but the engine is compiled with 32-bit enums — so when libmad wrote a 1-byte `madheader.layer` (correct value 3 = Layer III), the engine read 4 bytes and got 1 valid byte plus 3 bytes of stack garbage (`-65021`, `-67173885`, …). Every MP3 was rejected at `S_MP3_Scanfile` with a spurious "non-LayerIII" error. Rebuilt `libmad-0.15.1b` from source for `arm-vita-eabi` with `--enable-fpm=default -fno-short-enums`, restoring ABI parity. All retail MP3s now decode through `S_MP3_Scanfile` → `S_MP3_CodecOpenStream` → `mad_synth_frame`.
 
 
 
