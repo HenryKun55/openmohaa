@@ -1881,34 +1881,6 @@ void RB_EndSurface( void ) {
 	backEnd.pc.c_indexes += tess.numIndexes;
 	backEnd.pc.c_totalIndexes += tess.numIndexes * tess.numPasses;
 
-#ifdef __vita__
-	/* FINAL TEST: validate tess.indexes are all within numVertexes.
-	 * If any index >= numVertexes, the GPU reads from uninitialised
-	 * vertex slots and produces giant random triangles. */
-	{
-		static int bad_idx_logged = 0;
-		int bad_max = -1;
-		int bad_at = -1;
-		for (int i = 0; i < input->numIndexes; i++) {
-			if (input->indexes[i] >= input->numVertexes) {
-				if (input->indexes[i] > bad_max) {
-					bad_max = input->indexes[i];
-					bad_at  = i;
-				}
-			}
-		}
-		if (bad_max >= 0 && bad_idx_logged < 30) {
-			fprintf(stdout,
-				"[engBAD] shader=%s numVerts=%d numIdx=%d idx[%d]=%d (OUT OF RANGE)\n",
-				tess.shader ? tess.shader->name : "(null)",
-				input->numVertexes, input->numIndexes,
-				bad_at, bad_max);
-			fflush(stdout);
-			bad_idx_logged++;
-		}
-	}
-#endif
-
 	//
 	// call off to shader specific tess end function
 	//

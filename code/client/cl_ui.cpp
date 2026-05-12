@@ -5363,7 +5363,17 @@ void CL_InitializeUI(void)
     Cmd_AddCommand("salesscreen", UI_SalesScreen_f);
     Cmd_AddCommand("launchgamespy", UI_LaunchGameSpy_f);
 
-    if (developer->integer) {
+#ifdef __vita__
+    /* On Vita we always register `devcon` (toggle dev console) regardless
+     * of the `developer` cvar — there is no physical keyboard, so the
+     * D-pad bind in autoexec.cfg needs a real command to call. Without
+     * this, `bind PAD0_DPAD_DOWN devcon` silently does nothing because
+     * the command was only registered when developer mode was on. */
+    if (1)
+#else
+    if (developer->integer)
+#endif
+    {
         UColor bgColor;
 
         Cmd_AddCommand("devcon", UI_ToggleDeveloperConsole_f);
