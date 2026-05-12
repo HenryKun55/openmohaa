@@ -53,6 +53,12 @@ extern int vglInitWithCustomThreshold(int pool_size, int width, int height,
 extern void vglSetParamBufferSize(uint32_t size);
 extern void vglSetVertexBufferSize(uint32_t size);
 extern void vglSetFragmentBufferSize(uint32_t size);
+/* Runtime shader compiler tuning. opt_level matches vitashark's shark_opt
+ * enum (0=slow / 1=safe / 2=default / 3=fast). All three "use_fast*" flags
+ * relax precision/IEEE conformance for ~30-40% speedup on SGX543. */
+extern void vglSetupRuntimeShaderCompiler(int opt_level, int use_fastmath,
+                                          int use_fastprecision, int use_fastint);
+extern void vglUseLowPrecision(unsigned char val);
 /* GL2 entry points vitaGL omits; implementations live in vita_gl_stubs.c */
 extern void glDetachShader(unsigned int program, unsigned int shader);
 extern void glValidateProgram(unsigned int program);
@@ -474,12 +480,18 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	 * threshold, which competed with sceKernelLoadStartModule for the
 	 * ~26 MiB system PHYCONT pool and broke game.suprx loading. */
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("T2 pre-vglInit"); }
-	/* Back to the proven baseline. vglInitWithCustomThreshold variants
-	 * either starved PHYCONT (PRXs failed to load) or vitaGL ignored
-	 * the caps and grew opportunistically into whatever the main heap
-	 * cap left free. With the main heap pre-reserving 300 MiB up front,
-	 * vitaGL is forced to fit in the remaining ~60 MiB which keeps the
-	 * PRX loader and SDL2/OpenAL alive. */
+	/* Performance tuning — must be called BEFORE vglInit*:
+	 *   shark_opt 3 (FAST/O3): aggressive shader optimization
+	 *   fastmath=1: skip denormal/NaN handling (Q3 doesn't need IEEE)
+	 *   fastprecision=1: half-precision floats where possible
+	 *   fastint=1: relaxed integer ops
+	 * These shave a chunk off shader runtime cost on SGX543.
+	 * vglUseLowPrecision(GL_TRUE) makes the GLSL translator emit
+	 * `half` instead of `float` for varying interpolators — big win
+	 * on a tile-based GPU with limited register bandwidth. */
+	vglSetupRuntimeShaderCompiler(3 /*SHARK_OPT_FAST*/, 1, 1, 1);
+	vglUseLowPrecision(1);
+	/* Back to the proven baseline. */
 	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
 
 	/* Bridge the LiveArea startup.png onto our first GL frame so the
