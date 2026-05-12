@@ -28,9 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### General
+
+- `R_MovePatchSurfacesToHunk` used to call `Com_Memcpy(grid->heightLodError, grid->heightLodError, grid->height * 4)` — a typo where the destination should have been `hunkgrid->heightLodError`. Net effect: every `SF_GRID` patch surface lost its `heightLodError` array on hunk-relocation (the freshly-`Hunk_Alloc`'d buffer was never populated), and a moment later the original `grid` was freed, dangling. Caught by `-Wrestrict` once the Vita build flags exposed the warning. Affects all platforms.
+
 #### Platform (PS Vita port)
 
 - All MOHAA retail audio (1979 WAV + 125 MP3 + 3 RoQ + 1 MPG = 2630 media files) now load from `ux0:/data/openmohaa/main/{sound,music,video}/` in the original disc layout. Previously the install was missing `sound/amb_stereo/` (per-mission ambient) and the dialog tree was flattened under the wrong prefix, causing 74+ "Failed to open sound" warnings per boot.
+- The m1l1 "broken vertices" artefact (giant stretched triangles whenever the player approached the Algiers Nazi compound) is gone. Root cause never reproduced through engine-side tess instrumentation or vitaGL `glDrawElements` logging — `RB_SurfaceFace`'s output is structurally fine, but something downstream in the FFP path on `SCE_GXM_INDEX_SOURCE_INDEX_16BIT` produces garbage geometry only for BSP brush faces in dense indoor scenes. Workaround: in `ParseFace` on Vita, emit `srfTriangles_t` instead of `srfSurfaceFace_t` (one hunk allocation, copies points/indices into the triangle layout, preserves per-vertex lightmap UVs). The `SF_TRIANGLES` codepath was empirically proven bug-free during the bisect (mask=64 alone stopped the artefact, mask=128 alone did nothing), so routing FACE through it sidesteps the still-unidentified defect while preserving lighting, lightmaps, and the level's visual layout. m1l1 now renders the aqueduct, lighthouse, town walls, swastika banners, indoor courtyard and bunker hallways correctly.
 - MP3 playback (in-game music, ambient stereo, video audio tracks) now works on Vita. The `libmad.a` shipped via vdpm was built with the ARM EABI default `-fshort-enums`, but the engine is compiled with 32-bit enums — so when libmad wrote a 1-byte `madheader.layer` (correct value 3 = Layer III), the engine read 4 bytes and got 1 valid byte plus 3 bytes of stack garbage (`-65021`, `-67173885`, …). Every MP3 was rejected at `S_MP3_Scanfile` with a spurious "non-LayerIII" error. Rebuilt `libmad-0.15.1b` from source for `arm-vita-eabi` with `--enable-fpm=default -fno-short-enums`, restoring ABI parity. All retail MP3s now decode through `S_MP3_Scanfile` → `S_MP3_CodecOpenStream` → `mad_synth_frame`.
 
 

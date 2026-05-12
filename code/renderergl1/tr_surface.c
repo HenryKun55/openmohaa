@@ -381,6 +381,10 @@ RB_SurfaceFace
 void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 #ifdef __vita__
     if (vita_skip_mask && (vita_skip_mask->integer & 64)) return;
+    /* NOTE: on Vita, ParseFace in tr_bsp.c emits srfTriangles_t for
+     * brush faces, so this function should rarely / never be reached
+     * for world geometry. Kept compiled in for safety + non-world
+     * paths that might still feed an SF_FACE. */
 #endif
 	int			i;
 #ifndef __vita__
