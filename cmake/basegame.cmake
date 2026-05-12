@@ -90,7 +90,9 @@ if(BUILD_GAME_LIBRARIES)
         # which isn't auto-loaded by the toolchain — pull it in here.
         include("${VITASDK}/share/vita.cmake")
         set(VITA_PSP2_DIR ${SOURCE_DIR}/sys/psp2)
-        set(VITA_MODULE_HACKS  ${VITA_PSP2_DIR}/psp2_dll_hacks.c)
+        set(VITA_MODULE_HACKS
+            ${VITA_PSP2_DIR}/psp2_dll_hacks.c
+            ${VITA_PSP2_DIR}/psp2_cpp_alloc.cpp)
         set(VITA_MODULE_DEFS   ${VITA_PSP2_DIR}/psp2_dll_defs.h)
         set(VITA_MODULE_FLAGS  -include ${VITA_MODULE_DEFS} -nostartfiles)
         # cgame .suprx ---------------------------------------------------

@@ -179,6 +179,38 @@ static void SV_Map_f( void ) {
 		Com_sprintf( mapname, sizeof( mapname ), "%s", Cmd_Argv( 1 ) );
 	}
 
+#ifdef __vita__
+	/* Briefing → first-level transition is unstable on Vita because the
+	 * .suprx PRX modules can't truly reload (sceKernelLoadStartModule
+	 * refcounts the same image; static C++ initialisers don't re-run),
+	 * leaving fgame globals + engine-side UI caches in a half-stale
+	 * state that corrupts the heap during the second InitGame. Until we
+	 * have a real module-reload story, rewrite the campaign launcher's
+	 * "map briefing/briefingN" into the corresponding mission start
+	 * map. That way the user clicks Mission N from the menu, watches
+	 * the cutscene flow, and jumps straight into the level. */
+	{
+		static const struct { const char *brief; const char *level; } redirect[] = {
+			{ "briefing/briefing1", "m1l1" },
+			{ "briefing/briefing2", "m2l1" },
+			{ "briefing/briefing3", "m3l1" },
+			{ "briefing/briefing4", "m4l1" },
+			{ "briefing/briefing5", "m5l1" },
+			{ "briefing/briefing6", "m6l1" },
+			{ NULL, NULL },
+		};
+		int i;
+		for( i = 0; redirect[i].brief; i++ ) {
+			if( !Q_stricmp( mapname, redirect[i].brief ) ) {
+				Com_Printf( "[vita] Redirecting %s -> %s (briefing skip)\n",
+				            mapname, redirect[i].level );
+				Q_strncpyz( mapname, redirect[i].level, sizeof( mapname ) );
+				break;
+			}
+		}
+	}
+#endif
+
 	Com_BackslashToSlash( mapname );
 
 	spawnpos = strchr( mapname, '$' );

@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "psp2/dll_psp2.h"
+
 /* OpenMoHAA's m1l1 (Mission 1 Level 1 — Submarine) is much larger than the
  * mission briefings: ~20k animation channels, dozens of unique tikis and
  * a 50MB BSP. The first 256 MiB heap hit std::bad_alloc partway through
@@ -53,7 +55,19 @@
  * headroom) so the .suprx modules can claim 120 + 100 MiB for their own
  * libstdc++ allocations. Total budget ≈ 320 MiB user — fits with the
  * rest of the runtime (SDL2 / vitaGL / OpenAL / sceLibc) inside 360 MiB. */
-unsigned int _newlib_heap_size_user      = 300 * 1024 * 1024;
+/* Cap the engine's newlib heap at 240 MiB instead of the previous 300.
+ * The C++-allocator override in psp2_cpp_alloc.cpp now routes the
+ * .suprx modules' `new`/`delete` straight to the engine heap, so fgame
+ * + cgame no longer need 2 MiB-each side heaps + the engine's gi.Malloc
+ * usage stays well under 240 MiB during m1l1 load (peaks observed
+ * around 60 MiB in the last run). The 60 MiB we give back lets us
+ * pre-load both .suprx in PlatformInit AND leave vitaGL room to init.
+ *
+ * Budget at T1 (post-preload) with 240 MiB cap:
+ *   user_free  ≈ 18 (init) − 16 (suprx) = ~2 MiB     ❌ too tight
+ *   user_free  ≈ 78 (init) − 16 (suprx) = ~62 MiB    ✅ headroom
+ */
+unsigned int _newlib_heap_size_user      = 240 * 1024 * 1024;
 unsigned int sceLibcHeapSize             = 4   * 1024 * 1024;
 unsigned int _pthread_stack_default_user = 2   * 1024 * 1024;
 
@@ -117,6 +131,21 @@ void Sys_PlatformInit(void)
      * to find autoexec.cfg there; "app0:" satisfies both. */
     extern void Sys_SetBinaryPath(const char *path);
     Sys_SetBinaryPath("app0:");
+
+    /* Pre-load both PRX modules NOW, before vitaGL grabs the system
+     * PHYCONT pool. sceKernelLoadStartModule needs a few MiB of
+     * physically-contiguous RAM per module; once vglInit runs, only a
+     * few MiB are left and the second load (cgame.suprx) fails with
+     * SCE_KERNEL_ERROR_NO_PHY_CONT_MEM (0x80024302). Loading both
+     * eagerly while PHYCONT is full (~26 MiB) guarantees they succeed.
+     * Our custom dlopen wrapper (sys/psp2/dll_psp2.c) caches the open
+     * handle by filename, so when Sys_LoadDll() later asks for the
+     * same module the engine just gets a refcounted reference. */
+    void *h = dlopen("app0:/game.suprx", 0);
+    fprintf(stdout, "[preload] game.suprx -> %p\n", h);
+    h = dlopen("app0:/cgame.suprx", 0);
+    fprintf(stdout, "[preload] cgame.suprx -> %p\n", h);
+    fflush(stdout);
 
     Sys_VitaDumpMemSnapshot("T1 after PlatformInit");
 }

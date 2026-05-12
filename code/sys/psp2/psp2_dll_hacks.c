@@ -104,16 +104,26 @@ int module_exit( void )
     return SCE_KERNEL_STOP_SUCCESS;
 }
 
+/* psp2_cpp_alloc.cpp defines this; flips the C++ allocator from the
+ * bootstrap bump buffer to engine heap (g_engsysfuncs.pfnSysMalloc). */
+extern void psp2_cpp_alloc_ready(void);
+
 void _start() __attribute__ ((weak, alias ("module_start")));
 int module_start( SceSize argc, void *args )
 {
     (void)argc;
     _init_vita_newlib( );
-    __libc_init_array( );
 
+    /* Copy imports table BEFORE __libc_init_array so any C++ static
+     * initialisers that allocate via `new` find the engine heap ready.
+     * The override in psp2_cpp_alloc.cpp keys off s_engine_ready so we
+     * also tell it explicitly. */
     modarg_t *arg = *(modarg_t **)args;
     arg->exports = psp2_exports;
     g_engsysfuncs = arg->imports;
+    psp2_cpp_alloc_ready();
+
+    __libc_init_array( );
 
     return SCE_KERNEL_START_SUCCESS;
 }

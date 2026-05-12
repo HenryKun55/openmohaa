@@ -481,6 +481,15 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	 * vitaGL is forced to fit in the remaining ~60 MiB which keeps the
 	 * PRX loader and SDL2/OpenAL alive. */
 	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
+
+	/* Bridge the LiveArea startup.png onto our first GL frame so the
+	 * zoom-in animation flows straight into a static splash that stays
+	 * up until the engine begins rendering its menu / cinematic. */
+	{
+		extern void Vita_BootSplash_Show(void);
+		Vita_BootSplash_Show();
+	}
+
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("T3 post-vglInit"); }
 
 	glConfig.vidWidth         = 960;
@@ -1328,6 +1337,8 @@ void GLimp_EndFrame( void )
 		 * vitaQuakeIII does — Vita3K is known to miss the present
 		 * with GL_FALSE). */
 		vglSwapBuffers( 1 );
+		{ extern void Vita_BootSplash_NoteEngineFrame(void);
+		  Vita_BootSplash_NoteEngineFrame(); }
 #else
 		SDL_GL_SwapWindow( SDL_window );
 #endif

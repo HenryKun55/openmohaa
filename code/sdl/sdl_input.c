@@ -538,24 +538,34 @@ static void IN_InitJoystick( void )
 	stick = SDL_JoystickOpen( in_joystickNo->integer );
 
 	if (stick == NULL) {
-		Com_DPrintf( "No joystick opened: %s\n", SDL_GetError() );
+		Com_Printf( "[joy] No joystick opened: %s\n", SDL_GetError() );
 		return;
 	}
 
-	if (SDL_IsGameController(in_joystickNo->integer))
+	if (SDL_IsGameController(in_joystickNo->integer)) {
 		gamepad = SDL_GameControllerOpen(in_joystickNo->integer);
+	} else {
+		Com_Printf( "[joy] Index %d is NOT a recognised game controller — "
+		            "buttons/axes will come through the raw joystick path.\n",
+		            in_joystickNo->integer );
+	}
 
-	Com_DPrintf( "Joystick %d opened\n", in_joystickNo->integer );
-	Com_DPrintf( "Name:       %s\n", SDL_JoystickNameForIndex(in_joystickNo->integer) );
-	Com_DPrintf( "Axes:       %d\n", SDL_JoystickNumAxes(stick) );
-	Com_DPrintf( "Hats:       %d\n", SDL_JoystickNumHats(stick) );
-	Com_DPrintf( "Buttons:    %d\n", SDL_JoystickNumButtons(stick) );
-	Com_DPrintf( "Balls:      %d\n", SDL_JoystickNumBalls(stick) );
-	Com_DPrintf( "Use Analog: %s\n", in_joystickUseAnalog->integer ? "Yes" : "No" );
-	Com_DPrintf( "Is gamepad: %s\n", gamepad ? "Yes" : "No" );
+	Com_Printf( "[joy] Joystick %d opened\n", in_joystickNo->integer );
+	Com_Printf( "[joy] Name:       %s\n", SDL_JoystickNameForIndex(in_joystickNo->integer) );
+	Com_Printf( "[joy] Axes:       %d\n", SDL_JoystickNumAxes(stick) );
+	Com_Printf( "[joy] Hats:       %d\n", SDL_JoystickNumHats(stick) );
+	Com_Printf( "[joy] Buttons:    %d\n", SDL_JoystickNumButtons(stick) );
+	Com_Printf( "[joy] Balls:      %d\n", SDL_JoystickNumBalls(stick) );
+	Com_Printf( "[joy] Use Analog: %s\n", in_joystickUseAnalog->integer ? "Yes" : "No" );
+	Com_Printf( "[joy] Is gamepad: %s\n", gamepad ? "Yes" : "No" );
 
-	SDL_JoystickEventState(SDL_QUERY);
-	SDL_GameControllerEventState(SDL_QUERY);
+	/* SDL_QUERY only READS the state — it doesn't change anything. On
+	 * Vita (and any platform that doesn't auto-enable joystick events
+	 * after subsystem init) this leaves the event queue silent, so
+	 * IN_GamepadMove never fires and PAD0_* binds never trigger. Use
+	 * SDL_ENABLE to actually turn the event flow on. */
+	SDL_JoystickEventState(SDL_ENABLE);
+	SDL_GameControllerEventState(SDL_ENABLE);
 }
 
 /*

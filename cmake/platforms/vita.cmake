@@ -32,6 +32,7 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
 # function-pointer table even when those entry points are never called).
 list(APPEND CLIENT_PLATFORM_SOURCES
     ${SOURCE_DIR}/sdl/vita_gl_stubs.c
+    ${SOURCE_DIR}/sdl/vita_boot_splash.c
 )
 
 # Disable features that don't make sense (or aren't ready) on Vita.

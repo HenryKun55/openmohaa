@@ -2025,13 +2025,9 @@ void Com_Init( char *commandLine ) {
 	Com_Printf( "--- Common Initialization Complete --- %i ms\n", iEnd - iStart );
 
 #ifdef __vita__
-	/* Vita bring-up shortcut: skip the menu/campaign entirely and boot
-	 * directly into m1l1. We can't do this from autoexec.cfg because
-	 * the `map` command is queued before SV_Init runs and gets dropped.
-	 * Inject it after Com_Init so SV/CL are both up and the command
-	 * fires. Bypasses the briefing → m1l1 transition that crashes
-	 * because the .suprx module can't truly reload (statics persist). */
-	Cbuf_AddText("map m1l1\n");
+	/* (No auto-boot. SV_Map_f rewrites "map briefing/briefingN" to
+	 * "map mNl1" so clicking Mission N from the campaign menu jumps
+	 * straight into the level — single dlopen, fresh module state. */
 #endif
 }
 
