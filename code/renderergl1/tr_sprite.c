@@ -80,6 +80,9 @@ RB_DrawSprite
 =====================
 */
 void RB_DrawSprite( const refSprite_t *spr ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 8)) return;
+#endif
 	model_t* model;
 	vec3_t norm;
 	vec3_t up, right;

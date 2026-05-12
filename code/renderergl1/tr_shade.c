@@ -161,6 +161,22 @@ without compiled vertex arrays.
 ==================
 */
 static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
+#ifdef __vita__
+	/* MUST go through qglDrawElements unconditionally on Vita. The fall-
+	 * back paths (qglArrayElement / R_ArrayElementDiscrete inside
+	 * qglBegin/qglEnd) rely on glArrayElement, which is a no-op stub
+	 * here (vita_gl_stubs.c). Calling them submits ZERO verts but
+	 * leaves vitaGL's legacy_pool populated with the previous
+	 * surface's tail — so the next batch draws giant stretched
+	 * triangles textured with whatever was bound last. That's exactly
+	 * the m1l1 post-inspection "blue/yellow shards across the screen"
+	 * artefact.
+	 *
+	 * vitaQuakeIII does the same simplification (their tr_shade.c
+	 * R_DrawElements is just this single glDrawElements call). */
+	qglDrawElements( GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, indexes );
+	return;
+#else
 	int		primitives;
 
 	primitives = r_primitives->integer;
@@ -174,9 +190,8 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		}
 	}
 
-
 	if ( primitives == 2 ) {
-		qglDrawElements( GL_TRIANGLES, 
+		qglDrawElements( GL_TRIANGLES,
 						numIndexes,
 						GL_INDEX_TYPE,
 						indexes );
@@ -187,13 +202,14 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		R_DrawStripElements( numIndexes,  indexes, qglArrayElement );
 		return;
 	}
-	
+
 	if ( primitives == 3 ) {
 		R_DrawStripElements( numIndexes,  indexes, R_ArrayElementDiscrete );
 		return;
 	}
 
 	// anything else will cause no drawing
+#endif
 }
 
 
@@ -360,6 +376,16 @@ to overflow.
 ==============
 */
 void RB_BeginSurface( shader_t *shader ) {
+#ifdef __vita__
+	{
+		static int vita_skip_announced = 0;
+		if (!vita_skip_announced && vita_skip_mask) {
+			vita_skip_announced = 1;
+			ri.Printf( PRINT_ALL, "^3[VITA] first surface ^7vita_skip_mask=%d (raw=\"%s\")\n",
+				vita_skip_mask->integer, vita_skip_mask->string );
+		}
+	}
+#endif
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
 	tess.shader = shader;
@@ -1577,6 +1603,7 @@ void RB_StageIteratorGeneric( void )
 	// lock XYZ
 	//
 	qglVertexPointer (3, GL_FLOAT, 16, input->xyz);	// padded for SIMD
+
 	if (qglLockArraysEXT)
 	{
 		qglLockArraysEXT(0, input->numVertexes);
@@ -1853,6 +1880,34 @@ void RB_EndSurface( void ) {
 	backEnd.pc.c_vertexes += tess.numVertexes;
 	backEnd.pc.c_indexes += tess.numIndexes;
 	backEnd.pc.c_totalIndexes += tess.numIndexes * tess.numPasses;
+
+#ifdef __vita__
+	/* FINAL TEST: validate tess.indexes are all within numVertexes.
+	 * If any index >= numVertexes, the GPU reads from uninitialised
+	 * vertex slots and produces giant random triangles. */
+	{
+		static int bad_idx_logged = 0;
+		int bad_max = -1;
+		int bad_at = -1;
+		for (int i = 0; i < input->numIndexes; i++) {
+			if (input->indexes[i] >= input->numVertexes) {
+				if (input->indexes[i] > bad_max) {
+					bad_max = input->indexes[i];
+					bad_at  = i;
+				}
+			}
+		}
+		if (bad_max >= 0 && bad_idx_logged < 30) {
+			fprintf(stdout,
+				"[engBAD] shader=%s numVerts=%d numIdx=%d idx[%d]=%d (OUT OF RANGE)\n",
+				tess.shader ? tess.shader->name : "(null)",
+				input->numVertexes, input->numIndexes,
+				bad_at, bad_max);
+			fflush(stdout);
+			bad_idx_logged++;
+		}
+	}
+#endif
 
 	//
 	// call off to shader specific tess end function

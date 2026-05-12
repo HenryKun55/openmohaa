@@ -258,6 +258,9 @@ RB_SurfaceTriangles
 =============
 */
 void RB_SurfaceTriangles( srfTriangles_t *srf ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 128)) return;
+#endif
 	int			i;
 	drawVert_t	*dv;
 	float		*xyz, *normal, *texCoords;
@@ -376,6 +379,9 @@ RB_SurfaceFace
 ==============
 */
 void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 64)) return;
+#endif
 	int			i;
 	qboolean	needsNormal;
 	unsigned	*indices, *tessIndexes;
@@ -491,6 +497,9 @@ Just copy the grid of points and triangulate
 =============
 */
 void RB_SurfaceGrid( srfGridMesh_t *cv ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 256)) return;
+#endif
 	int		i, j;
 	float	*xyz;
 	float	*texCoords;
@@ -809,6 +818,9 @@ void RB_SurfaceSkip( void *surf ) {
 }
 
 void RB_DrawTerrainTris(srfTerrain_t* p) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 16)) return;
+#endif
 	int i;
 	terraInt numv;
 	int dlightBits;

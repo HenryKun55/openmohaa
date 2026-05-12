@@ -1441,6 +1441,9 @@ extern int r_sequencenumber;
 //
 extern cvar_t	*r_flareSize;
 extern cvar_t	*r_flareFade;
+#ifdef __vita__
+extern cvar_t	*vita_skip_mask;
+#endif
 
 extern cvar_t	*r_ignore;				// used for debugging anything
 extern cvar_t	*r_verbose;				// used for verbose debug spew
