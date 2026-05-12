@@ -80,6 +80,12 @@ cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake \
 cmake --build . -j$(nproc)
 ```
 
+Or from the repository root, run the helper script after setting `VITASDK`:
+
+```sh
+./misc/vita-build.sh
+```
+
 The `OpenMoHAA.vpk` lands in `build-vita/`.
 
 ## Install on the Vita
