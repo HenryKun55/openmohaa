@@ -258,6 +258,9 @@ RB_SurfaceTriangles
 =============
 */
 void RB_SurfaceTriangles( srfTriangles_t *srf ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 128)) return;
+#endif
 	int			i;
 	drawVert_t	*dv;
 	float		*xyz, *normal, *texCoords;
@@ -376,8 +379,17 @@ RB_SurfaceFace
 ==============
 */
 void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 64)) return;
+    /* NOTE: on Vita, ParseFace in tr_bsp.c emits srfTriangles_t for
+     * brush faces, so this function should rarely / never be reached
+     * for world geometry. Kept compiled in for safety + non-world
+     * paths that might still feed an SF_FACE. */
+#endif
 	int			i;
+#ifndef __vita__
 	qboolean	needsNormal;
+#endif
 	unsigned	*indices, *tessIndexes;
 	float		*v;
 	float		*normal;
@@ -399,34 +411,64 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 
 	Bob = tess.numVertexes;
 	tessIndexes = tess.indexes + tess.numIndexes;
+#ifdef __vita__
+	/* Vita: forward iteration + explicit narrowing cast. On stock x86 the
+	 * backwards loop and implicit 32→size_t conversion are both fine, but
+	 * on ARM with glIndex_t=uint16_t the original pattern produced the
+	 * "stretched triangles" artefact in m1l1. */
+	for ( i = 0 ; i < surf->numIndices ; i++ ) {
+		tessIndexes[i] = (glIndex_t)( indices[i] + Bob );
+	}
+#else
 	for ( i = surf->numIndices-1 ; i >= 0  ; i-- ) {
 		tessIndexes[i] = indices[i] + Bob;
 	}
+#endif
 
 	tess.numIndexes += surf->numIndices;
 
 	numPoints = surf->numPoints;
 
-	needsNormal = qfalse;
-	if (tess.shader->needsNormal || tess.shader->needsLSpherical || tr.refdef.num_dlights) {
-		needsNormal = qtrue;
-	}
-
 	v = surf->points[0];
 
 	ndx = tess.numVertexes;
 
-	if (needsNormal) {
-		normal = surf->plane.normal;
-		for ( i = 0, ndx = tess.numVertexes; i < numPoints; i++, ndx++ ) {
-			VectorCopy( normal, tess.normal[ndx] );
+#ifdef __vita__
+	/* Vita: ALWAYS initialise tess.normal (RB_DrawTerrainTris does this and
+	 * never corrupts). The stock code only writes normal when needsNormal,
+	 * leaving stale vec3 data from whichever surface previously occupied
+	 * these tess slots. vitaGL's FFP path appears to read normal even when
+	 * the shader doesn't ask for it, picking up NaN/garbage that projects
+	 * vertices to infinity. Use the surface plane normal we already have. */
+	normal = surf->plane.normal;
+	for ( i = 0, ndx = tess.numVertexes; i < numPoints; i++, ndx++ ) {
+		tess.normal[ndx][0] = normal[0];
+		tess.normal[ndx][1] = normal[1];
+		tess.normal[ndx][2] = normal[2];
+		tess.normal[ndx][3] = 0.0f;  /* W=0 for a direction vector */
+	}
+#else
+	{
+		qboolean needsNormal = qfalse;
+		if (tess.shader->needsNormal || tess.shader->needsLSpherical || tr.refdef.num_dlights) {
+			needsNormal = qtrue;
+		}
+		if (needsNormal) {
+			normal = surf->plane.normal;
+			for ( i = 0, ndx = tess.numVertexes; i < numPoints; i++, ndx++ ) {
+				VectorCopy( normal, tess.normal[ndx] );
+			}
 		}
 	}
+#endif
 
 	if (tess.dlightMap)
 	{
 		for (i = 0, v = surf->points[0], ndx = tess.numVertexes; i < numPoints; i++, v += VERTEXSIZE, ndx++) {
 			VectorCopy(v, tess.xyz[ndx]);
+#ifdef __vita__
+			tess.xyz[ndx][3] = 1.0f;  /* W=1 for a position; clobbers any stale value */
+#endif
 			tess.texCoords[ndx][0][0] = v[3];
 			tess.texCoords[ndx][0][1] = v[4];
 			tess.texCoords[ndx][1][0] = v[5] + surf->lightmapOffset[0];
@@ -439,6 +481,9 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 	{
 		for (i = 0, v = surf->points[0], ndx = tess.numVertexes; i < numPoints; i++, v += VERTEXSIZE, ndx++) {
 			VectorCopy(v, tess.xyz[ndx]);
+#ifdef __vita__
+			tess.xyz[ndx][3] = 1.0f;
+#endif
 			tess.texCoords[ndx][0][0] = v[3];
 			tess.texCoords[ndx][0][1] = v[4];
 			tess.texCoords[ndx][1][0] = v[5];
@@ -491,6 +536,9 @@ Just copy the grid of points and triangulate
 =============
 */
 void RB_SurfaceGrid( srfGridMesh_t *cv ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 256)) return;
+#endif
 	int		i, j;
 	float	*xyz;
 	float	*texCoords;
@@ -809,6 +857,9 @@ void RB_SurfaceSkip( void *surf ) {
 }
 
 void RB_DrawTerrainTris(srfTerrain_t* p) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 16)) return;
+#endif
 	int i;
 	terraInt numv;
 	int dlightBits;

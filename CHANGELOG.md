@@ -9,7 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### Server
+#### Platform (PS Vita port)
+
+- Initial PlayStation Vita Fat port (`vita-port` branch). Targets vitasdk + vitaGL with a Q3-derived FFP renderer path on the SGX543MP4+.
+- `vita_skip_mask` cvar — a 9-bit bisect bitmask that selectively disables individual surface iterators (`SF_TIKI_SKEL`, `SF_TIKI_STATIC`, `SF_SWIPE`, `SF_SPRITE`, `SF_TERRAIN`, sky, `SF_FACE`, `SF_TRIANGLES`, `SF_GRID`). Used to isolate the m1l1 vertex-corruption artefact to the BSP brush iterators.
+- DXT/.dds offline pre-compression pipeline (`tools/dxt_pak.py`) that adds `.dds` siblings to every `.tga` / `.jpg` inside a `.pk3` without dropping the originals.
+- Vita-aware control bindings shipped in `misc/vita/main/autoexec.cfg` (Cross = use, Circle = crouch, Square = reload, Triangle = jump, L = ironsights, R = fire, D-pad = weapon cycle / console).
+
+### Changed
+
+#### Platform (PS Vita port)
+
+- `glIndex_t` becomes `uint16_t` on Vita so the engine lands on vitaGL's stable `SCE_GXM_INDEX_FORMAT_U16` codepath (vitaGL's README documents the 32-bit indexed-draw path as glitch-prone).
+- `RB_SurfaceFace` rewritten on Vita to mirror `RB_DrawTerrainTris`: forward index iteration, explicit `(glIndex_t)` cast, always-initialised `tess.normal`, and explicit `xyz[3] = 1.0` / `normal[3] = 0.0` to clear stale `vec4_t` W components.
+- `GL_EXT_compiled_vertex_array` (`glLockArraysEXT`) force-disabled on Vita to match vitaQuakeIII / vitaRTCW.
+- C++ allocator unified onto the engine's 240 MiB heap via `g_engsysfuncs` so libstdc++ no longer competes with the renderer for memory.
+- Briefing → `m1l1` transition redirected through `SV_Map_f` to avoid the historical crash path.
+
+### Fixed
+
+#### General
+
+- `R_MovePatchSurfacesToHunk` used to call `Com_Memcpy(grid->heightLodError, grid->heightLodError, grid->height * 4)` — a typo where the destination should have been `hunkgrid->heightLodError`. Net effect: every `SF_GRID` patch surface lost its `heightLodError` array on hunk-relocation (the freshly-`Hunk_Alloc`'d buffer was never populated), and a moment later the original `grid` was freed, dangling. Caught by `-Wrestrict` once the Vita build flags exposed the warning. Affects all platforms.
+
+#### Platform (PS Vita port — boot-time log cleanup)
+
+- `Animation 'X' has duplicate channel 'Y'` warnings demoted from `Com_Printf` to `Com_DPrintf` — they were a 100-line cosmetic spam per level load (the duplicate channels are a content quirk in the original tikis, not a runtime fault). Affects all platforms but visible mainly on Vita where the log writes to SD card.
+- The `WARNING: <product> requires a video card with multitexturing capability` line is now printed once at boot instead of once per multitexture-using shader. Was previously firing 24× per `vid_restart` on Vita.
+- Z_TagMalloc periodic memory snapshot tracer removed. The explicit T0/T1/T2/T3 boot snapshots in `sys_vita.c` and `sdl_glimp.c` remain.
+- `Set2DWindow` on Vita skips the upfront `R_IssuePendingRenderCommands` — it triggered a GPU sync stall every time the 2D pass began (the worst offender being `View3D::Draw` calling `set2D` right after `SCR_DrawScreenField` queued the entire 3D scene). Engine GL state for subsequent 2D draws is unchanged because vitaGL captures state at draw-call time, not at command-queue time.
+- `vita_skip_draw2d` cvar added (default 0). Toggle to bypass `View3D::Draw2D` entirely as a perf escape hatch; loses HUD via cgame, subtitles, fade overlays — uilib engine widgets (compass, health bar, menu) keep drawing. Used for bottleneck isolation; on Vita Fat in m1l1, drawing it does not appear to be the dominant cost.
+
+#### Platform (PS Vita port)
+
+- All MOHAA retail audio (1979 WAV + 125 MP3 + 3 RoQ + 1 MPG = 2630 media files) now load from `ux0:/data/openmohaa/main/{sound,music,video}/` in the original disc layout. Previously the install was missing `sound/amb_stereo/` (per-mission ambient) and the dialog tree was flattened under the wrong prefix, causing 74+ "Failed to open sound" warnings per boot.
+- The m1l1 "broken vertices" artefact (giant stretched triangles whenever the player approached the Algiers Nazi compound) is gone. Root cause never reproduced through engine-side tess instrumentation or vitaGL `glDrawElements` logging — `RB_SurfaceFace`'s output is structurally fine, but something downstream in the FFP path on `SCE_GXM_INDEX_SOURCE_INDEX_16BIT` produces garbage geometry only for BSP brush faces in dense indoor scenes. Workaround: in `ParseFace` on Vita, emit `srfTriangles_t` instead of `srfSurfaceFace_t` (one hunk allocation, copies points/indices into the triangle layout, preserves per-vertex lightmap UVs). The `SF_TRIANGLES` codepath was empirically proven bug-free during the bisect (mask=64 alone stopped the artefact, mask=128 alone did nothing), so routing FACE through it sidesteps the still-unidentified defect while preserving lighting, lightmaps, and the level's visual layout. m1l1 now renders the aqueduct, lighthouse, town walls, swastika banners, indoor courtyard and bunker hallways correctly.
+- MP3 playback (in-game music, ambient stereo, video audio tracks) now works on Vita. The `libmad.a` shipped via vdpm was built with the ARM EABI default `-fshort-enums`, but the engine is compiled with 32-bit enums — so when libmad wrote a 1-byte `madheader.layer` (correct value 3 = Layer III), the engine read 4 bytes and got 1 valid byte plus 3 bytes of stack garbage (`-65021`, `-67173885`, …). Every MP3 was rejected at `S_MP3_Scanfile` with a spurious "non-LayerIII" error. Rebuilt `libmad-0.15.1b` from source for `arm-vita-eabi` with `--enable-fpm=default -fno-short-enums`, restoring ABI parity. All retail MP3s now decode through `S_MP3_Scanfile` → `S_MP3_CodecOpenStream` → `mad_synth_frame`.
+
+
 
 - Feature to name bots (most requested bot feature). See the [bot documentation](https://github.com/openmoh/openmohaa/blob/main/docs/markdown/03-configuration/01-configuration.md#bots). This may change in the future.
 - More settings for bots. See the [documentation](https://github.com/openmoh/openmohaa/blob/main/docs/markdown/03-configuration/03-configuration-bots.md) for settings.

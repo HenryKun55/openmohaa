@@ -161,6 +161,22 @@ without compiled vertex arrays.
 ==================
 */
 static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
+#ifdef __vita__
+	/* MUST go through qglDrawElements unconditionally on Vita. The fall-
+	 * back paths (qglArrayElement / R_ArrayElementDiscrete inside
+	 * qglBegin/qglEnd) rely on glArrayElement, which is a no-op stub
+	 * here (vita_gl_stubs.c). Calling them submits ZERO verts but
+	 * leaves vitaGL's legacy_pool populated with the previous
+	 * surface's tail — so the next batch draws giant stretched
+	 * triangles textured with whatever was bound last. That's exactly
+	 * the m1l1 post-inspection "blue/yellow shards across the screen"
+	 * artefact.
+	 *
+	 * vitaQuakeIII does the same simplification (their tr_shade.c
+	 * R_DrawElements is just this single glDrawElements call). */
+	qglDrawElements( GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, indexes );
+	return;
+#else
 	int		primitives;
 
 	primitives = r_primitives->integer;
@@ -174,9 +190,8 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		}
 	}
 
-
 	if ( primitives == 2 ) {
-		qglDrawElements( GL_TRIANGLES, 
+		qglDrawElements( GL_TRIANGLES,
 						numIndexes,
 						GL_INDEX_TYPE,
 						indexes );
@@ -187,13 +202,14 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 		R_DrawStripElements( numIndexes,  indexes, qglArrayElement );
 		return;
 	}
-	
+
 	if ( primitives == 3 ) {
 		R_DrawStripElements( numIndexes,  indexes, R_ArrayElementDiscrete );
 		return;
 	}
 
 	// anything else will cause no drawing
+#endif
 }
 
 
@@ -360,6 +376,16 @@ to overflow.
 ==============
 */
 void RB_BeginSurface( shader_t *shader ) {
+#ifdef __vita__
+	{
+		static int vita_skip_announced = 0;
+		if (!vita_skip_announced && vita_skip_mask) {
+			vita_skip_announced = 1;
+			ri.Printf( PRINT_ALL, "^3[VITA] first surface ^7vita_skip_mask=%d (raw=\"%s\")\n",
+				vita_skip_mask->integer, vita_skip_mask->string );
+		}
+	}
+#endif
 	tess.numIndexes = 0;
 	tess.numVertexes = 0;
 	tess.shader = shader;
@@ -1577,6 +1603,7 @@ void RB_StageIteratorGeneric( void )
 	// lock XYZ
 	//
 	qglVertexPointer (3, GL_FLOAT, 16, input->xyz);	// padded for SIMD
+
 	if (qglLockArraysEXT)
 	{
 		qglLockArraysEXT(0, input->numVertexes);

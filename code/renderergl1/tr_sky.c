@@ -808,6 +808,9 @@ Other things could be stuck in here, like birds in the sky, etc
 ================
 */
 void RB_StageIteratorSky( void ) {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 32)) return;
+#endif
 	if ( r_fastsky->integer || tr.farclip ) {
 		return;
 	}
@@ -829,7 +832,7 @@ void RB_StageIteratorSky( void ) {
 	// draw the outer skybox
 	if ( tess.shader->sky.outerbox[0] && tess.shader->sky.outerbox[0] != tr.defaultImage ) {
 		qglColor3f( tr.identityLight, tr.identityLight, tr.identityLight );
-		
+
 		qglPushMatrix ();
 		GL_State( 0 );
 		qglTranslatef (backEnd.viewParms.ori.origin[0], backEnd.viewParms.ori.origin[1], backEnd.viewParms.ori.origin[2]);
@@ -837,6 +840,21 @@ void RB_StageIteratorSky( void ) {
 		DrawSkyBox( tess.shader );
 
 		qglPopMatrix();
+
+#ifdef __vita__
+		/* DrawSkyBox routes through vitaGL's legacy immediate-mode
+		 * pool, which leaves ffp_dirty_vert / ffp_dirty_frag = GL_TRUE
+		 * (good — forces the next FFP draw to rebuild from app
+		 * pointers). The ONE thing we need: make sure
+		 * GL_VERTEX_ARRAY stays enabled — vitaGL's
+		 * _glDrawElements_FixedFunctionIMPL silently early-returns
+		 * if bit 0 of ffp_vertex_attrib_state is clear (draw.c:405)
+		 * and the previous "fix" that disabled the client states
+		 * actually CAUSED the m1l1 vertex artefact (legacy_pool
+		 * reused while glDrawElements no-oped). Leave every other
+		 * pointer/texture state alone. */
+		qglEnableClientState(GL_VERTEX_ARRAY);
+#endif
 	}
 
 	// generate the vertexes for all the clouds, which will be drawn

@@ -1302,8 +1302,23 @@ void R_SetFullscreen(qboolean fullscreen) {
 R_Register
 ===============
 */
-void R_Register( void ) 
+/* Vita-specific bisect bitmask. Each bit disables a render subsystem:
+ *   bit 0 (1)  = SF_TIKI_SKEL  (skeletal mesh NPCs)
+ *   bit 1 (2)  = SF_TIKI_STATIC (static TIKI models like crates/lamps)
+ *   bit 2 (4)  = SF_SWIPE      (melee swipe trails)
+ *   bit 3 (8)  = SF_SPRITE     (billboard sprites — particles, flares)
+ *   bit 4 (16) = SF_TERRAIN    (terrain patches)
+ *   bit 5 (32) = sky / RB_StageIteratorSky
+ *   bit 6 (64) = sphere shaders (light_lines etc)
+ * Set via autoexec: `seta vita_skip_mask 1` to test skipping just skel. */
+cvar_t *vita_skip_mask = NULL;
+
+void R_Register( void )
 {
+#ifdef __vita__
+	vita_skip_mask = ri.Cvar_Get( "vita_skip_mask", "0", CVAR_ARCHIVE );
+	ri.Printf( PRINT_ALL, "^3[VITA] vita_skip_mask = %d^7  (bit0=skel  bit1=static  bit2=swipe  bit3=sprite  bit4=terrain  bit5=sky  bit6=FACE  bit7=TRIS  bit8=GRID)\n", vita_skip_mask->integer );
+#endif
 	//
 	// latched and archived variables
 	//

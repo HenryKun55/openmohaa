@@ -150,6 +150,9 @@ RB_DrawSwipeSurface
 */
 void RB_DrawSwipeSurface(surfaceType_t *pswipe)
 {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 4)) return;
+#endif
     int          i;
     float        oolife;
     rendswipe_t *swipe = (rendswipe_t *)pswipe;

@@ -491,7 +491,10 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	 * on a tile-based GPU with limited register bandwidth. */
 	vglSetupRuntimeShaderCompiler(3 /*SHARK_OPT_FAST*/, 1, 1, 1);
 	vglUseLowPrecision(1);
-	/* Back to the proven baseline. */
+	/* Half-res test (480x272) confirmed NOT fillrate-bound — FPS
+	 * unchanged with 4x fewer pixels, only the 2D HUD/cursor got
+	 * upscaled-blurry. Back to native; bottleneck is draw call /
+	 * state change overhead, not pixels. */
 	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
 
 	/* Bridge the LiveArea startup.png onto our first GL frame so the

@@ -1021,6 +1021,9 @@ RB_SkelMesh
 */
 void RB_SkelMesh(skelSurfaceGame_t *sf)
 {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 1)) return;
+#endif
     unsigned int       baseIndex, baseVertex;
     unsigned int       render_count;
     unsigned int       indexes;
@@ -1460,6 +1463,9 @@ RB_StaticMesh
 */
 void RB_StaticMesh(staticSurface_t *staticSurf)
 {
+#ifdef __vita__
+    if (vita_skip_mask && (vita_skip_mask->integer & 2)) return;
+#endif
     int                i, j;
     dtiki_t           *tiki;
     skelSurfaceGame_t *surf;

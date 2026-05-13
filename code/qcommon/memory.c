@@ -208,18 +208,11 @@ void *Z_TagMalloc( int size, int tag ) {
 		extern void Sys_VitaDumpMemAndAbort(const char *who, int size, int tag);
 		Sys_VitaDumpMemAndAbort("Z_TagMalloc", size, tag);
 	}
-	{
-		/* Track total Z_TagMalloc bytes; emit a mallinfo snapshot every
-		 * 16 MiB so we can see where m1l1 load runs out of heap. */
-		static size_t z_total = 0;
-		static size_t z_next_print = 16 * 1024 * 1024;
-		z_total += size;
-		if (z_total >= z_next_print) {
-			extern void Sys_VitaDumpMemSnapshot(const char *who);
-			Sys_VitaDumpMemSnapshot("Z_TagMalloc");
-			z_next_print += 16 * 1024 * 1024;
-		}
-	}
+	/* Periodic Z_TagMalloc memory tracer was useful during bring-up to
+	 * see where the heap ran out on m1l1 load — now that the level is
+	 * stable, the 30+ [MEM Z_TagMalloc] lines per boot are pure log
+	 * noise. The explicit T0/T1/T2/T3 boot snapshots in sys_vita.c
+	 * and sdl_glimp.c remain so we still see startup memory state. */
 #endif
 	block->id = ZONEID;
 	block->size = size;

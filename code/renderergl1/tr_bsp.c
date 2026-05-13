@@ -636,6 +636,56 @@ static void ParseFace( dsurface_t *ds, drawVert_t *verts, msurface_t *surf, int 
 
     numIndexes = LittleLong( ds->numIndexes );
 
+#ifdef __vita__
+    /* Vita: emit srfTriangles_t instead of srfSurfaceFace_t. Empirical
+     * proof that RB_SurfaceFace's tess path triggers the m1l1 vertex
+     * corruption while RB_SurfaceTriangles never does (mask=64 alone
+     * stopped the artefact, mask=128 alone did nothing). The triangle
+     * iterator writes the same tess data with different ordering, so
+     * routing FACE through that codepath preserves lighting/lightmaps
+     * while sidestepping the still-unknown defect.
+     *
+     * Layout: srfTriangles_t + drawVert_t[numPoints] + int[numIndexes],
+     * one hunk allocation to keep cache-friendly. */
+    {
+        srfTriangles_t *tri;
+        size_t tsize = sizeof(*tri) + numPoints * sizeof(tri->verts[0]) + numIndexes * sizeof(tri->indexes[0]);
+        tri = ri.Hunk_Alloc( tsize, h_dontcare );
+        tri->surfaceType = SF_TRIANGLES;
+        tri->numVerts    = numPoints;
+        tri->numIndexes  = numIndexes;
+        tri->verts       = (drawVert_t *)(tri + 1);
+        tri->indexes     = (int *)(tri->verts + numPoints);
+
+        ClearBounds( tri->bounds[0], tri->bounds[1] );
+
+        drawVert_t *vsrc = verts + LittleLong( ds->firstVert );
+        for ( i = 0; i < numPoints; i++ ) {
+            for ( j = 0; j < 3; j++ ) {
+                tri->verts[i].xyz[j]    = LittleFloat( vsrc[i].xyz[j] );
+                tri->verts[i].normal[j] = LittleFloat( vsrc[i].normal[j] );
+            }
+            AddPointToBounds( tri->verts[i].xyz, tri->bounds[0], tri->bounds[1] );
+            for ( j = 0; j < 2; j++ ) {
+                tri->verts[i].st[j]       = LittleFloat( vsrc[i].st[j] );
+                tri->verts[i].lightmap[j] = LittleFloat( vsrc[i].lightmap[j] );
+            }
+            R_ColorShiftLightingBytesAlpha( vsrc[i].color, tri->verts[i].color );
+        }
+
+        int *isrc = indexes + LittleLong( ds->firstIndex );
+        for ( i = 0; i < numIndexes; i++ ) {
+            tri->indexes[i] = LittleLong( isrc[i] );
+            if ( tri->indexes[i] < 0 || tri->indexes[i] >= numPoints ) {
+                ri.Error( ERR_DROP, "Bad index in face-as-triangle surface" );
+            }
+        }
+
+        surf->data = (surfaceType_t *)tri;
+        return;
+    }
+#endif
+
     // create the srfSurfaceFace_t
     sfaceSize = ( int ) &((srfSurfaceFace_t *)0)->points[numPoints];
     ofsIndexes = sfaceSize;
@@ -1580,7 +1630,7 @@ void R_MovePatchSurfacesToHunk(void) {
         Com_Memcpy( hunkgrid->widthLodError, grid->widthLodError, grid->width * 4 );
 
         hunkgrid->heightLodError = ri.Hunk_Alloc( grid->height * 4, h_dontcare );
-        Com_Memcpy( grid->heightLodError, grid->heightLodError, grid->height * 4 );
+        Com_Memcpy( hunkgrid->heightLodError, grid->heightLodError, grid->height * 4 );
 
         R_FreeSurfaceGridMesh( grid );
 
