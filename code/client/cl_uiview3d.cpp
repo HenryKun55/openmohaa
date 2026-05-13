@@ -571,6 +571,17 @@ void View3D::DrawNetProfile(void)
 
 void View3D::Draw2D(void)
 {
+#ifdef __vita__
+    /* Toggle for testing if Draw2D's cost (CG_Draw2D from cgame + various
+     * overlays) is the bottleneck. Set vita_skip_draw2d 1 in autoexec to
+     * skip it entirely. Loses HUD via cgame, subtitles, fades, letterbox.
+     * Engine UI widgets (compass etc) still draw via uWinMan path. */
+    {
+        static cvar_t *vita_skip_d2d = NULL;
+        if (!vita_skip_d2d) vita_skip_d2d = Cvar_Get("vita_skip_draw2d", "0", CVAR_ARCHIVE);
+        if (vita_skip_d2d->integer) return;
+    }
+#endif
     if (!cls.no_menus) {
         DrawFades();
     }

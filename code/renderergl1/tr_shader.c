@@ -1679,7 +1679,13 @@ static qboolean ParseStage(shaderStage_t* stage, char** text, qboolean picmip)
         else if (!Q_stricmp(token, "nextBundle"))
         {
 			if (!qglActiveTextureARB) {
-				ri.Printf(PRINT_ALL, "WARNING: " PRODUCT_NAME " requires a video card with multitexturing capability\n");
+				/* Was printed per multitexture shader (24× per level load on
+				 * Vita). Print once at startup instead and stay silent here. */
+				static int warned_once = 0;
+				if (!warned_once) {
+					ri.Printf(PRINT_ALL, "WARNING: " PRODUCT_NAME " requires a video card with multitexturing capability (further shaders will silently fall back)\n");
+					warned_once = 1;
+				}
 				return qfalse;
 			}
 

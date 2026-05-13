@@ -673,7 +673,9 @@ skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnim(const char *path, void *
         const char *name = MSG_ReadString(&msgForAnim);
 
         if (enAnim->channelList.AddChannel(m_channelNames.RegisterChannel(name)) != i) {
-            Com_Printf("^~^~^ Animation '%s' has duplicate channel '%s'\n", path, name);
+            /* Was Com_Printf spam (100+ lines per level load on Vita).
+             * Duplicate channels are a content quirk, not a runtime fault. */
+            Com_DPrintf("Animation '%s' has duplicate channel '%s'\n", path, name);
         }
     }
 

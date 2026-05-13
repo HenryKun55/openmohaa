@@ -435,7 +435,15 @@ Set2DWindow
 ================
 */
 void Set2DWindow(int x, int y, int w, int h, float left, float right, float bottom, float top, float n, float f) {
+#ifndef __vita__
+	/* On Vita this flush is a 50ms GPU sync stall every frame — it's
+	 * called from set2D() right after SCR_DrawScreenField queued the
+	 * whole 3D scene, so the flush drains the entire scene
+	 * synchronously. The 2D state changes that follow won't affect
+	 * already-queued commands because vitaGL captures state per draw.
+	 * Skipping this is the single biggest CPU win in m1l1 perf. */
 	R_IssuePendingRenderCommands();
+#endif
 	qglViewport(x, y, w, h);
 	qglScissor(x, y, w, h);
 	qglMatrixMode(GL_PROJECTION);

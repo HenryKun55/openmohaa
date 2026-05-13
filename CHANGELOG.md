@@ -32,6 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `R_MovePatchSurfacesToHunk` used to call `Com_Memcpy(grid->heightLodError, grid->heightLodError, grid->height * 4)` — a typo where the destination should have been `hunkgrid->heightLodError`. Net effect: every `SF_GRID` patch surface lost its `heightLodError` array on hunk-relocation (the freshly-`Hunk_Alloc`'d buffer was never populated), and a moment later the original `grid` was freed, dangling. Caught by `-Wrestrict` once the Vita build flags exposed the warning. Affects all platforms.
 
+#### Platform (PS Vita port — boot-time log cleanup)
+
+- `Animation 'X' has duplicate channel 'Y'` warnings demoted from `Com_Printf` to `Com_DPrintf` — they were a 100-line cosmetic spam per level load (the duplicate channels are a content quirk in the original tikis, not a runtime fault). Affects all platforms but visible mainly on Vita where the log writes to SD card.
+- The `WARNING: <product> requires a video card with multitexturing capability` line is now printed once at boot instead of once per multitexture-using shader. Was previously firing 24× per `vid_restart` on Vita.
+- Z_TagMalloc periodic memory snapshot tracer removed. The explicit T0/T1/T2/T3 boot snapshots in `sys_vita.c` and `sdl_glimp.c` remain.
+- `Set2DWindow` on Vita skips the upfront `R_IssuePendingRenderCommands` — it triggered a GPU sync stall every time the 2D pass began (the worst offender being `View3D::Draw` calling `set2D` right after `SCR_DrawScreenField` queued the entire 3D scene). Engine GL state for subsequent 2D draws is unchanged because vitaGL captures state at draw-call time, not at command-queue time.
+- `vita_skip_draw2d` cvar added (default 0). Toggle to bypass `View3D::Draw2D` entirely as a perf escape hatch; loses HUD via cgame, subtitles, fade overlays — uilib engine widgets (compass, health bar, menu) keep drawing. Used for bottleneck isolation; on Vita Fat in m1l1, drawing it does not appear to be the dominant cost.
+
 #### Platform (PS Vita port)
 
 - All MOHAA retail audio (1979 WAV + 125 MP3 + 3 RoQ + 1 MPG = 2630 media files) now load from `ux0:/data/openmohaa/main/{sound,music,video}/` in the original disc layout. Previously the install was missing `sound/amb_stereo/` (per-mission ambient) and the dialog tree was flattened under the wrong prefix, causing 74+ "Failed to open sound" warnings per boot.
