@@ -118,9 +118,10 @@ add_compile_options(
     -fno-pie
     # vitaGL drops a few `const` qualifiers and uses uint32_t where desktop
     # headers use GLenum; the qgl* assignments still bind to the same
-    # callable, but -Werror would otherwise reject them.
-    -Wno-error=incompatible-pointer-types
-    -Wno-incompatible-pointer-types
+    # callable, but -Werror would otherwise reject them. Gate to C only —
+    # the flag is meaningless for C++ and cc1plus warns about it.
+    $<$<COMPILE_LANGUAGE:C>:-Wno-error=incompatible-pointer-types>
+    $<$<COMPILE_LANGUAGE:C>:-Wno-incompatible-pointer-types>
 )
 
 add_link_options(
@@ -134,6 +135,16 @@ add_link_options(
     # and triggering the reject.
     -static
     -Wl,--no-eh-frame-hdr
+    # Match the compile-side -fno-short-enums so the linker emits the
+    # final ELF with 32-bit enums too. Without this, every engine .obj
+    # triggers "uses 32-bit enums yet output uses variable-size enums".
+    -fno-short-enums
+    # vitasdk's libstdc++.a / libm.a ship built with ARM EABI default
+    # (short enums), so after the engine side is fixed they complain
+    # the other way. Silence the residual lib mismatch — no enum
+    # values are passed across this boundary in our code (C++ runtime
+    # + scalar math, neither shares enum types with the engine).
+    -Wl,--no-warn-mismatch
 )
 
 # vitasdk libraries OpenMoHAA links against. The renderer pulls in vitaGL

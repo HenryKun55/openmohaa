@@ -74,7 +74,7 @@ qboolean     Alias_Delete(const char *alias);
 const char  *Alias_FindRandom(const char *alias, AliasListNode_t **ret);
 void         Alias_Dump(void);
 void         Alias_Clear(void);
-AliasList_t *Alias_GetGlobalList();
+AliasList_t *Alias_GetGlobalList(void);
 
 int         S_ChannelNameToNum(const char *pszName);
 const char *S_ChannelNumToName(int iChannel);

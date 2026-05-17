@@ -1472,7 +1472,11 @@ void R_Register( void )
 	r_printShaders = ri.Cvar_Get( "r_printShaders", "0", 0 );
 
 	r_nocurves = ri.Cvar_Get ("r_nocurves", "0", CVAR_CHEAT );
-	r_drawworld = ri.Cvar_Get ("r_drawworld", "1", CVAR_CHEAT );
+	/* Drop CVAR_CHEAT so the autoexec's `seta r_drawworld 0` actually
+	 * takes effect during perf bisect. Without this the engine silently
+	 * resets it to "1" because cheats aren't fully active yet at autoexec
+	 * time. Revert before shipping. */
+	r_drawworld = ri.Cvar_Get ("r_drawworld", "1", 0 );
 	r_lightmap = ri.Cvar_Get ("r_lightmap", "0", 0 );
 	r_portalOnly = ri.Cvar_Get ("r_portalOnly", "0", CVAR_CHEAT );
 

@@ -435,15 +435,20 @@ Set2DWindow
 ================
 */
 void Set2DWindow(int x, int y, int w, int h, float left, float right, float bottom, float top, float n, float f) {
-#ifndef __vita__
-	/* On Vita this flush is a 50ms GPU sync stall every frame — it's
-	 * called from set2D() right after SCR_DrawScreenField queued the
-	 * whole 3D scene, so the flush drains the entire scene
-	 * synchronously. The 2D state changes that follow won't affect
-	 * already-queued commands because vitaGL captures state per draw.
-	 * Skipping this is the single biggest CPU win in m1l1 perf. */
+	/* IMPORTANT: do NOT #ifndef __vita__ this out.
+	 *
+	 * Earlier I (FH) hypothesised that vitaGL captures GL state per-draw,
+	 * so flushing here just to switch from frustum to ortho projection
+	 * was redundant on Vita — and the skip gave a real ~4-5% FPS win.
+	 *
+	 * In practice this was wrong: with the flush skipped, the projection
+	 * matrix change (qglMatrixMode/LoadIdentity/Ortho below) is not
+	 * applied before the 2D draws that follow. The crosshair and fade
+	 * end up rendered with the 3D camera frustum projection still active,
+	 * which clips them to nothing on screen — silent invisibility, no
+	 * GL error, no log. We pay the flush cost to keep 2D actually
+	 * visible. */
 	R_IssuePendingRenderCommands();
-#endif
 	qglViewport(x, y, w, h);
 	qglScissor(x, y, w, h);
 	qglMatrixMode(GL_PROJECTION);

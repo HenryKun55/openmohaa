@@ -1628,6 +1628,27 @@ TARGA LOADING
 LoadTGA
 =============
 */
+/* Build a 4×4 magenta placeholder RGBA buffer for unsupported TGAs so the
+ * caller still gets a valid image. Returning *pic = NULL caused upstream
+ * crashes when shaders dereferenced a NULL image_t — visible as a silent
+ * segfault during the m1l1 → m1l2a transition on Vita. Useful on every
+ * platform: an obvious magenta texture is better than a crash. */
+static void LoadTGA_FillPlaceholder(byte **pic, int *width, int *height)
+{
+	int   i;
+	byte *p;
+	*width  = 4;
+	*height = 4;
+	p = ri.Malloc(4 * 4 * 4);
+	*pic = p;
+	for (i = 0; i < 4 * 4; i++) {
+		p[i * 4 + 0] = 0xff;  /* R */
+		p[i * 4 + 1] = 0x00;  /* G */
+		p[i * 4 + 2] = 0xff;  /* B */
+		p[i * 4 + 3] = 0xff;  /* A */
+	}
+}
+
 static void LoadTGA ( const char *name, byte **pic, int *width, int *height)
 {
 	int		columns, rows, numPixels;
@@ -1647,6 +1668,11 @@ static void LoadTGA ( const char *name, byte **pic, int *width, int *height)
 	if (!buffer) {
 		return;
 	}
+#ifdef __vita__
+	/* DIAGNOSTIC: log every TGA we try to decode so we can see which one
+	 * the engine was loading right before any crash. */
+	ri.Printf( PRINT_ALL, "LoadTGA: %s\n", name );
+#endif
 
 	buf_p = buffer;
 
@@ -1670,21 +1696,36 @@ static void LoadTGA ( const char *name, byte **pic, int *width, int *height)
 	targa_header.pixel_size = *buf_p++;
 	targa_header.attributes = *buf_p++;
 
-	if (targa_header.image_type!=2 
+	if (targa_header.image_type!=2
 		&& targa_header.image_type!=10
-		&& targa_header.image_type != 3 ) 
+		&& targa_header.image_type != 3 )
 	{
-		ri.Error (ERR_DROP, "LoadTGA: Only type 2 (RGB), 3 (gray), and 10 (RGB) TGA images supported\n");
+		/* Don't kill the server on an exotic TGA (RLE grayscale type 11,
+		 * color-mapped type 1/9, etc.) — log the file name and leave
+		 * *pic = NULL so the caller falls back to the default image.
+		 * The m1l1 → m1l2a transition crashed here on real retail TGAs. */
+		ri.Printf( PRINT_WARNING, "LoadTGA: unsupported image_type %d in '%s' (only 2/3/10) — skipping\n",
+			targa_header.image_type, name );
+		ri.FS_FreeFile( buffer );
+		LoadTGA_FillPlaceholder(pic, width, height);
+		return;
 	}
 
 	if ( targa_header.colormap_type != 0 )
 	{
-		ri.Error( ERR_DROP, "LoadTGA: colormaps not supported\n" );
+		ri.Printf( PRINT_WARNING, "LoadTGA: colormaps not supported in '%s' — skipping\n", name );
+		ri.FS_FreeFile( buffer );
+		LoadTGA_FillPlaceholder(pic, width, height);
+		return;
 	}
 
 	if ( ( targa_header.pixel_size != 32 && targa_header.pixel_size != 24 ) && targa_header.image_type != 3 )
 	{
-		ri.Error (ERR_DROP, "LoadTGA: Only 32 or 24 bit images supported (no colormaps)\n");
+		ri.Printf( PRINT_WARNING, "LoadTGA: pixel_size %d in '%s' (only 24/32 supported) — skipping\n",
+			targa_header.pixel_size, name );
+		ri.FS_FreeFile( buffer );
+		LoadTGA_FillPlaceholder(pic, width, height);
+		return;
 	}
 
 	columns = targa_header.width;

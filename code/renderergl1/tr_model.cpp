@@ -940,6 +940,20 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
     // FIXME: setup LOD
 }
 
+/* NEON-accelerated skinning math. Profiled on macOS (sample); RB_SkelMesh
+ * was ~23% of CPU in m1l1 m1l1 gameplay. These three helpers are called once
+ * per (weight,vertex) pair, so even a small win per call adds up over
+ * thousands of vertices/frame. The scalar path is preserved for non-NEON
+ * architectures (x86_64 macOS, etc.).
+ *
+ * Memory layout matters: bone->offset[4] and bone->matrix[3][4] are
+ * already 4-wide so we can `vld1q_f32` them directly. weight->offset and
+ * vert->normal are vec3_t (3-wide), so we use scalar lane loads via the
+ * `_n` multiply-add intrinsic instead of loading them as a vector. */
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#  include <arm_neon.h>
+#endif
+
 /*
 =============
 SkelVertGetNormal
@@ -947,6 +961,14 @@ SkelVertGetNormal
 */
 inline static void SkelVertGetNormal(skeletorVertex_t *vert, skelBoneCache_t *bone, vec3_t out)
 {
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    float32x4_t result = vmulq_n_f32(vld1q_f32(bone->matrix[0]), vert->normal[0]);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[1]), vert->normal[1]);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[2]), vert->normal[2]);
+    out[0] = vgetq_lane_f32(result, 0);
+    out[1] = vgetq_lane_f32(result, 1);
+    out[2] = vgetq_lane_f32(result, 2);
+#else
     out[0] = vert->normal[0] * bone->matrix[0][0] + vert->normal[1] * bone->matrix[1][0]
            + vert->normal[2] * bone->matrix[2][0];
 
@@ -955,6 +977,7 @@ inline static void SkelVertGetNormal(skeletorVertex_t *vert, skelBoneCache_t *bo
 
     out[2] = vert->normal[0] * bone->matrix[0][2] + vert->normal[1] * bone->matrix[1][2]
            + vert->normal[2] * bone->matrix[2][2];
+#endif
 }
 
 /*
@@ -974,6 +997,16 @@ SkelWeightGetXyz
 */
 inline static void SkelWeightGetXyz(skelWeight_t *weight, skelBoneCache_t *bone, vec3_t out)
 {
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    float32x4_t result = vld1q_f32(bone->offset);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[0]), weight->offset[0]);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[1]), weight->offset[1]);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[2]), weight->offset[2]);
+    result = vmulq_n_f32(result, weight->boneWeight);
+    out[0] += vgetq_lane_f32(result, 0);
+    out[1] += vgetq_lane_f32(result, 1);
+    out[2] += vgetq_lane_f32(result, 2);
+#else
     out[0] += ((weight->offset[0] * bone->matrix[0][0] + weight->offset[1] * bone->matrix[1][0]
                 + weight->offset[2] * bone->matrix[2][0])
                + bone->offset[0])
@@ -988,6 +1021,7 @@ inline static void SkelWeightGetXyz(skelWeight_t *weight, skelBoneCache_t *bone,
                 + weight->offset[2] * bone->matrix[2][2])
                + bone->offset[2])
             * weight->boneWeight;
+#endif
 }
 
 /*
@@ -997,6 +1031,20 @@ SkelWeightMorphGetXyz
 */
 inline static void SkelWeightMorphGetXyz(skelWeight_t *weight, skelBoneCache_t *bone, vec3_t totalmorph, vec3_t out)
 {
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    /* point = totalmorph + weight->offset (3-wide; keep scalar). */
+    float px = totalmorph[0] + weight->offset[0];
+    float py = totalmorph[1] + weight->offset[1];
+    float pz = totalmorph[2] + weight->offset[2];
+    float32x4_t result = vld1q_f32(bone->offset);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[0]), px);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[1]), py);
+    result = vmlaq_n_f32(result, vld1q_f32(bone->matrix[2]), pz);
+    result = vmulq_n_f32(result, weight->boneWeight);
+    out[0] += vgetq_lane_f32(result, 0);
+    out[1] += vgetq_lane_f32(result, 1);
+    out[2] += vgetq_lane_f32(result, 2);
+#else
     vec3_t point;
 
     VectorAdd(totalmorph, weight->offset, point);
@@ -1012,6 +1060,7 @@ inline static void SkelWeightMorphGetXyz(skelWeight_t *weight, skelBoneCache_t *
     out[2] += ((point[0] * bone->matrix[0][2] + point[1] * bone->matrix[1][2] + point[2] * bone->matrix[2][2])
                + bone->offset[2])
             * weight->boneWeight;
+#endif
 }
 
 /*
@@ -1197,6 +1246,23 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
     bones  = &TIKI_Skel_Bones[backEnd.currentEntity->e.bonestart];
     morphs = &skeletorMorphCache[backEnd.currentEntity->e.morphstart];
 
+    /* Pre-compute &bones[localChannel] indexed by bone-index. The inner
+     * per-weight loops below otherwise call ri.TIKI_GetLocalChannel for
+     * EVERY weight of EVERY vertex (1000s of calls per NPC per frame).
+     * Profile (Mac sample, post-NEON) showed those lookups + the
+     * skelChannelList::GetLocalFromGlobal hop as ~5-6% of total CPU.
+     * Doing them once per bone (typically 50-80) collapses that to ~0. */
+    skelBoneCache_t *bonePtr[TIKI_MAX_BONES];
+    {
+        int b;
+        int numLocalBones = skelmodel->numBones;
+        for (b = 0; b < numLocalBones; b++) {
+            int chn  = skelmodel->pBones[b].channel;
+            int locl = ri.TIKI_GetLocalChannel(tiki, chn);
+            bonePtr[b] = &bones[locl];
+        }
+    }
+
     if (backEnd.currentEntity->e.hasMorph) {
         if (mesh > 0) {
             for (vertNum = 0; vertNum < render_count; vertNum++) {
@@ -1224,21 +1290,17 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
                     morph++;
                 }
 
+                /* Use cached bonePtr — skips ri.TIKI_GetLocalChannel. */
                 if (newVerts->numMorphs) {
-                    channelNum = skelmodel->pBones[morph->morphIndex].channel;
+                    bone = bonePtr[morph->morphIndex];
                 } else {
-                    channelNum = skelmodel->pBones[weight->boneIndex].channel;
+                    bone = bonePtr[weight->boneIndex];
                 }
-
-                boneNum = ri.TIKI_GetLocalChannel(tiki, channelNum);
-                bone    = &bones[boneNum];
 
                 SkelVertGetNormal(newVerts, bone, normal);
 
                 for (weightNum = 0; weightNum < newVerts->numWeights; weightNum++) {
-                    channelNum = skelmodel->pBones[weight->boneIndex].channel;
-                    boneNum    = ri.TIKI_GetLocalChannel(tiki, channelNum);
-                    bone       = &bones[boneNum];
+                    bone = bonePtr[weight->boneIndex];
 
                     if (!weightNum) {
                         SkelWeightMorphGetXyz(weight, bone, totalmorph, out);
@@ -1334,16 +1396,13 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
                 weight = (skelWeight_t *)((byte *)newVerts + sizeof(skeletorVertex_t)
                                           + sizeof(skeletorMorph_t) * newVerts->numMorphs);
 
-                channelNum = skelmodel->pBones[weight->boneIndex].channel;
-                boneNum    = ri.TIKI_GetLocalChannel(tiki, channelNum);
-                bone       = &bones[boneNum];
+                /* Use cached bonePtr — skips ri.TIKI_GetLocalChannel. */
+                bone = bonePtr[weight->boneIndex];
 
                 SkelVertGetNormal(newVerts, bone, normal);
 
                 for (weightNum = 0; weightNum < newVerts->numWeights; weightNum++) {
-                    channelNum = skelmodel->pBones[weight->boneIndex].channel;
-                    boneNum    = ri.TIKI_GetLocalChannel(tiki, channelNum);
-                    bone       = &bones[boneNum];
+                    bone = bonePtr[weight->boneIndex];
 
                     SkelWeightGetXyz(weight, bone, out);
 
