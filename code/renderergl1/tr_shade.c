@@ -175,6 +175,17 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	 * vitaQuakeIII does the same simplification (their tr_shade.c
 	 * R_DrawElements is just this single glDrawElements call). */
 	backEnd.pc.c_drawElems++;
+	/* Phase 1b: if the current tess is a world surface that lives in
+	 * the VBO, dispatch the draw via the VBO bind path instead of
+	 * passing client-side indexes. The shader stage iterator will
+	 * call us once per stage with the same (numIndexes, indexes)
+	 * tuple; each call binds + draws + unbinds so concurrent
+	 * non-VBO draws (HUD, entities) keep working. */
+	if (tess.useVitaWorldVBO) {
+		R_VitaWorldVBO_BindAndDraw(tess.vitaWorldVboFirstIndex,
+		                           tess.vitaWorldVboNumIndexes);
+		return;
+	}
 	qglDrawElements( GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, indexes );
 	return;
 #else
@@ -395,7 +406,11 @@ void RB_BeginSurface( shader_t *shader ) {
 	tess.xstages = shader->unfoggedStages;
 	tess.numPasses = shader->numUnfoggedPasses;
 	tess.currentStageIteratorFunc = shader->optimalStageIteratorFunc;
-
+#ifdef __vita__
+	tess.useVitaWorldVBO         = qfalse;
+	tess.vitaWorldVboFirstIndex  = 0;
+	tess.vitaWorldVboNumIndexes  = 0;
+#endif
 }
 
 /*

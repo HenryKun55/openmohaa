@@ -260,6 +260,40 @@ RB_SurfaceTriangles
 void RB_SurfaceTriangles( srfTriangles_t *srf ) {
 #ifdef __vita__
     if (vita_skip_mask && (vita_skip_mask->integer & 128)) return;
+
+    /* Phase 1b: if this surface lives in the world VBO and the cvar
+     * is on, skip the per-vertex copy entirely. Flush any prior
+     * non-VBO data in tess first (one VBO surface per tess flush —
+     * we trade Q3's batching for zero per-frame vertex copy on the
+     * dominant outdoor geometry). RB_EndSurface picks up the
+     * useVitaWorldVBO flag and routes through R_VitaWorldVBO_BindAndDraw. */
+    if (srf->vitaVboSurfIdx >= 0 && R_VitaWorldVBO_IsReady()) {
+        const vitaWorldVboSurf_t *vboSurf = R_VitaWorldVBO_LookupSurf(srf->vitaVboSurfIdx);
+        if (vboSurf) {
+            shader_t *shdr = tess.shader;
+            if (tess.numIndexes > 0 || tess.numVertexes > 0) {
+                /* tess already has client-array data from a prior
+                 * surface in this batch — flush it, then restart
+                 * the surface as VBO-only. */
+                RB_EndSurface();
+                RB_BeginSurface(shdr);
+            }
+            tess.useVitaWorldVBO        = qtrue;
+            tess.vitaWorldVboFirstIndex = vboSurf->indexOffset;
+            tess.vitaWorldVboNumIndexes = vboSurf->numIndexes;
+            tess.dlightBits             |= srf->dlightBits[backEnd.smpFrame];
+            /* Trick the stage iterator into firing R_DrawElements:
+             * it short-circuits when numIndexes == 0. We set it to
+             * the VBO count even though tess.indexes is unused —
+             * R_DrawElements branches on useVitaWorldVBO before
+             * reading tess.indexes. numVertexes stays 0 so the
+             * per-vert compute loops (ComputeColors, CalcTcMod...)
+             * are no-ops. */
+            tess.numIndexes  = vboSurf->numIndexes;
+            tess.numVertexes = 0;
+            return;
+        }
+    }
 #endif
 	int			i;
 	drawVert_t	*dv;

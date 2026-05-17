@@ -36,6 +36,14 @@ extern void glBindBuffer( unsigned int target, unsigned int buffer );
 extern void glBufferData( unsigned int target, long size, const void *data, unsigned int usage );
 extern void glDeleteBuffers( int n, const unsigned int *buffers );
 
+/* For Phase 1b draw: re-issue the vertex/normal/texcoord/color
+ * pointers as VBO offsets when the world VBO is bound. */
+extern void glVertexPointer   ( int size, unsigned int type, int stride, const void *ptr );
+extern void glNormalPointer   ( unsigned int type, int stride, const void *ptr );
+extern void glTexCoordPointer ( int size, unsigned int type, int stride, const void *ptr );
+extern void glColorPointer    ( int size, unsigned int type, int stride, const void *ptr );
+extern void glDrawElements    ( unsigned int mode, int count, unsigned int type, const void *indices );
+
 #ifndef GL_ARRAY_BUFFER
 #define GL_ARRAY_BUFFER          0x8892
 #endif
@@ -44,6 +52,18 @@ extern void glDeleteBuffers( int n, const unsigned int *buffers );
 #endif
 #ifndef GL_STATIC_DRAW
 #define GL_STATIC_DRAW           0x88E4
+#endif
+#ifndef GL_FLOAT
+#define GL_FLOAT                 0x1406
+#endif
+#ifndef GL_UNSIGNED_BYTE
+#define GL_UNSIGNED_BYTE         0x1401
+#endif
+#ifndef GL_UNSIGNED_INT
+#define GL_UNSIGNED_INT          0x1405
+#endif
+#ifndef GL_TRIANGLES
+#define GL_TRIANGLES             0x0004
 #endif
 
 /* ---- Module state ----
@@ -56,12 +76,9 @@ extern void glDeleteBuffers( int n, const unsigned int *buffers );
  * index in tr.world->surfaces[]. Surfaces that are not eligible
  * (sky, billboard, terrain, grid, etc.) get vertOffset == -1.
  */
-typedef struct {
-    int vertOffset;     /* index of first drawVert_t in the VBO, or -1 */
-    int numVerts;
-    int indexOffset;    /* index of first uint32 in the IBO */
-    int numIndexes;
-} vitaWorldVboSurf_t;
+/* vitaWorldVboSurf_t is declared in tr_local.h so the draw path can
+ * see it. Per-surface offsets: vertOffset = first drawVert_t in VBO
+ * (-1 if not eligible), indexOffset = first uint32 in IBO. */
 
 static unsigned int        worldVboId      = 0;
 static unsigned int        worldIboId      = 0;
@@ -138,7 +155,10 @@ void R_VitaWorldVBO_Build(void)
     worldVboSurf      = (vitaWorldVboSurf_t *)
         ri.Hunk_AllocateTempMemory(sizeof(vitaWorldVboSurf_t) * worldVboSurfCount);
 
-    /* Pass 1: tally + record offsets. */
+    /* Pass 1: tally + record offsets. Also stamp the parallel
+     * vitaVboSurfIdx field inside srfTriangles_t so the draw path
+     * (RB_SurfaceTriangles, R_DrawElements) can look up its VBO
+     * range in O(1) without searching the world surface list. */
     for (i = 0; i < worldVboSurfCount; i++) {
         surf = &tr.world->surfaces[i];
         worldVboSurf[i].vertOffset  = -1;
@@ -150,6 +170,7 @@ void R_VitaWorldVBO_Build(void)
             continue;
         }
         srfTriangles_t *tri = (srfTriangles_t *)surf->data;
+        tri->vitaVboSurfIdx = -1;
         if (tri->numVerts <= 0 || tri->numIndexes <= 0) {
             continue;
         }
@@ -158,6 +179,7 @@ void R_VitaWorldVBO_Build(void)
         worldVboSurf[i].numVerts    = tri->numVerts;
         worldVboSurf[i].indexOffset = accumIndexes;
         worldVboSurf[i].numIndexes  = tri->numIndexes;
+        tri->vitaVboSurfIdx         = i;
 
         accumVerts   += tri->numVerts;
         accumIndexes += tri->numIndexes;
@@ -221,6 +243,82 @@ void R_VitaWorldVBO_Build(void)
     ri.Hunk_FreeTempMemory(indexBuf);
     ri.Hunk_FreeTempMemory(vertBuf);
     /* worldVboSurf stays around — needed at draw time later. */
+}
+
+/*
+====================
+R_VitaWorldVBO_IsReady
+
+True only if the cvar is set AND a VBO has been built for the current
+level. Cheap check used in the draw hot path.
+====================
+*/
+qboolean R_VitaWorldVBO_IsReady(void)
+{
+    if (!worldVboBuilt) return qfalse;
+    if (!r_vita_vbo_world || !r_vita_vbo_world->integer) return qfalse;
+    return qtrue;
+}
+
+/*
+====================
+R_VitaWorldVBO_LookupSurf
+
+Given a world-resident srfTriangles_t's vitaVboSurfIdx, return its
+per-surface VBO entry. Returns NULL if idx is out of range.
+====================
+*/
+const vitaWorldVboSurf_t *R_VitaWorldVBO_LookupSurf(int idx)
+{
+    if (idx < 0 || idx >= worldVboSurfCount) return NULL;
+    if (worldVboSurf[idx].vertOffset < 0)    return NULL;
+    return &worldVboSurf[idx];
+}
+
+/*
+====================
+R_VitaWorldVBO_BindAndDraw
+
+Bind the world VBO + IBO, set the interleaved attribute pointers to
+the drawVert_t layout, fire a single qglDrawElements for the requested
+index range, then unbind so the next non-VBO draw goes back through
+client arrays.
+
+The pointer offsets correspond to drawVert_t fields:
+  xyz       offset 0   (vec3, 12 B)
+  st        offset 12  (vec2, 8 B)        <- stage 0 base UVs
+  lightmap  offset 20  (vec2, 8 B)        <- stage 1 lightmap UVs
+                                             (engine sets stage's
+                                             TexCoordPointer per pass)
+  normal    offset 28  (vec3, 12 B)
+  color     offset 40  (vec4 byte, 4 B)
+  stride    44
+
+For Phase 1b we only override xyz/normal/color/the BASE st here. The
+shader stage iterator will re-call qglTexCoordPointer for st/lightmap
+between stages — those calls also resolve against the bound VBO
+because we leave it bound throughout.
+====================
+*/
+void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
+{
+    if (!worldVboBuilt) return;
+
+    glBindBuffer(GL_ARRAY_BUFFER,         worldVboId);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, worldIboId);
+
+    /* Pointers relative to bound VBO (offsets into drawVert_t). */
+    glVertexPointer  (3, GL_FLOAT,         44, (const void *)(uintptr_t)0);
+    glTexCoordPointer(2, GL_FLOAT,         44, (const void *)(uintptr_t)12);
+    glNormalPointer  (   GL_FLOAT,         44, (const void *)(uintptr_t)28);
+    glColorPointer   (4, GL_UNSIGNED_BYTE, 44, (const void *)(uintptr_t)40);
+
+    glDrawElements(GL_TRIANGLES, numIndexes, GL_UNSIGNED_INT,
+                   (const void *)(uintptr_t)(firstIndex * sizeof(int)));
+
+    /* Unbind so other draws fall through to client arrays. */
+    glBindBuffer(GL_ARRAY_BUFFER,         0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 #endif /* __vita__ */

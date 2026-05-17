@@ -115,7 +115,57 @@ doesn't apply on Vita. SF_GRID is skipped for now — it owns a
 subdivided patch mesh and needs a separate path. SF_FACE wasn't seen
 because Vita routes it through SF_TRIANGLES.
 
-### Phase 1b — Wire VBO into the draw path (NEXT)
+### ⚠️ Phase 1b — First cut SHIPPED but VISUALLY BROKEN (rolled back to cvar=0)
+
+Wired the world VBO into the draw path:
+- New file fields: `srfTriangles_t.vitaVboSurfIdx` (stamped during
+  build), `tess.useVitaWorldVBO + tess.vitaWorldVboFirstIndex +
+  tess.vitaWorldVboNumIndexes`.
+- `RB_SurfaceTriangles` flushes the prior tess (if non-empty),
+  marks tess as VBO-mode, sets `tess.numIndexes = vboNumIndexes`
+  but `tess.numVertexes = 0` so the per-vert compute loops
+  short-circuit.
+- `R_DrawElements` branches on `tess.useVitaWorldVBO` and calls
+  `R_VitaWorldVBO_BindAndDraw(firstIndex, numIndexes)`, which binds
+  VBO+IBO, sets vertex/normal/texCoord/color pointers to drawVert_t
+  offsets in the VBO, draws, and unbinds.
+
+**OUTCOME (live test on Vita m1l1, 2026-05-17):**
+- World renders.
+- Some walls look WRONG — lightmap pass is stretched/garbled.
+- No measurable FPS gain (set2d still ~50ms).
+
+**Root cause:** the engine renders most BSP walls as two passes:
+- Pass 0: diffuse texture, sampled with `drawVert.st` UVs (offset 12).
+- Pass 1: lightmap, sampled with `drawVert.lightmap` UVs (offset 20).
+
+`R_VitaWorldVBO_BindAndDraw` hard-codes texCoord pointer to offset 12
+for EVERY pass. Pass 1 (lightmap) therefore samples the lightmap
+texture with diffuse UVs — wrong mapping, visible as smeared / wrong
+lighting on walls.
+
+When Q3 uses the *single-pass multitexture* path (TMU 0 = diffuse,
+TMU 1 = lightmap), TWO texCoord pointers are needed
+simultaneously — one per TMU. BindAndDraw sets only one.
+
+**Decided:** roll back the cvar to 0 by default. The Phase 1a
+infrastructure (VBO allocation + upload + per-surface offsets) stays
+committed and works fine. The draw path is gated by the cvar so
+production behaviour is unchanged.
+
+**Learning** (worth a memory entry):
+- Q3 multi-stage shaders need per-stage texCoord pointers.
+  Hard-coding one offset breaks lightmap pass.
+- A correct Phase 1b needs either (a) per-pass texCoord offset
+  injection, knowing whether the active TMU is base or lightmap, or
+  (b) restricting VBO surfaces to single-stage shaders only — which
+  excludes most walls and kills the win.
+- For Phase 1b proper: in `BindAndDraw`, set TMU 0 = offset 12 AND
+  TMU 1 = offset 20 (via `glClientActiveTextureARB`). That covers
+  the dominant multitexture case. For multi-pass shaders, hook the
+  per-pass setup to override the engine's pointer.
+
+### Phase 1b proper — TODO next session
 
 Upload static BSP world geometry to a vitaGL VBO once at level load.
 Bind & draw without re-copying client arrays each frame.
@@ -212,7 +262,8 @@ Replace generic GL calls with vitaGL fast-path APIs where they exist.
 |---|---|---|---|---|---|
 | 0.5 | -22% (60→47ms) | -22% (60→47ms) | +50% | +30% | NEON + bonePtr. cgame VM didn't shrink. |
 | 1a | unchanged | unchanged | unchanged | unchanged | VBO upload only — 3562 surfaces, 824 KB VRAM. Infrastructure ready. |
-| 1b | -35% (50→32ms) | TBD | +50% | TBD | Wire VBO bind into draw path. |
+| 1b first cut | -35% (50→32ms) | ~no change | +50% | ~no change | **Visually broken — walls glitched.** Single texCoord offset (12) used for ALL passes; lightmap pass needed offset 20. Rolled back to cvar=0. |
+| 1b proper | -35% | TBD | +50% | TBD | Per-pass texCoord injection or multitexture TMU0/TMU1 dual bind. |
 | 2 | -10% | TBD | +25% | TBD | GPU skinning |
 | 3 | -15% | TBD | +15% | TBD | Combined stages |
 | 4 | -5% | TBD | +10% | TBD | Front-to-back |

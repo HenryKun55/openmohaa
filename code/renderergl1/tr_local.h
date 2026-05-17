@@ -896,6 +896,12 @@ typedef struct {
 
 	int				numVerts;
 	drawVert_t		*verts;
+#ifdef __vita__
+	/* Phase 1b: index into the world VBO's per-surface offset table.
+	 * -1 = not eligible (entity-owned tri surface, sky, etc.). Set
+	 * during R_VitaWorldVBO_Build for world surfaces only. */
+	int				vitaVboSurfIdx;
+#endif
 } srfTriangles_t;
 
 typedef union varnodeUnpacked_u {
@@ -1503,6 +1509,15 @@ extern	cvar_t	*r_vita_vbo_world;
 
 void R_VitaWorldVBO_Build(void);
 void R_VitaWorldVBO_Free(void);
+qboolean R_VitaWorldVBO_IsReady(void);
+typedef struct vitaWorldVboSurf_s {
+    int vertOffset;
+    int numVerts;
+    int indexOffset;
+    int numIndexes;
+} vitaWorldVboSurf_t;
+const vitaWorldVboSurf_t *R_VitaWorldVBO_LookupSurf(int idx);
+void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes);
 #endif
 extern  cvar_t	*r_detailTextures;		// enables/disables detail texturing stages
 extern	cvar_t	*r_novis;				// disable/enable usage of PVS
@@ -1947,6 +1962,15 @@ typedef struct shaderCommands_s
 	shaderStage_t	**xstages;
     qboolean no_global_fog;
     qboolean vertexColorValid;
+#ifdef __vita__
+    /* Phase 1b: when true, this surface's vertex data lives in the
+     * world VBO at vitaWorldVboFirstIndex/...VboNumIndexes. Skip
+     * the per-vertex copy in RB_SurfaceTriangles; bind + draw from
+     * VBO in R_DrawElements. RB_BeginSurface resets to false. */
+    qboolean useVitaWorldVBO;
+    int      vitaWorldVboFirstIndex;
+    int      vitaWorldVboNumIndexes;
+#endif
 } shaderCommands_t;
 
 extern	shaderCommands_t	tess;
