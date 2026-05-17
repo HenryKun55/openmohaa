@@ -1495,6 +1495,15 @@ extern	cvar_t	*r_drawsprites;
 extern	cvar_t	*r_drawspherelights;
 extern	cvar_t	*r_drawworld;			// disable/enable world rendering
 extern	cvar_t	*r_speeds;				// various levels of information display
+#ifdef __vita__
+/* Phase 1: when 1, world BSP geometry is uploaded to a vitaGL VBO at
+ * level load and drawn from it (no per-frame client-array copy).
+ * Default 0: behaviour bit-identical to today. */
+extern	cvar_t	*r_vita_vbo_world;
+
+void R_VitaWorldVBO_Build(void);
+void R_VitaWorldVBO_Free(void);
+#endif
 extern  cvar_t	*r_detailTextures;		// enables/disables detail texturing stages
 extern	cvar_t	*r_novis;				// disable/enable usage of PVS
 extern	cvar_t	*r_nocull;

@@ -2484,6 +2484,13 @@ void RE_LoadWorldMap( const char *name ) {
 
     ri.FS_CloseFile(h);
 
+#ifdef __vita__
+    /* Phase 1: build the world VBO on Vita if r_vita_vbo_world is set.
+     * No-op when the cvar is 0 (default). Safe to call before draw
+     * path uses the VBO (Phase 1b). */
+    R_VitaWorldVBO_Build();
+#endif
+
     ri.UI_LoadResource("*111");
     R_Sphere_InitLights();
     ri.UI_LoadResource("*112");

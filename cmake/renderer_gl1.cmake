@@ -37,6 +37,7 @@ set(RENDERER_GL1_SOURCES
     ${SOURCE_DIR}/renderergl1/tr_terrain.c
     ${SOURCE_DIR}/renderergl1/tr_util.cpp
     ${SOURCE_DIR}/renderergl1/tr_vis.cpp
+    ${SOURCE_DIR}/renderergl1/tr_vita_vbo.c
     ${SOURCE_DIR}/renderergl1/tr_world.c
 )
 

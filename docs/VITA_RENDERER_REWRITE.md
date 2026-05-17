@@ -87,7 +87,35 @@ after NEON. After bonePtr cache the gain was within measurement noise
 on Mac, but the function pointer call is genuinely gone from the inner
 loop.
 
-### Phase 1 — World BSP VBO (1-2 days, LOW risk)
+### ✅ Phase 1a — VBO upload infrastructure (DONE 2026-05-17)
+
+Allocate + upload world BSP triangle soup to a vitaGL VBO at level
+load. Draw path unchanged (still client arrays). Just proves the
+infrastructure works without risking visual regression.
+
+**File**: `code/renderergl1/tr_vita_vbo.c` (new, `#ifdef __vita__`).
+**Cvar**: `seta r_vita_vbo_world 1` in autoexec. Default 0.
+**Hook**: `R_VitaWorldVBO_Build()` called from `RE_LoadWorldMap`
+right after `tr.world = &s_worldData`.
+
+**m1l1 measured outcome:**
+- 3562 SF_TRIANGLES world surfaces eligible (SF_FACE was already
+  routed to SF_TRIANGLES via prior `vita: route BSP brush faces
+  through SF_TRIANGLES` commit).
+- 16577 verts × 44 B = 712 KB
+- 28854 indexes × 4 B = 112 KB
+- Total VRAM cost: 824 KB. Vita Fat has 128 MB VRAM, no pressure.
+- World renders identically (cvar doesn't change draw path yet).
+- set2d unchanged (expected — VBO not yet bound at draw time).
+
+**Learning:** vitaGL is statically linked so plain `glGenBuffers /
+glBindBuffer / glBufferData / glDeleteBuffers` resolve directly; the
+engine's `qgl*` indirection is for SDL_GL_GetProcAddress paths and
+doesn't apply on Vita. SF_GRID is skipped for now — it owns a
+subdivided patch mesh and needs a separate path. SF_FACE wasn't seen
+because Vita routes it through SF_TRIANGLES.
+
+### Phase 1b — Wire VBO into the draw path (NEXT)
 
 Upload static BSP world geometry to a vitaGL VBO once at level load.
 Bind & draw without re-copying client arrays each frame.
@@ -183,7 +211,8 @@ Replace generic GL calls with vitaGL fast-path APIs where they exist.
 | Phase | Predicted set2d | Actual set2d | Predicted FPS | Actual FPS | Notes |
 |---|---|---|---|---|---|
 | 0.5 | -22% (60→47ms) | -22% (60→47ms) | +50% | +30% | NEON + bonePtr. cgame VM didn't shrink. |
-| 1 | -35% (47→30ms) | TBD | +50% | TBD | World VBO |
+| 1a | unchanged | unchanged | unchanged | unchanged | VBO upload only — 3562 surfaces, 824 KB VRAM. Infrastructure ready. |
+| 1b | -35% (50→32ms) | TBD | +50% | TBD | Wire VBO bind into draw path. |
 | 2 | -10% | TBD | +25% | TBD | GPU skinning |
 | 3 | -15% | TBD | +15% | TBD | Combined stages |
 | 4 | -5% | TBD | +10% | TBD | Front-to-back |

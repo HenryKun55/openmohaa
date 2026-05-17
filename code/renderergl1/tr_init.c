@@ -71,6 +71,9 @@ cvar_t	*r_drawsprites;
 cvar_t	*r_drawspherelights;
 cvar_t	*r_drawworld;
 cvar_t	*r_speeds;
+#ifdef __vita__
+cvar_t	*r_vita_vbo_world;
+#endif
 cvar_t	*r_fullbright;
 cvar_t	*r_novis;
 cvar_t	*r_nocull;
@@ -1477,6 +1480,10 @@ void R_Register( void )
 	 * resets it to "1" because cheats aren't fully active yet at autoexec
 	 * time. Revert before shipping. */
 	r_drawworld = ri.Cvar_Get ("r_drawworld", "1", 0 );
+#ifdef __vita__
+	/* Phase 1 (gated). Default 0 keeps current behaviour. */
+	r_vita_vbo_world = ri.Cvar_Get( "r_vita_vbo_world", "0", CVAR_ARCHIVE );
+#endif
 	r_lightmap = ri.Cvar_Get ("r_lightmap", "0", 0 );
 	r_portalOnly = ri.Cvar_Get ("r_portalOnly", "0", CVAR_CHEAT );
 
