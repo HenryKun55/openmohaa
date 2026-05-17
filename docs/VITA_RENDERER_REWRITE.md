@@ -165,7 +165,52 @@ production behaviour is unchanged.
   the dominant multitexture case. For multi-pass shaders, hook the
   per-pass setup to override the engine's pointer.
 
-### Phase 1b proper — TODO next session
+### ⚠️ Phase 1b proper — landed but STILL visually wrong on multipass shaders; rolled back
+
+Two changes since first cut:
+1. `BindAndDraw` now sets BOTH TMU 0 (texCoord offset 12 = drawVert.st)
+   and TMU 1 (texCoord offset 20 = drawVert.lightmap) via
+   `glClientActiveTexture` before drawing.
+2. IBO upload switched from 32-bit (`int`) to 16-bit (`unsigned short`)
+   to match vitaGL's native `SCE_GXM_INDEX_FORMAT_U16` codepath.
+   `accumVerts > 65535` aborts the VBO build for that level.
+
+**OUTCOME (live test on Vita m1l1, 2026-05-17):**
+- Some walls render correctly (single-pass multitexture path).
+- Other walls STILL glitched (multipass shaders).
+- No measurable FPS gain — `set2d` still ~50-60 ms.
+
+**Root cause #2 (multipass shaders):** Q3 has two ways to render the
+diffuse + lightmap combo on BSP walls:
+1. **Single-pass multitexture**: one draw, TMU 0 = diffuse, TMU 1 =
+   lightmap. Both UV sets active simultaneously. The dual-TMU bind
+   in `BindAndDraw` handles this correctly.
+2. **Multi-pass fallback**: two draws — pass 0 uses TMU 0 with the
+   base UVs to draw diffuse; pass 1 ALSO uses TMU 0 but with the
+   lightmap texture and lightmap UVs, then alpha-blends on top.
+
+In case 2 pass 1, `BindAndDraw` still hard-codes TMU 0's texCoord
+offset to 12 (base UVs), so the lightmap pass samples the lightmap
+texture with diffuse UVs and the wall looks smeared.
+
+**To fix properly**: the per-pass texCoord offset has to be picked
+from the active stage's bundle. In `RB_IterateStagesGeneric` /
+`DrawMultitextured`, after the engine sets the texCoord pointer for
+the current pass, check `tess.useVitaWorldVBO`; if set, look at
+`pStage->bundle[i].isLightmap` and override the texCoord pointer
+with VBO offset 20 instead of 12. Same for `bundle[i].image[0]`
+texture-environment combos.
+
+Surfaces with `texMod` (animated UVs, env mapping) cannot use static
+VBO offsets at all — detect at level load and clear
+`vitaVboSurfIdx = -1` for those.
+
+**Decided**: roll cvar back to 0. Phase 1b infrastructure stays
+committed (cheap when off). Moving on to Phase 2 (GPU skinning)
+which has a clearer architectural win and doesn't have the
+multipass-shader texCoord coupling problem.
+
+### Phase 1b proper-proper — deferred
 
 Upload static BSP world geometry to a vitaGL VBO once at level load.
 Bind & draw without re-copying client arrays each frame.
@@ -263,7 +308,8 @@ Replace generic GL calls with vitaGL fast-path APIs where they exist.
 | 0.5 | -22% (60→47ms) | -22% (60→47ms) | +50% | +30% | NEON + bonePtr. cgame VM didn't shrink. |
 | 1a | unchanged | unchanged | unchanged | unchanged | VBO upload only — 3562 surfaces, 824 KB VRAM. Infrastructure ready. |
 | 1b first cut | -35% (50→32ms) | ~no change | +50% | ~no change | **Visually broken — walls glitched.** Single texCoord offset (12) used for ALL passes; lightmap pass needed offset 20. Rolled back to cvar=0. |
-| 1b proper | -35% | TBD | +50% | TBD | Per-pass texCoord injection or multitexture TMU0/TMU1 dual bind. |
+| 1b dual-TMU + u16 | -35% | ~no change (~58ms) | +50% | 9 FPS gameplay | Fixed single-pass multitexture walls + IBO format. Multipass walls still broken because pass 1 (lightmap) hard-codes UV offset 12. Rolled back. |
+| 1b proper-proper | -35% | TBD | +50% | TBD | Per-stage texCoord override in RB_IterateStagesGeneric. |
 | 2 | -10% | TBD | +25% | TBD | GPU skinning |
 | 3 | -15% | TBD | +15% | TBD | Combined stages |
 | 4 | -5% | TBD | +10% | TBD | Front-to-back |

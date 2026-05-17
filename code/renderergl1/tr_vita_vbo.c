@@ -38,11 +38,19 @@ extern void glDeleteBuffers( int n, const unsigned int *buffers );
 
 /* For Phase 1b draw: re-issue the vertex/normal/texcoord/color
  * pointers as VBO offsets when the world VBO is bound. */
-extern void glVertexPointer   ( int size, unsigned int type, int stride, const void *ptr );
-extern void glNormalPointer   ( unsigned int type, int stride, const void *ptr );
-extern void glTexCoordPointer ( int size, unsigned int type, int stride, const void *ptr );
-extern void glColorPointer    ( int size, unsigned int type, int stride, const void *ptr );
-extern void glDrawElements    ( unsigned int mode, int count, unsigned int type, const void *indices );
+extern void glVertexPointer        ( int size, unsigned int type, int stride, const void *ptr );
+extern void glNormalPointer        ( unsigned int type, int stride, const void *ptr );
+extern void glTexCoordPointer      ( int size, unsigned int type, int stride, const void *ptr );
+extern void glColorPointer         ( int size, unsigned int type, int stride, const void *ptr );
+extern void glClientActiveTexture  ( unsigned int texture );
+extern void glDrawElements         ( unsigned int mode, int count, unsigned int type, const void *indices );
+
+#ifndef GL_TEXTURE0
+#define GL_TEXTURE0              0x84C0
+#endif
+#ifndef GL_TEXTURE1
+#define GL_TEXTURE1              0x84C1
+#endif
 
 #ifndef GL_ARRAY_BUFFER
 #define GL_ARRAY_BUFFER          0x8892
@@ -58,6 +66,9 @@ extern void glDrawElements    ( unsigned int mode, int count, unsigned int type,
 #endif
 #ifndef GL_UNSIGNED_BYTE
 #define GL_UNSIGNED_BYTE         0x1401
+#endif
+#ifndef GL_UNSIGNED_SHORT
+#define GL_UNSIGNED_SHORT        0x1403
 #endif
 #ifndef GL_UNSIGNED_INT
 #define GL_UNSIGNED_INT          0x1405
@@ -140,7 +151,7 @@ void R_VitaWorldVBO_Build(void)
     int               accumIndexes = 0;
     int               eligibleSurfaces = 0;
     drawVert_t       *vertBuf      = NULL;
-    int              *indexBuf     = NULL;
+    unsigned short   *indexBuf     = NULL;
 
     R_VitaWorldVBO_Free();
 
@@ -194,10 +205,31 @@ void R_VitaWorldVBO_Build(void)
         return;
     }
 
+    /* Vita's vitaGL is most stable with 16-bit indices
+     * (SCE_GXM_INDEX_FORMAT_U16). 32-bit was the cause of the
+     * "walls broken even with dual-TMU bind" symptom — vitaGL was
+     * misinterpreting the index stream. Fall back if the concatenated
+     * vertex pool exceeds 65535 entries. */
+    if (accumVerts > 65535) {
+        ri.Printf(PRINT_WARNING,
+            "[VITA-VBO] %d verts exceeds u16 limit (65535) — VBO disabled this level\n",
+            accumVerts);
+        for (i = 0; i < tr.world->numsurfaces; i++) {
+            msurface_t *s = &tr.world->surfaces[i];
+            if (s->data && *s->data == SF_TRIANGLES) {
+                ((srfTriangles_t *)s->data)->vitaVboSurfIdx = -1;
+            }
+        }
+        ri.Hunk_FreeTempMemory(worldVboSurf);
+        worldVboSurf      = NULL;
+        worldVboSurfCount = 0;
+        return;
+    }
+
     /* Pass 2: pack into flat buffers, rebase indices onto the
-     * concatenated vertex stream. */
-    vertBuf  = (drawVert_t *)ri.Hunk_AllocateTempMemory(sizeof(drawVert_t) * accumVerts);
-    indexBuf = (int *)       ri.Hunk_AllocateTempMemory(sizeof(int)        * accumIndexes);
+     * concatenated vertex stream. Indices stored as u16. */
+    vertBuf  = (drawVert_t *)    ri.Hunk_AllocateTempMemory(sizeof(drawVert_t)    * accumVerts);
+    indexBuf = (unsigned short *)ri.Hunk_AllocateTempMemory(sizeof(unsigned short) * accumIndexes);
 
     for (i = 0; i < worldVboSurfCount; i++) {
         if (worldVboSurf[i].vertOffset < 0) continue;
@@ -209,7 +241,7 @@ void R_VitaWorldVBO_Build(void)
 
         Com_Memcpy(vertBuf + vo, tri->verts, sizeof(drawVert_t) * tri->numVerts);
         for (j = 0; j < tri->numIndexes; j++) {
-            indexBuf[io + j] = vo + tri->indexes[j];
+            indexBuf[io + j] = (unsigned short)(vo + tri->indexes[j]);
         }
     }
 
@@ -225,7 +257,7 @@ void R_VitaWorldVBO_Build(void)
     glGenBuffers(1, &worldIboId);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, worldIboId);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                  (long)(sizeof(int) * accumIndexes),
+                  (long)(sizeof(unsigned short) * accumIndexes),
                   indexBuf,
                   GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -235,10 +267,10 @@ void R_VitaWorldVBO_Build(void)
     worldVboBuilt        = qtrue;
 
     ri.Printf(PRINT_ALL,
-        "[VITA-VBO] built world VBO: %d surfaces, %d verts (%lu KB), %d indexes (%lu KB)\n",
+        "[VITA-VBO] built world VBO: %d surfaces, %d verts (%lu KB), %d indexes (%lu KB, u16)\n",
         eligibleSurfaces,
-        accumVerts,   (unsigned long)(sizeof(drawVert_t) * accumVerts) / 1024,
-        accumIndexes, (unsigned long)(sizeof(int)        * accumIndexes) / 1024);
+        accumVerts,   (unsigned long)(sizeof(drawVert_t)    * accumVerts)    / 1024,
+        accumIndexes, (unsigned long)(sizeof(unsigned short) * accumIndexes) / 1024);
 
     ri.Hunk_FreeTempMemory(indexBuf);
     ri.Hunk_FreeTempMemory(vertBuf);
@@ -307,14 +339,30 @@ void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
     glBindBuffer(GL_ARRAY_BUFFER,         worldVboId);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, worldIboId);
 
-    /* Pointers relative to bound VBO (offsets into drawVert_t). */
+    /* Pointers relative to bound VBO (offsets into drawVert_t).
+     *
+     * Q3's DrawMultitextured sets texcoord pointers PER TMU:
+     *   TMU 0 (base)     → svars.texcoords[0]  (mirrors drawVert.st)
+     *   TMU 1 (lightmap) → svars.texcoords[1]  (mirrors drawVert.lightmap)
+     * Those CPU addresses become bogus VBO offsets when our VBO is
+     * bound, which was the first-cut bug (walls glitched). We
+     * override BOTH TMUs here with the correct drawVert_t offsets so
+     * either single-pass multitexture (TMU0+TMU1 active together)
+     * or multi-pass shaders (one TMU at a time) render correctly.
+     *
+     * Restoring TMU 0 active at the end matches DrawMultitextured's
+     * convention so the engine's glState.currenttmu stays in sync. */
     glVertexPointer  (3, GL_FLOAT,         44, (const void *)(uintptr_t)0);
-    glTexCoordPointer(2, GL_FLOAT,         44, (const void *)(uintptr_t)12);
     glNormalPointer  (   GL_FLOAT,         44, (const void *)(uintptr_t)28);
     glColorPointer   (4, GL_UNSIGNED_BYTE, 44, (const void *)(uintptr_t)40);
 
-    glDrawElements(GL_TRIANGLES, numIndexes, GL_UNSIGNED_INT,
-                   (const void *)(uintptr_t)(firstIndex * sizeof(int)));
+    glClientActiveTexture(GL_TEXTURE1);
+    glTexCoordPointer(2, GL_FLOAT,         44, (const void *)(uintptr_t)20); /* lightmap */
+    glClientActiveTexture(GL_TEXTURE0);
+    glTexCoordPointer(2, GL_FLOAT,         44, (const void *)(uintptr_t)12); /* base */
+
+    glDrawElements(GL_TRIANGLES, numIndexes, GL_UNSIGNED_SHORT,
+                   (const void *)(uintptr_t)(firstIndex * sizeof(unsigned short)));
 
     /* Unbind so other draws fall through to client arrays. */
     glBindBuffer(GL_ARRAY_BUFFER,         0);
