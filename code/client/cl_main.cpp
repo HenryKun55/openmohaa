@@ -2807,6 +2807,16 @@ void CL_Frame ( int msec ) {
 		cls.netprofile.initialized = qfalse;
 	}
 
+#ifdef __vita__
+	/* Phase B1 profiling: break CL_Frame into named sections so we can
+	 * see where the 71 ms unaccounted-for in com_speeds `cl` is going.
+	 * Throttle the print to 1×/sec so the log isn't a wall of text. */
+	int                 _vita_t0 = Sys_Milliseconds();
+	int                 _vita_t1, _vita_t2, _vita_t3, _vita_t4, _vita_t5, _vita_t6;
+	static int          _vita_lastPrint = 0;
+	int                 _vita_now = _vita_t0;
+	qboolean            _vita_doPrint = (_vita_now - _vita_lastPrint) >= 1000;
+#endif
 	// see if we need to update any userinfo
 	CL_CheckUserinfo();
 
@@ -2822,6 +2832,9 @@ void CL_Frame ( int msec ) {
 
 	// decide on the serverTime to render
 	CL_SetCGameTime();
+#ifdef __vita__
+	_vita_t1 = Sys_Milliseconds();
+#endif
 
 	// set the time if we loaded a save
 	if( SV_DoSaveGame() )
@@ -2832,18 +2845,45 @@ void CL_Frame ( int msec ) {
 	}
 
 	L_ProcessPendingEvents();
+#ifdef __vita__
+	_vita_t2 = Sys_Milliseconds();
+#endif
 
     // Added in OPM
     CL_UpdateMouse();
+#ifdef __vita__
+	_vita_t3 = Sys_Milliseconds();
+#endif
 
 	// update the screen
 	SCR_UpdateScreen();
+#ifdef __vita__
+	_vita_t4 = Sys_Milliseconds();
+#endif
 
 	// update audio
 	S_Update();
+#ifdef __vita__
+	_vita_t5 = Sys_Milliseconds();
+#endif
 
 	// advance local effects for next frame
 	SCR_RunCinematic();
+#ifdef __vita__
+	_vita_t6 = Sys_Milliseconds();
+
+	if (_vita_doPrint) {
+		_vita_lastPrint = _vita_now;
+		Com_Printf("CL-PROF: pre=%d evs=%d mse=%d scr=%d snd=%d cin=%d  total=%d\n",
+			_vita_t1 - _vita_t0,    /* CheckUserinfo+Timeout+SendCmd+CheckForResend+SetCGameTime */
+			_vita_t2 - _vita_t1,    /* SV_DoSaveGame + L_ProcessPendingEvents */
+			_vita_t3 - _vita_t2,    /* CL_UpdateMouse */
+			_vita_t4 - _vita_t3,    /* SCR_UpdateScreen (= renderer + cgame) */
+			_vita_t5 - _vita_t4,    /* S_Update */
+			_vita_t6 - _vita_t5,    /* SCR_RunCinematic */
+			_vita_t6 - _vita_t0);   /* total */
+	}
+#endif
 
 	cls.framecount++;
 }
@@ -3732,6 +3772,13 @@ void CL_Init( void ) {
 	Cmd_AddCommand ("animlist", TIKI_AnimList_f );
 	Cmd_AddCommand ("tiki", CL_TikiInfoCommand_f );
 	Cmd_AddCommand ("vidmode", CL_VidMode_f );
+
+#ifdef __vita__
+	{
+		extern void CL_VitaPerfMenu_Init(void);
+		CL_VitaPerfMenu_Init();
+	}
+#endif
 	Cmd_AddCommand ("saveshot", CL_SaveShot_f );
 	Cmd_AddCommand ("dialog", CL_Dialog_f );
 	Cmd_AddCommand ("aliasdump", Alias_Dump );

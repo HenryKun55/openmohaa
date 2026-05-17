@@ -38,6 +38,17 @@ R_PerformanceCounters
 =====================
 */
 void R_PerformanceCounters( void ) {
+#ifdef __vita__
+	/* Throttle r_speeds printing to ~1×/sec — printing every frame
+	 * floods the console and adds CPU work that distorts the measurement. */
+	static int r_speeds_lastPrintMsec = 0;
+	int        r_speeds_nowMsec       = ri.Milliseconds();
+	qboolean   r_speeds_shouldPrint   = qfalse;
+	if (r_speeds->integer && (r_speeds_nowMsec - r_speeds_lastPrintMsec) >= 1000) {
+		r_speeds_shouldPrint = qtrue;
+		r_speeds_lastPrintMsec = r_speeds_nowMsec;
+	}
+#endif
 	if (r_fps->integer) {
 		ri.SetPerformanceCounters(
 			backEnd.pc.c_totalIndexes / 3,
@@ -54,12 +65,21 @@ void R_PerformanceCounters( void ) {
 		Com_Memset( &backEnd.pc, 0, sizeof( backEnd.pc ) );
 		return;
 	}
+#ifdef __vita__
+	if ( !r_speeds_shouldPrint ) {
+		Com_Memset( &tr.pc, 0, sizeof( tr.pc ) );
+		Com_Memset( &backEnd.pc, 0, sizeof( backEnd.pc ) );
+		return;
+	}
+#endif
 
 	if (r_speeds->integer == 1) {
 		ri.Printf (PRINT_ALL, "%i/%i shaders/surfs %i leafs %i verts %i/%i tris %.2f mtex %.2f dc\n",
-			backEnd.pc.c_shaders, backEnd.pc.c_surfaces, tr.pc.c_leafs, backEnd.pc.c_vertexes, 
-			backEnd.pc.c_indexes/3, backEnd.pc.c_totalIndexes/3, 
-			R_SumOfUsedImages()/(1000000.0f), backEnd.pc.c_overDraw / (float)(glConfig.vidWidth * glConfig.vidHeight) ); 
+			backEnd.pc.c_shaders, backEnd.pc.c_surfaces, tr.pc.c_leafs, backEnd.pc.c_vertexes,
+			backEnd.pc.c_indexes/3, backEnd.pc.c_totalIndexes/3,
+			R_SumOfUsedImages()/(1000000.0f), backEnd.pc.c_overDraw / (float)(glConfig.vidWidth * glConfig.vidHeight) );
+		ri.Printf (PRINT_ALL, "GPU: %i draws %i state %i binds\n",
+			backEnd.pc.c_drawElems, backEnd.pc.c_glStateChanges, backEnd.pc.c_glBinds );
 	} else if (r_speeds->integer == 2) {
 		ri.Printf (PRINT_ALL, "(patch) %i sin %i sclip  %i sout %i bin %i bclip %i bout\n",
 			tr.pc.c_sphere_cull_patch_in, tr.pc.c_sphere_cull_patch_clip, tr.pc.c_sphere_cull_patch_out, 

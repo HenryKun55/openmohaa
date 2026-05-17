@@ -174,6 +174,7 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	 *
 	 * vitaQuakeIII does the same simplification (their tr_shade.c
 	 * R_DrawElements is just this single glDrawElements call). */
+	backEnd.pc.c_drawElems++;
 	qglDrawElements( GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, indexes );
 	return;
 #else

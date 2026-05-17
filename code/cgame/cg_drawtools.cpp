@@ -1359,6 +1359,26 @@ void CG_DrawCrosshair()
 
     shader = (qhandle_t)0;
 
+#ifdef __vita__
+    /* DIAGNOSTIC: dump the gate state once per second so we can see why
+     * the crosshair never draws. Remove after the root cause is fixed. */
+    {
+        static int s_lastDumpMsec = 0;
+        int now = cgi.Milliseconds();
+        if (cg.snap && (now - s_lastDumpMsec) >= 1000) {
+            s_lastDumpMsec = now;
+            cgi.Printf("CROSSHAIR: cg_hud=%d ui_crosshair=%d snap=%p pm_flags=0x%x STAT_CROSSHAIR=%d STAT_INZOOM=%d cg_crosshair='%s'\n",
+                cg_hud ? cg_hud->integer : -999,
+                ui_crosshair ? ui_crosshair->integer : -999,
+                (void *)cg.snap,
+                cg.snap->ps.pm_flags,
+                cg.snap->ps.stats[STAT_CROSSHAIR],
+                cg.snap->ps.stats[STAT_INZOOM],
+                cg_crosshair ? cg_crosshair->string : "(null)");
+        }
+    }
+#endif
+
     if (!cg_hud->integer || !ui_crosshair->integer) {
         return;
     }
@@ -1431,9 +1451,37 @@ void CG_DrawCrosshair()
         }
     }
 
+#ifdef __vita__
+    /* DIAGNOSTIC: log shader handle + computed draw rect once per second.
+     * If shader==0 the texture failed to register (probably wrong path /
+     * missing from pak). If width/height are 0/tiny, uiHiResScale or the
+     * shader's intrinsic size is the culprit. */
+    {
+        static int s_lastShDumpMsec = 0;
+        int now = cgi.Milliseconds();
+        if ((now - s_lastShDumpMsec) >= 1000) {
+            s_lastShDumpMsec = now;
+            float w = shader ? cgi.R_GetShaderWidth(shader) : 0.f;
+            float h = shader ? cgi.R_GetShaderHeight(shader) : 0.f;
+            cgi.Printf("CROSSHAIR-DRAW: shader=%d intrinsic=%.0fx%.0f hiResScale=%.2fx%.2f vid=%dx%d\n",
+                (int)shader, w, h,
+                cgs.uiHiResScale[0], cgs.uiHiResScale[1],
+                cgs.glconfig.vidWidth, cgs.glconfig.vidHeight);
+        }
+    }
+#endif
+
     if (shader) {
         width  = cgi.R_GetShaderWidth(shader) * cgs.uiHiResScale[0];
         height = cgi.R_GetShaderHeight(shader) * cgs.uiHiResScale[1];
+#ifdef __vita__
+        /* The shipped crosshair textures are 16×16, and uiHiResScale comes
+         * back as 1.0 on Vita's 960×544 surface — so the crosshair lands
+         * at 16 px in the centre, which is functionally invisible on
+         * a 5" Vita Fat screen. Scale up by 2.5× on Vita only. */
+        width  *= 2.5f;
+        height *= 2.5f;
+#endif
         x      = (cgs.glconfig.vidWidth - width) * 0.5f;
         y      = (cgs.glconfig.vidHeight - height) * 0.5f;
 

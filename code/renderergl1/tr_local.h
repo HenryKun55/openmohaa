@@ -1275,6 +1275,10 @@ typedef struct {
 	int		c_flareTests;
 	int		c_flareRenders;
 
+	int		c_drawElems;		// qglDrawElements calls per frame
+	int		c_glStateChanges;	// non-redundant GL_State invocations
+	int		c_glBinds;		// non-redundant texture binds
+
 	int		msec;			// total msec for backend run
 } backEndCounters_t;
 

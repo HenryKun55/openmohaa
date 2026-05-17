@@ -39,6 +39,262 @@ float   subLife[MAX_SUBTITLES];
 float   alpha[MAX_SUBTITLES];
 char    oldStrings[MAX_SUBTITLES][2048];
 
+#ifdef __vita__
+/* ============================================================
+ * VITA PERF MENU — categorised tree of EVERY perf-relevant cvar.
+ *
+ * Press Select on the Vita pad in-game to open. Navigation:
+ *   D-pad LEFT/RIGHT  -> change category
+ *   D-pad UP/DOWN     -> select item within category
+ *   Cross (A)         -> toggle / cycle item
+ *   Circle (B)        -> close menu
+ *   Select (Back)     -> close menu
+ *
+ * The menu is drawn as an overlay during normal gameplay. All keys
+ * are swallowed while open so accidental fire/jump don't happen.
+ * ============================================================ */
+
+struct VitaPerfMenuItem {
+    const char *label;
+    const char *cvarName;
+    qboolean    inverted; /* "ON" means cvar=0 (e.g. r_fastsky) */
+    int         cycleMax; /* if > 0, cycles 0..cycleMax instead of 0/1 toggle */
+};
+
+struct VitaPerfMenuCategory {
+    const char        *label;
+    VitaPerfMenuItem  *items;
+    int                itemCount;
+};
+
+/* ---------- WORLD ---------- */
+static VitaPerfMenuItem g_pmWorld[] = {
+    { "BSP World",        "r_drawworld",          qfalse, 0 },
+    { "Brush Models",     "r_drawbrushes",        qfalse, 0 },
+    { "Static Models",    "r_drawstaticmodels",   qfalse, 0 },
+    { "Static Polys",     "r_drawstaticmodelpoly",qfalse, 0 },
+    { "Entity Polys",     "r_drawentitypoly",     qfalse, 0 },
+    { "Curves",           "r_nocurves",           qtrue,  0 }, /* inverted: ON when r_nocurves=0 */
+    { "Fast Sky",         "r_fastsky",            qfalse, 0 },
+    { "Sky Box",          "r_drawSun",            qfalse, 0 },
+};
+
+/* ---------- LIGHTING ---------- */
+static VitaPerfMenuItem g_pmLighting[] = {
+    { "Dynamic Lights",   "r_dynamiclight",       qfalse, 0 },
+    { "DLight Backfaces", "r_dlightBacks",        qfalse, 0 },
+    { "Vertex Light",     "r_vertexLight",        qfalse, 0 },
+    { "Lightmap Only",    "r_lightmap",           qfalse, 0 },
+    { "Light Spheres",    "r_drawSpheres",        qfalse, 0 },
+    { "Stencil Shadows",  "cg_shadows",           qfalse, 0 },
+    { "Coronas",          "cg_drawCorona",        qfalse, 0 },
+    { "Lens Flares",      "r_flares",             qfalse, 0 },
+};
+
+/* ---------- EFFECTS ---------- */
+static VitaPerfMenuItem g_pmEffects[] = {
+    { "Decals (Marks)",   "cg_marks_add",         qfalse, 0 },
+    { "Blood / Gore",     "com_blood",            qfalse, 0 },
+    { "Weapon Model",     "cg_drawGun",           qfalse, 0 },
+    { "Crosshair",        "ui_crosshair",         qfalse, 0 },
+    { "HUD",              "cg_hud",               qfalse, 0 },
+    { "Engine 2D Pass",   "vita_skip_draw2d",     qtrue,  0 }, /* ON = normal, OFF = stripped */
+};
+
+/* ---------- TEXTURES ---------- */
+static VitaPerfMenuItem g_pmTextures[] = {
+    { "Texture LOD",      "r_picmip",             qfalse, 3 }, /* 0=sharp .. 3=tiny */
+    { "Lod Bias",         "r_lodbias",            qfalse, 4 }, /* 0..4 = far cull more */
+    { "Curve Detail",     "r_subdivisions",       qfalse, 24 }, /* 4..24, latched */
+};
+
+/* ---------- DEBUG / DIAG ---------- */
+static VitaPerfMenuItem g_pmDebug[] = {
+    { "NO REFRESH (kill all)",    "r_norefresh",       qfalse, 0 }, /* skips ALL rendering — black screen */
+    { "Skip Backend",             "r_skipBackEnd",     qfalse, 0 },
+    { "Show Tris",                "r_showtris",        qfalse, 0 },
+    { "Show Normals",             "r_shownormals",     qfalse, 0 },
+    { "r_speeds Print",           "r_speeds",          qfalse, 6 },
+    { "com_speeds Print",         "com_speeds",        qfalse, 0 },
+    { "Measure Overdraw",         "r_measureOverdraw", qfalse, 0 },
+};
+
+static VitaPerfMenuCategory g_pmCats[] = {
+    { "WORLD",     g_pmWorld,    sizeof(g_pmWorld)    / sizeof(VitaPerfMenuItem) },
+    { "LIGHTING",  g_pmLighting, sizeof(g_pmLighting) / sizeof(VitaPerfMenuItem) },
+    { "EFFECTS",   g_pmEffects,  sizeof(g_pmEffects)  / sizeof(VitaPerfMenuItem) },
+    { "TEXTURES",  g_pmTextures, sizeof(g_pmTextures) / sizeof(VitaPerfMenuItem) },
+    { "DEBUG",     g_pmDebug,    sizeof(g_pmDebug)    / sizeof(VitaPerfMenuItem) },
+};
+static const int g_pmCatCount = sizeof(g_pmCats) / sizeof(g_pmCats[0]);
+
+static qboolean g_pmActive   = qfalse;
+static int      g_pmCatIdx   = 0;
+static int      g_pmItemIdx  = 0;
+
+static int VitaPerfMenu_GetValue(const VitaPerfMenuItem *it)
+{
+    return Cvar_VariableIntegerValue(it->cvarName);
+}
+
+/* Returns a display string for the item's current state.
+ * Toggle (cycleMax==0): "[X]" / "[ ]" depending on inverted flag.
+ * Cycle (cycleMax>0): "[N/MAX]". */
+static const char *VitaPerfMenu_GetStateStr(const VitaPerfMenuItem *it)
+{
+    static char buf[16];
+    int cur = VitaPerfMenu_GetValue(it);
+    if (it->cycleMax > 0) {
+        Com_sprintf(buf, sizeof(buf), "[%d/%d]", cur, it->cycleMax);
+        return buf;
+    }
+    qboolean on = it->inverted ? (cur == 0) : (cur != 0);
+    return on ? "[X]" : "[ ]";
+}
+
+static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
+{
+    int cur = VitaPerfMenu_GetValue(it);
+    int next;
+    if (it->cycleMax > 0) {
+        next = cur + 1;
+        if (next > it->cycleMax) next = 0;
+    } else {
+        next = cur ? 0 : 1;
+    }
+    char buf[16];
+    Com_sprintf(buf, sizeof(buf), "%d", next);
+    Cvar_Set(it->cvarName, buf);
+    Com_Printf("PERF-MENU: %s = %d\n", it->cvarName, next);
+}
+
+void CL_VitaPerfMenu_Toggle_f(void)
+{
+    g_pmActive = !g_pmActive;
+    Com_Printf("PERF-MENU: %s\n", g_pmActive ? "OPEN" : "CLOSED");
+}
+
+qboolean CL_VitaPerfMenu_IsActive(void)
+{
+    return g_pmActive;
+}
+
+/* Called from CL_KeyEvent. Returns true if the key was consumed. */
+qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
+{
+    if (!g_pmActive) return qfalse;
+    if (!down) return qtrue;
+
+    static qboolean s_resolved = qfalse;
+    static int      k_select   = -1;
+    static int      k_circle   = -1;
+    static int      k_cross    = -1;
+    static int      k_up       = -1;
+    static int      k_down     = -1;
+    static int      k_left     = -1;
+    static int      k_right    = -1;
+    if (!s_resolved) {
+        s_resolved = qtrue;
+        k_select = Key_StringToKeynum("PAD0_BACK");
+        k_circle = Key_StringToKeynum("PAD0_B");
+        k_cross  = Key_StringToKeynum("PAD0_A");
+        k_up     = Key_StringToKeynum("PAD0_DPAD_UP");
+        k_down   = Key_StringToKeynum("PAD0_DPAD_DOWN");
+        k_left   = Key_StringToKeynum("PAD0_DPAD_LEFT");
+        k_right  = Key_StringToKeynum("PAD0_DPAD_RIGHT");
+    }
+
+    if (key == k_select || key == k_circle) {
+        g_pmActive = qfalse;
+        Com_Printf("PERF-MENU: CLOSED\n");
+        return qtrue;
+    }
+    if (key == k_left) {
+        g_pmCatIdx--;
+        if (g_pmCatIdx < 0) g_pmCatIdx = g_pmCatCount - 1;
+        g_pmItemIdx = 0;
+        return qtrue;
+    }
+    if (key == k_right) {
+        g_pmCatIdx++;
+        if (g_pmCatIdx >= g_pmCatCount) g_pmCatIdx = 0;
+        g_pmItemIdx = 0;
+        return qtrue;
+    }
+    if (key == k_up) {
+        g_pmItemIdx--;
+        if (g_pmItemIdx < 0) g_pmItemIdx = g_pmCats[g_pmCatIdx].itemCount - 1;
+        return qtrue;
+    }
+    if (key == k_down) {
+        g_pmItemIdx++;
+        if (g_pmItemIdx >= g_pmCats[g_pmCatIdx].itemCount) g_pmItemIdx = 0;
+        return qtrue;
+    }
+    if (key == k_cross) {
+        VitaPerfMenu_ToggleItem(&g_pmCats[g_pmCatIdx].items[g_pmItemIdx]);
+        return qtrue;
+    }
+    /* Swallow all other keys so gameplay binds don't fire. */
+    return qtrue;
+}
+
+/* Draw the menu overlay. Called from View3D::Draw2D after game render. */
+void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
+{
+    if (!g_pmActive) return;
+
+    /* Solid black box behind menu for readability. */
+    vec4_t bg = {0.0f, 0.0f, 0.0f, 0.85f};
+    re.SetColor(bg);
+    float boxW = 480.0f, boxH = 360.0f;
+    float boxX = (screenW - boxW) * 0.5f;
+    float boxY = (screenH - boxH) * 0.5f;
+    re.DrawBox(boxX, boxY, boxW, boxH);
+
+    if (!menuFont) return;
+
+    /* Header with category tabs. Highlight current. */
+    float y = boxY + 16.0f;
+    char  hdr[256];
+    Com_sprintf(hdr, sizeof(hdr), "PERF MENU  --  D-pad to navigate, A toggle, B close");
+    menuFont->setColor(UWhite);
+    menuFont->Print(boxX + 12.0f, y, hdr, -1, NULL);
+    y += 22.0f;
+
+    /* Category row */
+    float catX = boxX + 12.0f;
+    for (int i = 0; i < g_pmCatCount; i++) {
+        if (i == g_pmCatIdx) menuFont->setColor(UYellow);
+        else                 menuFont->setColor(UWhite);
+        menuFont->Print(catX, y, g_pmCats[i].label, -1, NULL);
+        catX += (float)strlen(g_pmCats[i].label) * 9.0f + 12.0f;
+    }
+    y += 28.0f;
+
+    /* Items in current category */
+    VitaPerfMenuCategory *cat = &g_pmCats[g_pmCatIdx];
+    for (int i = 0; i < cat->itemCount; i++) {
+        char line[128];
+        Com_sprintf(line, sizeof(line), "%s %-20s  %s",
+            i == g_pmItemIdx ? ">" : " ",
+            cat->items[i].label,
+            VitaPerfMenu_GetStateStr(&cat->items[i]));
+        if (i == g_pmItemIdx) menuFont->setColor(UYellow);
+        else                  menuFont->setColor(UWhite);
+        menuFont->Print(boxX + 12.0f, y, line, -1, NULL);
+        y += 20.0f;
+    }
+
+    re.SetColor(NULL);
+}
+
+void CL_VitaPerfMenu_Init(void)
+{
+    Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
+}
+#endif
+
 View3D::View3D()
 {
     // set as transparent
@@ -612,6 +868,14 @@ void View3D::Draw2D(void)
         DrawFPS();
         DrawProf();
     }
+
+#ifdef __vita__
+    /* Perf menu overlay — drawn last so it sits on top of everything. */
+    if (CL_VitaPerfMenu_IsActive()) {
+        setFont("verdana-14");
+        CL_VitaPerfMenu_Draw(m_font, m_frame.size.width, m_frame.size.height);
+    }
+#endif
 }
 
 void View3D::CenterPrint(void)
@@ -788,15 +1052,40 @@ void View3D::DrawFades(void)
 
 void View3D::Draw(void)
 {
+#ifdef __vita__
+    extern int Sys_Milliseconds(void);
+    int _v3_t0 = Sys_Milliseconds();
+    int _v3_t1, _v3_t2, _v3_t3, _v3_t4;
+    static int _v3_lastPrint = 0;
+    qboolean   _v3_doPrint   = (_v3_t0 - _v3_lastPrint) >= 1000;
+#endif
     if (clc.state != CA_DISCONNECTED) {
         SCR_DrawScreenField();
     }
+#ifdef __vita__
+    _v3_t1 = Sys_Milliseconds();
+#endif
 
     set2D();
+#ifdef __vita__
+    _v3_t2 = Sys_Milliseconds();
+#endif
 
     re.SavePerformanceCounters();
+#ifdef __vita__
+    _v3_t3 = Sys_Milliseconds();
+#endif
 
     Draw2D();
+#ifdef __vita__
+    _v3_t4 = Sys_Milliseconds();
+    if (_v3_doPrint) {
+        _v3_lastPrint = _v3_t0;
+        Com_Printf("V3-PROF: scenefield=%d set2d=%d savepc=%d draw2d=%d total=%d\n",
+            _v3_t1 - _v3_t0, _v3_t2 - _v3_t1, _v3_t3 - _v3_t2, _v3_t4 - _v3_t3,
+            _v3_t4 - _v3_t0);
+    }
+#endif
 }
 
 float avWidth = 0.0;

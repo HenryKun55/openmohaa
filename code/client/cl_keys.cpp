@@ -1059,10 +1059,23 @@ CL_KeyEvent
 Called by the system for both key up and key down events
 ===================
 */
+#ifdef __vita__
+extern qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down);
+#endif
+
 void CL_KeyEvent(int key, qboolean down, unsigned time)
 {
     char *kb;
     char  cmd[1024];
+
+#ifdef __vita__
+    /* Perf menu intercepts ALL keys when active so gameplay binds don't
+     * fire while the user navigates the tree. Returns true if consumed. */
+    if (CL_VitaPerfMenu_HandleKey(key, down)) {
+        keys[key].down = down;
+        return;
+    }
+#endif
 
     // update auto-repeat status and BUTTON_ANY status
     keys[key].down = down;

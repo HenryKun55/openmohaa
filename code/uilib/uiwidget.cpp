@@ -1996,10 +1996,51 @@ void UIWidget::Display(const UIRect2D& drawframe, float parent_alpha)
 
     Draw();
 
+#ifdef __vita__
+    /* Top-level widget timing — only fires for widgets whose parent is
+     * NULL (i.e., uWinMan itself when called via UpdateViews → Display).
+     * Times each child so we can identify the heavyweight (view3d). */
+    if (m_parent == NULL) {
+        extern int Sys_Milliseconds(void);
+        static int _wd_lastPrint = 0;
+        int        _wd_t0        = Sys_Milliseconds();
+        qboolean   _wd_doPrint   = (_wd_t0 - _wd_lastPrint) >= 1000;
+        int        _wd_total = 0, _wd_bigMs = 0, _wd_bigIdx = -1;
+        const char *_wd_bigName = "?";
+
+        n = m_children.NumObjects();
+        for (i = 1; i <= n; i++) {
+            int _wd_tc0 = Sys_Milliseconds();
+            m_children.ObjectAt(i)->Display(m_frame, m_local_alpha);
+            int _wd_tc1 = Sys_Milliseconds();
+            int _wd_dt  = _wd_tc1 - _wd_tc0;
+            _wd_total += _wd_dt;
+            if (_wd_dt > _wd_bigMs) {
+                _wd_bigMs  = _wd_dt;
+                _wd_bigIdx = i;
+                const char *_wd_nm = m_children.ObjectAt(i)->getName();
+                if (_wd_nm && *_wd_nm) _wd_bigName = _wd_nm;
+                else _wd_bigName = "(unnamed)";
+            }
+        }
+
+        if (_wd_doPrint) {
+            _wd_lastPrint = _wd_t0;
+            Com_Printf("WD-PROF: %d children total=%d ms biggest='%s'@%d (idx=%d)\n",
+                n, _wd_total, _wd_bigName, _wd_bigMs, _wd_bigIdx);
+        }
+    } else {
+        n = m_children.NumObjects();
+        for (i = 1; i <= m_children.NumObjects(); i++) {
+            m_children.ObjectAt(i)->Display(m_frame, m_local_alpha);
+        }
+    }
+#else
     n = m_children.NumObjects();
     for (i = 1; i <= m_children.NumObjects(); i++) {
         m_children.ObjectAt(i)->Display(m_frame, m_local_alpha);
     }
+#endif
 }
 
 qboolean UIWidget::KeyEvent(int key, unsigned int time)

@@ -494,7 +494,18 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	/* Half-res test (480x272) confirmed NOT fillrate-bound — FPS
 	 * unchanged with 4x fewer pixels, only the 2D HUD/cursor got
 	 * upscaled-blurry. Back to native; bottleneck is draw call /
-	 * state change overhead, not pixels. */
+	 * state change overhead, not pixels.
+	 *
+	 * legacy_pool_size: this is the buffer vitaGL uses to MIRROR the
+	 * client-side vertex arrays that Q3 passes via glVertexPointer +
+	 * glDrawElements. Q3 doesn't use VBOs, so every draw copies its
+	 * verts into this pool. m1l1 outdoor needs ~1 MB/frame of vert
+	 * data across ~15 draws. With 4 MB the pool wraps within a single
+	 * frame and vitaGL blocks waiting for GPU to finish reading the
+	 * old data — measured 55-62 ms in V3-PROF's set2d slot (which is
+	 * the first R_IssuePendingRenderCommands of the frame, the point
+	 * where the queued 3D scene actually submits). Bumping to 32 MB
+	 * gives ~30 frames of headroom so vitaGL never blocks mid-frame. */
 	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
 
 	/* Bridge the LiveArea startup.png onto our first GL frame so the
@@ -1365,7 +1376,21 @@ void GLimp_EndFrame( void )
 		 * vitaGL retains its full present pipeline (matches what
 		 * vitaQuakeIII does — Vita3K is known to miss the present
 		 * with GL_FALSE). */
-		vglSwapBuffers( 1 );
+		{
+			/* Time the swap separately so we can see how much of
+			 * SCR_UpdateScreen is just waiting for the GPU to finish
+			 * the queued commands. Print 1x/sec. */
+			extern int Sys_Milliseconds(void);
+			static int s_lastSwapPrint = 0;
+			int swap_t0 = Sys_Milliseconds();
+			vglSwapBuffers( 1 );
+			int swap_t1 = Sys_Milliseconds();
+			int now = swap_t1;
+			if ((now - s_lastSwapPrint) >= 1000) {
+				s_lastSwapPrint = now;
+				ri.Printf(PRINT_ALL, "GFX-SWAP: vglSwapBuffers=%d ms\n", swap_t1 - swap_t0);
+			}
+		}
 		{ extern void Vita_BootSplash_NoteEngineFrame(void);
 		  Vita_BootSplash_NoteEngineFrame(); }
 #else

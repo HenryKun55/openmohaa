@@ -241,18 +241,60 @@ void UIWindowManager::UpdateViews(void)
     int n;
     int x, y;
 
+#ifdef __vita__
+    /* Time each top-level widget so we can see which one (view3d or a
+     * stale menu still in the tree) is eating frame time in gameplay. */
+    extern int Sys_Milliseconds(void);
+    int        _uv_t0 = Sys_Milliseconds();
+    int        _uv_bgms = 0, _uv_childms = 0;
+    int        _uv_bigChild = -1, _uv_bigChildMs = 0;
+    static int _uv_lastPrint = 0;
+    qboolean   _uv_doPrint = (_uv_t0 - _uv_lastPrint) >= 1000;
+#endif
+
     if (m_backgroundwidget) {
         m_backgroundwidget->Display(m_frame, 1.0);
+#ifdef __vita__
+        _uv_bgms = Sys_Milliseconds() - _uv_t0;
+#endif
 
         n = m_children.NumObjects();
         for (i = 1; i <= n; i++) {
             if (m_children.ObjectAt(i) != m_backgroundwidget) {
+#ifdef __vita__
+                int _uv_tc0 = Sys_Milliseconds();
+#endif
                 m_children.ObjectAt(i)->Display(m_frame, 1.0);
+#ifdef __vita__
+                int _uv_tc1 = Sys_Milliseconds();
+                int _uv_dt  = _uv_tc1 - _uv_tc0;
+                _uv_childms += _uv_dt;
+                if (_uv_dt > _uv_bigChildMs) {
+                    _uv_bigChildMs = _uv_dt;
+                    _uv_bigChild   = i;
+                }
+#endif
             }
         }
     } else {
         Display(m_frame, 1.0);
     }
+
+#ifdef __vita__
+    if (_uv_doPrint) {
+        _uv_lastPrint = _uv_t0;
+        const char *_uv_bigName = "?";
+        if (_uv_bigChild >= 1 && _uv_bigChild <= m_children.NumObjects()) {
+            UIWidget *_uv_w = m_children.ObjectAt(_uv_bigChild);
+            if (_uv_w) {
+                const char *_uv_nm = _uv_w->getName();
+                if (_uv_nm && *_uv_nm) _uv_bigName = _uv_nm;
+            }
+        }
+        Com_Printf("UV-PROF: bg=%d children_total=%d biggest='%s'@%d ms (idx=%d)\n",
+            _uv_bgms, _uv_childms, _uv_bigName, _uv_bigChildMs, _uv_bigChild);
+    }
+#endif
 
     if (m_cursor && m_showcursor && uid.uiHasMouse) {
         vec4_t col;
