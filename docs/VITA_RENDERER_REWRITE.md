@@ -227,7 +227,35 @@ Bind & draw without re-copying client arrays each frame.
 Mitigation: cvar lets us flip back immediately. Test scene comparison
 side-by-side before committing.
 
-### Phase 2 — GPU skinning for NPCs (3-5 days, MEDIUM risk)
+### ✅ Phase 2a — GPU skinning shader compile/link (DONE 2026-05-17)
+
+Compiled the matrix-palette vertex shader + minimal fragment shader
+via vitashark at renderer init. Cvar `r_vita_gpu_skinning` gates
+(default 0); when 1 the program is built once and the ID is held in
+`tr_vita_skin.c`. Draw path is NOT touched — that's Phase 2b.
+
+GLSL summary (full source in `code/renderergl1/tr_vita_skin.c`):
+- Vertex: 4-weight skinning. `u_boneMatrix[300]` (100 bones × 3
+  rows of vec4) + `u_boneOffset[100]` translations. `a_position` is
+  the local-space vertex offset; `a_boneIndices`/`a_boneWeights`
+  are 4-wide. Output is `gl_Position = u_mvp * vec4(skinned, 1)`
+  with diffuse UV pass-through.
+- Fragment: bare `texture2D(u_diffuse, v_texcoord)` for the test.
+  Lightmap + dlight + multi-pass shader stages are deferred to
+  Phase 2b/2c.
+
+**OUTCOME (Vita Fat boot log):**
+```
+[VITA-SKIN] skin.vert compile OK
+[VITA-SKIN] skin.frag compile OK
+[VITA-SKIN] program LINK OK, prog=1 — Phase 2b will wire into RB_SkelMesh
+```
+
+vitashark accepted GLSL ES 100 with `precision highp float` and 300
+uniform vec4s. No surprises. The shader pipeline is now proven on
+Vita; the remaining risk is the *wire-in*, not the compile.
+
+### Phase 2b — wire program into RB_SkelMesh (NEXT)
 
 Move TIKI mesh skinning from CPU (`RB_SkelMesh`) to vertex shader via
 matrix palette uniforms.
@@ -310,6 +338,7 @@ Replace generic GL calls with vitaGL fast-path APIs where they exist.
 | 1b first cut | -35% (50→32ms) | ~no change | +50% | ~no change | **Visually broken — walls glitched.** Single texCoord offset (12) used for ALL passes; lightmap pass needed offset 20. Rolled back to cvar=0. |
 | 1b dual-TMU + u16 | -35% | ~no change (~58ms) | +50% | 9 FPS gameplay | Fixed single-pass multitexture walls + IBO format. Multipass walls still broken because pass 1 (lightmap) hard-codes UV offset 12. Rolled back. |
 | 1b proper-proper | -35% | TBD | +50% | TBD | Per-stage texCoord override in RB_IterateStagesGeneric. |
+| 2a | n/a (infra only) | n/a | n/a | n/a | Vertex+fragment GLSL compile + link via vitashark. prog=1 OK on first run. |
 | 2 | -10% | TBD | +25% | TBD | GPU skinning |
 | 3 | -15% | TBD | +15% | TBD | Combined stages |
 | 4 | -5% | TBD | +10% | TBD | Front-to-back |

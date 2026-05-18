@@ -1741,6 +1741,12 @@ void R_Init( void ) {
 	if ( err != GL_NO_ERROR )
 		ri.Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
 
+#ifdef __vita__
+	/* Phase 2a: compile the GPU skinning program if the cvar is set.
+	 * No-op when cvar is 0 (default). Logs success/failure inline. */
+	R_VitaGpuSkin_Init();
+#endif
+
 	ri.Printf( PRINT_ALL, "----- finished R_Init -----\n" );
 }
 

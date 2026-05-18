@@ -1518,6 +1518,14 @@ typedef struct vitaWorldVboSurf_s {
 } vitaWorldVboSurf_t;
 const vitaWorldVboSurf_t *R_VitaWorldVBO_LookupSurf(int idx);
 void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes);
+
+/* Phase 2: when 1, TIKI skeleton skinning runs in a vertex shader
+ * (matrix palette) instead of the CPU loop in RB_SkelMesh. Default
+ * 0; Phase 2a only compiles the program at init and stops. */
+extern cvar_t *r_vita_gpu_skinning;
+void     R_VitaGpuSkin_Init(void);
+void     R_VitaGpuSkin_Shutdown(void);
+qboolean R_VitaGpuSkin_IsReady(void);
 #endif
 extern  cvar_t	*r_detailTextures;		// enables/disables detail texturing stages
 extern	cvar_t	*r_novis;				// disable/enable usage of PVS
