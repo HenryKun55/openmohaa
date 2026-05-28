@@ -22,6 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_shade.c
 
 #include "tr_local.h"
+#ifdef __vita__
+#include "tr_vita_perflog.h"
+#endif
 
 /*
 
@@ -175,6 +178,7 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	 * vitaQuakeIII does the same simplification (their tr_shade.c
 	 * R_DrawElements is just this single glDrawElements call). */
 	backEnd.pc.c_drawElems++;
+	int _vp_de_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
 	/* Phase 1b: if the current tess is a world surface that lives in
 	 * the VBO, dispatch the draw via the VBO bind path instead of
 	 * passing client-side indexes. The shader stage iterator will
@@ -184,9 +188,19 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	if (tess.useVitaWorldVBO) {
 		R_VitaWorldVBO_BindAndDraw(tess.vitaWorldVboFirstIndex,
 		                           tess.vitaWorldVboNumIndexes);
+		if (r_vita_perflog && r_vita_perflog->integer) {
+			g_vitaPerf.us_drawElems     += (Sys_Milliseconds() - _vp_de_t0);
+			g_vitaPerf.drawElems_calls++;
+			g_vitaPerf.drawElems_indexes += tess.vitaWorldVboNumIndexes;
+		}
 		return;
 	}
 	qglDrawElements( GL_TRIANGLES, numIndexes, GL_INDEX_TYPE, indexes );
+	if (r_vita_perflog && r_vita_perflog->integer) {
+		g_vitaPerf.us_drawElems     += (Sys_Milliseconds() - _vp_de_t0);
+		g_vitaPerf.drawElems_calls++;
+		g_vitaPerf.drawElems_indexes += numIndexes;
+	}
 	return;
 #else
 	int		primitives;
@@ -425,6 +439,9 @@ t1 = most downstream according to spec
 */
 static void DrawMultitextured( shaderCommands_t *input, int stage ) {
 	shaderStage_t	*pStage;
+#ifdef __vita__
+	int _vp_mt_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+#endif
 
 	pStage = tess.xstages[stage];
 
@@ -440,6 +457,16 @@ static void DrawMultitextured( shaderCommands_t *input, int stage ) {
 	// base
 	//
 	GL_SelectTexture( 0 );
+#ifdef __vita__
+	/* Phase 3 visual fix (2026-05-19): vitaGL doesn't carry a sensible
+	 * default TEXTURE_ENV_MODE on TMU 0 when multitexture activates —
+	 * test showed lightmap visible (TMU 1 had explicit GL_MODULATE/
+	 * GL_REPLACE set) but diffuse missing (TMU 0 was in some default
+	 * that discarded the texture). Force MODULATE here so TMU 0
+	 * outputs (primary_color × diffuse_tex), then TMU 1's combine
+	 * multiplies with lightmap. */
+	GL_TexEnv( GL_MODULATE );
+#endif
 	qglTexCoordPointer( 2, GL_FLOAT, 0, input->svars.texcoords[0] );
 	R_BindAnimatedImage( &pStage->bundle[0] );
 
@@ -525,6 +552,13 @@ static void DrawMultitextured( shaderCommands_t *input, int stage ) {
 	qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
 	GL_SelectTexture( 0 );
+
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) {
+		g_vitaPerf.us_multitex   += (Sys_Milliseconds() - _vp_mt_t0);
+		g_vitaPerf.multitex_draws++;
+	}
+#endif
 }
 
 
@@ -1477,6 +1511,10 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 static void RB_IterateStagesGeneric( shaderCommands_t *input )
 {
 	int stage;
+#ifdef __vita__
+	int _vp_iter_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+	int _vp_iter_stages = 0;
+#endif
 
 	for (stage = 0; stage < MAX_SHADER_STAGES; stage++)
 	{
@@ -1494,8 +1532,25 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			continue;
 		}
 
+#ifdef __vita__
+		_vp_iter_stages++;
+		int _vp_ctc_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+#endif
 		ComputeTexCoords(pStage);
+#ifdef __vita__
+		if (r_vita_perflog && r_vita_perflog->integer) {
+			g_vitaPerf.us_computeTC += (Sys_Milliseconds() - _vp_ctc_t0);
+			g_vitaPerf.computeTC_calls++;
+		}
+		int _vp_cc_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+#endif
 		ComputeColors(pStage);
+#ifdef __vita__
+		if (r_vita_perflog && r_vita_perflog->integer) {
+			g_vitaPerf.us_computeColors += (Sys_Milliseconds() - _vp_cc_t0);
+			g_vitaPerf.computeColors_calls++;
+		}
+#endif
 
 		if (!setArraysOnce)
 		{
@@ -1543,7 +1598,16 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			//
 			// draw
 			//
+#ifdef __vita__
+			int _vp_sd_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+#endif
 			R_DrawElements(input->numIndexes, input->indexes);
+#ifdef __vita__
+			if (r_vita_perflog && r_vita_perflog->integer) {
+				g_vitaPerf.us_single   += (Sys_Milliseconds() - _vp_sd_t0);
+				g_vitaPerf.single_draws++;
+			}
+#endif
 		}
 		// allow skipping out to show just lightmaps during development
 		if (r_lightmap->integer && (pStage->bundle[0].isLightmap || pStage->bundle[1].isLightmap || pStage->bundle[0].vertexLightmap))
@@ -1551,6 +1615,13 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			break;
 		}
 	}
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) {
+		g_vitaPerf.us_stageIter += (Sys_Milliseconds() - _vp_iter_t0);
+		g_vitaPerf.stageIter_calls++;
+		g_vitaPerf.stageIter_total_stages += _vp_iter_stages;
+	}
+#endif
 }
 
 
@@ -1862,6 +1933,9 @@ void RB_StageIteratorLightmappedMultitextureUnfogged( void ) {
 */
 void RB_EndSurface( void ) {
 	shaderCommands_t *input;
+#ifdef __vita__
+	int _vp_es_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+#endif
 
 	input = &tess;
 
@@ -1923,6 +1997,13 @@ void RB_EndSurface( void ) {
 	 * didn't reliably stop the m1l1 vertex artefacts either. The real
 	 * fix likely lives at the TIKI→world transition specifically;
 	 * needs further investigation with a GL frame capture.) */
+
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) {
+		g_vitaPerf.us_endSurface += (Sys_Milliseconds() - _vp_es_t0);
+		g_vitaPerf.endSurface_calls++;
+	}
+#endif
 
 	GLimp_LogComment( "----------\n" );
 }

@@ -185,6 +185,16 @@ void R_VitaWorldVBO_Build(void)
         if (tri->numVerts <= 0 || tri->numIndexes <= 0) {
             continue;
         }
+        /* Sky / portal-sky surfaces draw through their own path
+         * (RB_SurfaceSky, tcGen sky, depth tricks). On Vita SF_FACE is
+         * routed to SF_TRIANGLES, so sky brushes land here too — but
+         * pushing them through the static world VBO renders garbage
+         * (the "céu cagado" on m1l1). Leave them out: vitaVboSurfIdx
+         * stays -1 so RB_SurfaceTriangles falls back to the normal
+         * draw for them. Walls (the bulk) still go through the VBO. */
+        if (surf->shader && (surf->shader->isSky || surf->shader->isPortalSky)) {
+            continue;
+        }
 
         worldVboSurf[i].vertOffset  = accumVerts;
         worldVboSurf[i].numVerts    = tri->numVerts;

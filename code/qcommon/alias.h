@@ -44,6 +44,9 @@ typedef struct AliasListNode_s {
     // Static alias info
     byte                    stop_flag;
     struct AliasListNode_s *next;
+    // Hash chain for O(1) duplicate detection during Alias_ListAdd
+    // (see hash_table in AliasList_s). NULL when the list has no hash.
+    struct AliasListNode_s *hash_next;
 
     // Global alias info
     float    pitch;
@@ -64,6 +67,14 @@ typedef struct AliasList_s {
     int               num_in_list;
     AliasListNode_t **sorted_list;
     AliasListNode_t  *data_list;
+    // Lazily-built hash index (by alias_name) for O(1) dup detection on
+    // insert. NULL until the list grows past ALIAS_HASH_THRESHOLD, so the
+    // many tiny per-tiki lists stay zero-overhead; only big lists like the
+    // global ubersound table (thousands of entries) build one. hash_size
+    // is the bucket count (power of two), hash_mask = hash_size - 1.
+    AliasListNode_t **hash_table;
+    int               hash_size;
+    int               hash_mask;
 } AliasList_t;
 
 #if defined(APP_MODULE)

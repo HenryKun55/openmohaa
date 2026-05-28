@@ -1526,6 +1526,12 @@ extern cvar_t *r_vita_gpu_skinning;
 void     R_VitaGpuSkin_Init(void);
 void     R_VitaGpuSkin_Shutdown(void);
 qboolean R_VitaGpuSkin_IsReady(void);
+
+/* Load-time: when 1, mipmaps are built on the GXM GPU via
+ * glGenerateMipmap instead of the CPU R_MipMap loop in Upload32.
+ * The CPU loop is the #1 level-load cost at 444 MHz (every texture,
+ * every mip level, plus a qglTexImage2D upload each). Default 1. */
+extern cvar_t *r_vita_gpu_mipmap;
 #endif
 extern  cvar_t	*r_detailTextures;		// enables/disables detail texturing stages
 extern	cvar_t	*r_novis;				// disable/enable usage of PVS

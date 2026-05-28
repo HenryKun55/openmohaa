@@ -20,6 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 #include "tr_local.h"
+#ifdef __vita__
+#include "tr_vita_perflog.h"
+#endif
 
 static backEndCounters_t pc_save;
 
@@ -46,7 +49,9 @@ void R_PerformanceCounters( void ) {
 	qboolean   r_speeds_shouldPrint   = qfalse;
 	if (r_speeds->integer && (r_speeds_nowMsec - r_speeds_lastPrintMsec) >= 1000) {
 		r_speeds_shouldPrint = qtrue;
-		r_speeds_lastPrintMsec = r_speeds_nowMsec;
+		/* DON'T bump lastPrint here — only bump after we actually
+		 * print a real gameplay frame. Otherwise the throttle skips
+		 * the next 1 sec waiting for nothing. */
 	}
 #endif
 	if (r_fps->integer) {
@@ -67,10 +72,22 @@ void R_PerformanceCounters( void ) {
 	}
 #ifdef __vita__
 	if ( !r_speeds_shouldPrint ) {
-		Com_Memset( &tr.pc, 0, sizeof( tr.pc ) );
-		Com_Memset( &backEnd.pc, 0, sizeof( backEnd.pc ) );
+		/* PERF (2026-05-18): DON'T reset on non-print frames. The
+		 * throttled 1×/sec print should reflect a real gameplay
+		 * frame, not whichever frame happens to win the timer race
+		 * (often a menu/HUD-only frame with 4 draws). Letting counters
+		 * accumulate means the print catches a representative sample
+		 * of the frame budget. They get reset on the print frame. */
 		return;
 	}
+	/* Skip prints from frames where the 3D scene wasn't drawn (menu,
+	 * loading, intermission). c_surfaces is incremented in
+	 * RB_RenderDrawSurfList so zero = no 3D scene this frame. We
+	 * stay in accumulation mode until we catch a gameplay frame. */
+	/* PerformanceCounters runs BEFORE the end-of-frame flush, so the
+	 * counters reflect PRIOR frames' work. Print + reset to start a
+	 * fresh accumulation window for the next 1-sec interval. */
+	r_speeds_lastPrintMsec = r_speeds_nowMsec;
 #endif
 
 	if (r_speeds->integer == 1) {
@@ -127,14 +144,19 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters ) {
 	// clear it out, in case this is a sync and not a buffer flip
 	cmdList->used = 0;
 
-	if ( runPerformanceCounters ) {
-		R_PerformanceCounters();
-	}
-
-	// actually start the commands going
+	// actually start the commands going FIRST so the final-frame
+	// flush (RC_DRAW_SURFS for the scene + RC_SWAP_BUFFERS) is
+	// reflected in the counters before we print + reset them.
 	if ( !r_skipBackEnd->integer ) {
 		// let it start on the new batch
 		RB_ExecuteRenderCommands( cmdList->cmds );
+	}
+
+	if ( runPerformanceCounters ) {
+		R_PerformanceCounters();
+#ifdef __vita__
+		VitaPerf_PrintMaybe();
+#endif
 	}
 }
 

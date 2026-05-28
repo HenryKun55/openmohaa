@@ -4464,6 +4464,25 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     this->pSfx = pSfx;
     Q_strncpyz(this->fileName, pSfx->name, sizeof(this->fileName));
 
+    /* PERF (2026-05-18): if a previous play of this sfx finished
+     * within one chunk (short sound: pain, hit, weapon), the entire
+     * decoded PCM lives in pSfx->cachedStreamBuffer. Reuse it and
+     * skip the disk-open + codec-init that sample profile showed
+     * eats ~7-8 ms per call. Damage events fire 2-3 sounds back-to-
+     * back so this turns a 25 ms lag spike into ~0. */
+    if (pSfx->cachedStreamBuffer && qalIsBuffer(pSfx->cachedStreamBuffer)) {
+        qalSourceStop(source);
+        alDieIfError();
+        qalSourceQueueBuffers(source, 1, &pSfx->cachedStreamBuffer);
+        alDieIfError();
+        iBaseRate  = pSfx->cachedStreamRate;
+        streaming  = false;
+        streamNextOffset = 0;
+        /* Mark these slot AL buffers as not-yet-allocated so update_()
+         * won't try to refill them via S_CodecReadStream. */
+        return true;
+    }
+
     streamHandle = S_CodecLoad(pSfx->name, NULL);
     if (!streamHandle) {
         Com_DPrintf("OpenAL: Failed to load sound file.\n");
@@ -4521,6 +4540,29 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     alDieIfError();
 
     iBaseRate  = stream->info.rate;
+
+    /* PERF (2026-05-18): if first read returned LESS than asked,
+     * the entire sound fit in this one buffer. Clone the AL buffer
+     * to the sfx so the next play can reuse it without reopening.
+     * Don't try to cache long streams (music) — they'd waste VRAM
+     * and the codec would still be needed for continuation. */
+    if (bytesRead < bytesToRead) {
+        unsigned int newBuf = 0;
+        qalGenBuffers(1, &newBuf);
+        alDieIfError();
+        qalBufferData(newBuf, pSfx->info.format, rawData, bytesRead, stream->info.rate);
+        alDieIfError();
+        pSfx->cachedStreamBuffer = newBuf;
+        pSfx->cachedStreamRate   = stream->info.rate;
+        pSfx->cachedStreamALFormat = pSfx->info.format;
+        /* Close the codec stream — we don't need to read more. */
+        S_CodecCloseStream(stream);
+        streamHandle = NULL;
+        streaming    = false;
+        currentBuf   = (currentBuf + 1) % MAX_STREAM_BUFFERS;
+        return true;
+    }
+
     currentBuf = (currentBuf + 1) % MAX_STREAM_BUFFERS;
     streaming  = true;
 

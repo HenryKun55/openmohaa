@@ -110,13 +110,23 @@ static VitaPerfMenuItem g_pmTextures[] = {
 
 /* ---------- DEBUG / DIAG ---------- */
 static VitaPerfMenuItem g_pmDebug[] = {
-    { "NO REFRESH (kill all)",    "r_norefresh",       qfalse, 0 }, /* skips ALL rendering — black screen */
-    { "Skip Backend",             "r_skipBackEnd",     qfalse, 0 },
+    { "NO REFRESH (perf test)",   "r_norefresh",       qfalse, 0 }, /* skips ALL rendering — measure non-render CPU ceiling */
+    /* "Skip Backend" removed 2026-05-19 — r_skipBackEnd freezes the GL
+     * backend mid-frame and leaves the client unable to recover, since
+     * RE_EndFrame's BeginFrame check doesn't reset. Available via
+     * console (`/r_skipBackEnd 1`) but the menu toggle was a foot-gun. */
+    /* "Measure Overdraw" removed 2026-05-19 — toggling r_measureOverdraw
+     * at runtime triggers a GL_INVALID_ENUM in vitaGL's stencil emulation
+     * (seen in crashlog), then RE_BeginFrame aborts the next frame and the
+     * client falls back to disconnect. Stays available via console for
+     * developer use. */
     { "Show Tris",                "r_showtris",        qfalse, 0 },
     { "Show Normals",             "r_shownormals",     qfalse, 0 },
     { "r_speeds Print",           "r_speeds",          qfalse, 6 },
     { "com_speeds Print",         "com_speeds",        qfalse, 0 },
-    { "Measure Overdraw",         "r_measureOverdraw", qfalse, 0 },
+    { "VITA-PERF log (1×/sec)",   "r_vita_perflog",    qfalse, 0 }, /* timing breakdown of render subsystems */
+    { "VITA force multitexture",  "r_vita_force_mtex", qfalse, 0 }, /* Phase 3 — diffuse+lightmap single pass */
+    { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0 }, /* Phase 1 — BSP geometry from VRAM VBO */
 };
 
 static VitaPerfMenuCategory g_pmCats[] = {
@@ -164,8 +174,17 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
     }
     char buf[16];
     Com_sprintf(buf, sizeof(buf), "%d", next);
+    /* 2026-05-19: mark the cvar CVAR_ARCHIVE so the toggle PERSISTS
+     * across launches. Previously Cvar_Set didn't archive, which is
+     * why the "bonitão" config the user set up by hand reverted to
+     * autoexec defaults on every restart. */
     Cvar_Set(it->cvarName, buf);
-    Com_Printf("PERF-MENU: %s = %d\n", it->cvarName, next);
+    cvar_t *cv = Cvar_FindVar(it->cvarName);
+    if (cv) {
+        cv->flags |= CVAR_ARCHIVE;
+        cvar_modifiedFlags |= CVAR_ARCHIVE;  /* trigger config save */
+    }
+    Com_Printf("PERF-MENU: %s = %d (archived)\n", it->cvarName, next);
 }
 
 void CL_VitaPerfMenu_Toggle_f(void)

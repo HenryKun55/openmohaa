@@ -1999,14 +1999,19 @@ void UIWidget::Display(const UIRect2D& drawframe, float parent_alpha)
 #ifdef __vita__
     /* Top-level widget timing — only fires for widgets whose parent is
      * NULL (i.e., uWinMan itself when called via UpdateViews → Display).
-     * Times each child so we can identify the heavyweight (view3d). */
+     * Times each child so we can identify which one is the heavyweight.
+     * Throttled to 1×/sec; prints TOP 5 children by time so we can see
+     * if the cost is concentrated in one widget (view3d) or spread
+     * across multiple HUD widgets. */
     if (m_parent == NULL) {
         extern int Sys_Milliseconds(void);
         static int _wd_lastPrint = 0;
         int        _wd_t0        = Sys_Milliseconds();
         qboolean   _wd_doPrint   = (_wd_t0 - _wd_lastPrint) >= 1000;
-        int        _wd_total = 0, _wd_bigMs = 0, _wd_bigIdx = -1;
-        const char *_wd_bigName = "?";
+        int        _wd_total = 0;
+        /* Top 5 widgets by time (descending). */
+        int         _wd_topMs[5]   = {0, 0, 0, 0, 0};
+        const char *_wd_topName[5] = {"?", "?", "?", "?", "?"};
 
         n = m_children.NumObjects();
         for (i = 1; i <= n; i++) {
@@ -2015,19 +2020,30 @@ void UIWidget::Display(const UIRect2D& drawframe, float parent_alpha)
             int _wd_tc1 = Sys_Milliseconds();
             int _wd_dt  = _wd_tc1 - _wd_tc0;
             _wd_total += _wd_dt;
-            if (_wd_dt > _wd_bigMs) {
-                _wd_bigMs  = _wd_dt;
-                _wd_bigIdx = i;
+
+            if (_wd_dt > _wd_topMs[4]) {
                 const char *_wd_nm = m_children.ObjectAt(i)->getName();
-                if (_wd_nm && *_wd_nm) _wd_bigName = _wd_nm;
-                else _wd_bigName = "(unnamed)";
+                if (!_wd_nm || !*_wd_nm) _wd_nm = "(unnamed)";
+                /* Insertion sort into descending top-5. */
+                int j;
+                for (j = 4; j > 0 && _wd_topMs[j - 1] < _wd_dt; j--) {
+                    _wd_topMs[j]   = _wd_topMs[j - 1];
+                    _wd_topName[j] = _wd_topName[j - 1];
+                }
+                _wd_topMs[j]   = _wd_dt;
+                _wd_topName[j] = _wd_nm;
             }
         }
 
         if (_wd_doPrint) {
             _wd_lastPrint = _wd_t0;
-            Com_Printf("WD-PROF: %d children total=%d ms biggest='%s'@%d (idx=%d)\n",
-                n, _wd_total, _wd_bigName, _wd_bigMs, _wd_bigIdx);
+            Com_Printf("WD-PROF: n=%d total=%d top5: '%s'=%d '%s'=%d '%s'=%d '%s'=%d '%s'=%d\n",
+                       n, _wd_total,
+                       _wd_topName[0], _wd_topMs[0],
+                       _wd_topName[1], _wd_topMs[1],
+                       _wd_topName[2], _wd_topMs[2],
+                       _wd_topName[3], _wd_topMs[3],
+                       _wd_topName[4], _wd_topMs[4]);
         }
     } else {
         n = m_children.NumObjects();

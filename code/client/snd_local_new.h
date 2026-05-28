@@ -79,6 +79,22 @@ typedef struct sfx_s {
 
     wavinfo_t    info;
     unsigned int buffer;
+
+    /* PERF (2026-05-18): cached OpenAL buffer for short streamed
+     * sounds (pain grunts, hit sounds, weapon fire — anything that
+     * fits in one MAX_BUFFER_SAMPLES chunk). Without this, every
+     * play of a streamed sfx calls S_CodecLoad which opens the file
+     * and decodes its header — sample profile showed this taking
+     * 7-8 ms per play on M4 Pro, and Vita's memory card I/O is way
+     * worse, so damage events lag for ~50-100 ms while 3 pain
+     * sounds load back-to-back. cachedStreamBuffer holds the
+     * decoded PCM upload after the first play; subsequent plays
+     * queue this AL buffer directly, no codec, no disk. Reset on
+     * level change via S_OPENAL_FreeSfx (registration_sequence
+     * mismatch). */
+    unsigned int cachedStreamBuffer;
+    int          cachedStreamRate;       /* AL freq stored to set iBaseRate without reopening */
+    unsigned int cachedStreamALFormat;   /* AL format constant — we need it to know what was cached */
 } sfx_t;
 
 typedef struct {

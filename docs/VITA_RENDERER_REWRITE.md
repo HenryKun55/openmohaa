@@ -210,6 +210,26 @@ committed (cheap when off). Moving on to Phase 2 (GPU skinning)
 which has a clearer architectural win and doesn't have the
 multipass-shader texCoord coupling problem.
 
+### ✅ Phase 1b — LANDED (2026-05-28), walls work, sky fixed
+
+The dual-TMU BindAndDraw + draw-path hooks (tess.useVitaWorldVBO in
+RB_SurfaceTriangles + R_DrawElements) were already committed; only the cvar
+default was 0. The reason it broke twice before was multipass shaders. The
+unlock: **enable multitexture first** (see Phase 3 below — r_vita_force_mtex)
+so ~95% of BSP walls collapse to single-pass diffuse+lightmap (CollapseMultitexture
+hit 133/140 = 95% on m1l1). With the walls single-pass, BindAndDraw's TMU0
+offset 12 + TMU1 offset 20 is correct → **walls render perfectly** (the case
+that rolled back twice).
+
+Live test 2026-05-28: walls good, but the **sky was garbage** — sky brushes
+are SF_FACE→SF_TRIANGLES on Vita so they landed in the VBO and drew as plain
+geometry. Fix: R_VitaWorldVBO_Build now skips `shader->isSky || isPortalSky`
+(leaves vitaVboSurfIdx = -1 so sky draws its own path). Enabled via autoexec
+`set r_vita_vbo_world 1` + `set r_vita_force_mtex 1`.
+
+KNOWN-STILL-TODO: texMod/animated-UV surfaces can't use static VBO offsets —
+exclude if they show artifacts. SF_GRID patches not in VBO yet.
+
 ### Phase 1b proper-proper — deferred
 
 Upload static BSP world geometry to a vitaGL VBO once at level load.
@@ -345,6 +365,76 @@ Replace generic GL calls with vitaGL fast-path APIs where they exist.
 | 5 | -5% | TBD | +5% | TBD | vitaGL ext |
 
 ---
+
+## Load-time work (2026-05-28) — separate from the FPS roadmap
+
+User pain: levels take ~80 s to load. Pulled a live `boot.log` over FTP
+(VitaShell, 192.168.1.3:1337) and found the real costs:
+
+| Phase | boot.log line | Cost |
+|---|---|---|
+| Server Initialization Complete | sv_init.c:971 | **82.09 s** |
+| `ubersound.scr` Parse/Load | cg_main.c:259 | **20.89 s** |
+| `uberdialog.scr` Parse/Load | cg_main.c:259 | 1.98 s |
+| CL_InitCGame total | cl_cgame.cpp:978 | **50.95 s** |
+
+### ✅ ubersound O(n²) — THE big find (fixed 2026-05-28)
+
+`Alias_ListAdd` (qcommon/alias.c) sets `list->dirty=1` after every insert,
+and the dirty branch does a **full linear scan of the linked list** to
+detect duplicate alias names. So loading ubersound.scr's thousands of
+aliases is O(n²) → 21 s on the 444 MHz CPU. Nobody noticed on PC (21 s
+there is ~0.2 s).
+
+**Fix:** lazily-built hash index on `AliasList_t` (added `hash_table`,
+`hash_size`, `hash_mask`; `hash_next` on the node). Built only once a list
+passes 32 entries, so the many tiny per-tiki lists stay zero-overhead and
+only big lists (global ubersound table) get a table. Dup detection is now
+O(1). Identical semantics (hash the raw query, store lowercased names —
+same matches the old strcmp made). NOT gated by __vita__ (it's a genuine
+O(n²) bug), but only Vita feels it.
+
+### ⚠️ GPU mipmap generation (r_vita_gpu_mipmap, now default 0)
+
+`Upload32` built every texture's mip chain on the CPU (R_MipMap loop +
+a qglTexImage2D upload per level) — the dominant per-texture load cost.
+On Vita, replaced with one `glGenerateMipmap` after the level-0 upload
+(GXM builds the chain in VRAM). Falls back to the CPU loop when
+`r_colorMipLevels` debug is on.
+
+**Live test 2026-05-28: BROKE the UI — pink menu.** vitaGL's
+glGenerateMipmap leaves mipmapped UI textures incomplete/invalid (samples
+as magenta). Rolled the default back to 0 (opt-in). The cinematic path
+(RE_UploadCinematic, tr_backend.c) does NOT use Upload32 or mipmaps, so it
+was not the cause of the video slowdown. To revisit: only call
+glGenerateMipmap for known-good formats, or skip it for `allowPicmip==false`
+UI textures.
+
+### ⚠️ microSD I/O buffering (r_vita_io_buffer KB, now default 0)
+
+newlib's default stdio buffer is ~1 KB; the pk3s total ~1 GB (Pak2 alone
+527 MB) and zlib reads them in small chunks → one microSD syscall each.
+Added `setvbuf(.., _IOFBF, N KB)` for read streams in `Sys_FOpen`
+(#ifdef __vita__) and the zip ioapi `fopen_file_func` (the dominant asset
+path — pk3s don't go through Sys_FOpen).
+
+**Live test 2026-05-28: intro videos dropped to ~10 FPS** (suspected — big
+buffers amplify seeky video-stream reads into full 256 KB refills). Now
+gated by cvar `r_vita_io_buffer` (size in KB, 0 = off, default). Global
+`fs_vita_io_buf_bytes` set in FS_Startup before any pak opens. Set e.g.
+`r_vita_io_buffer 256` + restart to measure the load gain without it
+touching video.
+
+### ✅ lightmap upload fast-path
+
+`R_LoadLightmaps`: when `tr.overbrightShift == 0` the color-shift is an
+identity copy, so skip the per-pixel shift+normalize and just expand
+24→32 bit. Minor vs the above.
+
+**Status:** built + FTP-deployed to ux0:data/OpenMoHAA.vpk 2026-05-28.
+Awaiting a fresh boot.log to measure actual wins before deciding whether
+the offline DDS+mips pipeline (precomputed mips, GPU-native compressed
+upload, smaller files) is still worth building.
 
 ## What we will NOT do
 

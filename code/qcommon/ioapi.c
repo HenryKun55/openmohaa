@@ -18,6 +18,13 @@
 
 #include "ioapi.h"
 
+#ifdef __vita__
+/* Size (bytes) of the stdio read buffer for Vita file streams. 0 = use
+ * newlib's default (~1 KB). Set from cvar r_vita_io_buffer (in KB) during
+ * FS_Startup, before any pak is opened. Shared with Sys_FOpen. */
+int fs_vita_io_buf_bytes = 0;
+#endif
+
 
 
 /* I've found an old Unix (a SunOS 4.1.3_U1) without all SEEK_* defined.... */
@@ -88,6 +95,16 @@ voidpf ZCALLBACK fopen_file_func (opaque, filename, mode)
 
     if ((filename!=NULL) && (mode_fopen != NULL))
         file = fopen(filename, mode_fopen);
+#ifdef __vita__
+    /* pk3 archives are the dominant asset source on Vita and zlib reads
+     * them in many small chunks. newlib's default ~1 KB stdio buffer
+     * turns each into a microSD syscall. A larger fully-buffered stream
+     * (newlib owns the buffer, frees it on fclose) batches the sequential
+     * decompression reads into far fewer syscalls. Gated by cvar
+     * r_vita_io_buffer (KB); 0 = off (default) — see fs_vita_io_buf_bytes. */
+    if (file != NULL && mode_fopen != NULL && mode_fopen[0] == 'r' && fs_vita_io_buf_bytes > 0)
+        setvbuf(file, NULL, _IOFBF, fs_vita_io_buf_bytes);
+#endif
     return file;
 }
 

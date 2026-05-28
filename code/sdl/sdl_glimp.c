@@ -1143,6 +1143,36 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 					GLint glint = 0;
 					qglGetIntegerv( GL_MAX_TEXTURE_UNITS_ARB, &glint );
 					glConfig.numTextureUnits = (int) glint;
+#ifdef __vita__
+					/* PHASE 3 fix (2026-05-18): vitaGL returns 0 for the
+					 * legacy GL_MAX_TEXTURE_UNITS_ARB query (it's a GL 1.x
+					 * fixed-function limit; vitaGL exposes only the modern
+					 * GL_MAX_TEXTURE_IMAGE_UNITS). With 0, the engine
+					 * disables multitexture, which kills CollapseMultitexture
+					 * in tr_shader.c, which forces diffuse+lightmap onto
+					 * TWO separate draw calls. Profile showed 267 draws/
+					 * frame on m1l1 with ~34 of them being these extra
+					 * multipass draws. PowerVR SGX543MP4+ supports 8 TMUs
+					 * — query the modern constant; if that also fails,
+					 * force 2 so the multitexture path activates. */
+					if (glConfig.numTextureUnits < 2) {
+						GLint imgUnits = 0;
+						/* GL_MAX_TEXTURE_IMAGE_UNITS = 0x8872 */
+						qglGetIntegerv( 0x8872, &imgUnits );
+						if (imgUnits > 1) {
+							glConfig.numTextureUnits = imgUnits;
+							ri.Printf(PRINT_ALL,
+								"[VITA-MTEX] forced numTextureUnits=%d "
+								"(MAX_TEXTURE_UNITS_ARB returned 0, used MAX_TEXTURE_IMAGE_UNITS)\n",
+								glConfig.numTextureUnits);
+						} else {
+							glConfig.numTextureUnits = 2;
+							ri.Printf(PRINT_ALL,
+								"[VITA-MTEX] forced numTextureUnits=2 "
+								"(both queries returned <2; vitaGL supports multitexture anyway)\n");
+						}
+					}
+#endif
 					if ( glConfig.numTextureUnits > 1 )
 					{
 						ri.Printf( PRINT_ALL, "...using GL_ARB_multitexture\n" );
@@ -1164,6 +1194,30 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 		else
 		{
 			ri.Printf( PRINT_ALL, "...GL_ARB_multitexture not found\n" );
+#ifdef __vita__
+			/* PHASE 3 (2026-05-19): gated by cvar r_vita_force_mtex.
+			 * Set 1 to force multitexture ON via static-symbol bind
+			 * (vitaGL is statically linked, SDL_GL_ExtensionSupported
+			 * doesn't see it). Set 0 to keep legacy 2-pass rendering.
+			 * Companion fix in tr_shade.c DrawMultitextured forces
+			 * GL_MODULATE on TMU 0 so diffuse stays applied. */
+			cvar_t *r_vita_force_mtex_cv = ri.Cvar_Get("r_vita_force_mtex", "1", CVAR_ARCHIVE | CVAR_LATCH);
+			if (r_ext_multitexture->value && r_vita_force_mtex_cv->integer) {
+				extern void glActiveTexture(unsigned int);
+				extern void glClientActiveTexture(unsigned int);
+				extern void glMultiTexCoord2f(unsigned int, float, float);
+				qglActiveTextureARB       = (void *)glActiveTexture;
+				qglClientActiveTextureARB = (void *)glClientActiveTexture;
+				qglMultiTexCoord2fARB     = (void *)glMultiTexCoord2f;
+				glConfig.numTextureUnits  = 4;
+				ri.Printf(PRINT_ALL,
+					"[VITA-MTEX] multitexture ON, numTextureUnits=%d\n",
+					glConfig.numTextureUnits);
+			} else {
+				ri.Printf(PRINT_ALL, "[VITA-MTEX] multitexture left OFF (r_vita_force_mtex=%d)\n",
+					r_vita_force_mtex_cv->integer);
+			}
+#endif
 		}
 
 		// GL_EXT_compiled_vertex_array

@@ -3595,6 +3595,20 @@ static void FS_Startup(const char* gameName)
 	Com_Printf( "----- FS_Startup -----\n" );
 
 	fs_debug = Cvar_Get( "fs_debug", "0", 0 );
+#ifdef __vita__
+	/* Vita pk3 read-buffer size in KB. DEFAULT 0 (off): measured 2026-05-28
+	 * that buffering the pak FILE handle HURTS — reads within a pak are seeky
+	 * (jump between entry offsets), so a big stdio buffer refills the whole
+	 * buffer to serve a few KB. Server init went 82s -> 155s at 256 KB. Kept
+	 * as a cvar for experiments (small values may help sequential reads), but
+	 * off by default. ubersound's ~20s is WAV decode (CPU), not I/O, so
+	 * buffering never helped it anyway. */
+	{
+		extern int fs_vita_io_buf_bytes;
+		fs_vita_io_buf_bytes = Cvar_Get( "r_vita_io_buffer", "0", CVAR_ARCHIVE )->integer * 1024;
+		Com_Printf( "[VITA load-opt] pk3 read buffer = %d KB\n", fs_vita_io_buf_bytes / 1024 );
+	}
+#endif
 	fs_basepath = Cvar_Get("fs_basepath", Sys_DefaultInstallPath(), CVAR_INIT | CVAR_PROTECTED);
 	fs_basegame = Cvar_Get ("fs_basegame", "", CVAR_INIT );
 	fs_homeconfigpath = Cvar_Get ("fs_homeconfigpath", configPath, CVAR_INIT|CVAR_PROTECTED );

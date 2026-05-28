@@ -448,6 +448,11 @@ Upload32
 ===============
 */
 extern qboolean charSet;
+#ifdef __vita__
+/* vitaGL is statically linked; gl* symbols resolve directly (same as
+ * tr_vita_vbo.c). Hardware mipmap chain build — replaces the CPU loop. */
+extern void glGenerateMipmap( unsigned int target );
+#endif
 static void Upload32(
 	unsigned int* data,
 	int width,
@@ -661,25 +666,41 @@ static void Upload32(
 
 	if (numMipmaps)
 	{
-		int		miplevel;
-
-		miplevel = 0;
-		while (scaled_width > 1 || scaled_height > 1)
+#ifdef __vita__
+		/* Load-time win: build the whole mip chain on the GXM GPU from
+		 * the level-0 texture already uploaded above. Skips the CPU
+		 * R_MipMap loop (per texture, per level — the dominant level-load
+		 * CPU cost at 444 MHz) AND the per-level qglTexImage2D uploads.
+		 * r_colorMipLevels debug tinting isn't possible on GPU mips, so
+		 * fall back to the CPU loop when that debug cvar is on. */
+		if ( r_vita_gpu_mipmap && r_vita_gpu_mipmap->integer
+			&& !( r_colorMipLevels && r_colorMipLevels->integer ) )
 		{
-			R_MipMap( (byte *)scaledBuffer, scaled_width, scaled_height );
-			scaled_width >>= 1;
-			scaled_height >>= 1;
-			if (scaled_width < 1)
-				scaled_width = 1;
-			if (scaled_height < 1)
-				scaled_height = 1;
-			miplevel++;
+			glGenerateMipmap( GL_TEXTURE_2D );
+		}
+		else
+#endif
+		{
+			int		miplevel;
 
-			if ( r_colorMipLevels->integer ) {
-				R_BlendOverTexture( (byte *)scaledBuffer, scaled_width * scaled_height, mipBlendColors[miplevel] );
+			miplevel = 0;
+			while (scaled_width > 1 || scaled_height > 1)
+			{
+				R_MipMap( (byte *)scaledBuffer, scaled_width, scaled_height );
+				scaled_width >>= 1;
+				scaled_height >>= 1;
+				if (scaled_width < 1)
+					scaled_width = 1;
+				if (scaled_height < 1)
+					scaled_height = 1;
+				miplevel++;
+
+				if ( r_colorMipLevels->integer ) {
+					R_BlendOverTexture( (byte *)scaledBuffer, scaled_width * scaled_height, mipBlendColors[miplevel] );
+				}
+
+				qglTexImage2D (GL_TEXTURE_2D, miplevel, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
 			}
-
-			qglTexImage2D (GL_TEXTURE_2D, miplevel, internalFormat, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaledBuffer );
 		}
 	}
 done:

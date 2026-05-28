@@ -249,6 +249,17 @@ static	void R_LoadLightmaps(gamelump_t* l) {
                 image[j*4+3] = 255;
 
             }
+        } else if ( tr.overbrightShift == 0 ) {
+            // Fast path: with no overbright shift the color-shift is an
+            // identity copy (byte values can't exceed 255), so skip the
+            // per-pixel shift+normalize and just expand 24->32 bit. Hot
+            // on Vita where a level has hundreds of lightmaps.
+            for ( j = 0 ; j < LIGHTMAP_SIZE * LIGHTMAP_SIZE; j++ ) {
+                image[j*4+0] = buf_p[j*3+0];
+                image[j*4+1] = buf_p[j*3+1];
+                image[j*4+2] = buf_p[j*3+2];
+                image[j*4+3] = 255;
+            }
         } else {
             for ( j = 0 ; j < LIGHTMAP_SIZE * LIGHTMAP_SIZE; j++ ) {
                 R_ColorShiftLightingBytes( &buf_p[j*3], &image[j*4] );

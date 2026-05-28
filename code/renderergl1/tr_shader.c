@@ -20,6 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 #include "tr_local.h"
+#ifdef __vita__
+#include "tr_vita_perflog.h"
+#endif
 
 // tr_shader.c -- this file deals with the parsing and definition of shaders
 
@@ -2739,6 +2742,11 @@ static void CollapseMultitexture(int *stagecounter) {
 	shaderStage_t* stage;
 	textureBundle_t tmpBundle;
 
+#ifdef __vita__
+	extern vitaPerfStats_t g_vitaPerf;
+	g_vitaPerf.collapse_attempted++;
+#endif
+
 	for (stagenum = 0; stagenum < *stagecounter - 1; stagenum++) {
 		stage = &unfoggedStages[stagenum];
 
@@ -2853,6 +2861,9 @@ static void CollapseMultitexture(int *stagecounter) {
 
 		Com_Memset(&unfoggedStages[MAX_SHADER_STAGES - 1], 0, sizeof(unfoggedStages[0]));
 		(*stagecounter)--;
+#ifdef __vita__
+		g_vitaPerf.collapse_succeeded++;
+#endif
 	}
 }
 

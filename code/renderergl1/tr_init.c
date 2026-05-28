@@ -22,6 +22,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_init.c -- functions that are not called every frame
 
 #include "tr_local.h"
+#ifdef __vita__
+#include "tr_vita_perflog.h"
+#endif
 
 glconfig_t	glConfig;
 qboolean	textureFilterAnisotropic = qfalse;
@@ -73,6 +76,7 @@ cvar_t	*r_drawworld;
 cvar_t	*r_speeds;
 #ifdef __vita__
 cvar_t	*r_vita_vbo_world;
+cvar_t	*r_vita_gpu_mipmap;
 #endif
 cvar_t	*r_fullbright;
 cvar_t	*r_novis;
@@ -1483,6 +1487,10 @@ void R_Register( void )
 #ifdef __vita__
 	/* Phase 1 (gated). Default 0 keeps current behaviour. */
 	r_vita_vbo_world = ri.Cvar_Get( "r_vita_vbo_world", "0", CVAR_ARCHIVE );
+	/* Load-time win: GPU mipmap generation. Default 0 — vitaGL's
+	 * glGenerateMipmap corrupted UI textures (pink menu) on first test,
+	 * so it's opt-in until proven. Set 1 to try it / measure load gain. */
+	r_vita_gpu_mipmap = ri.Cvar_Get( "r_vita_gpu_mipmap", "0", CVAR_ARCHIVE );
 #endif
 	r_lightmap = ri.Cvar_Get ("r_lightmap", "0", 0 );
 	r_portalOnly = ri.Cvar_Get ("r_portalOnly", "0", CVAR_CHEAT );
@@ -1745,6 +1753,8 @@ void R_Init( void ) {
 	/* Phase 2a: compile the GPU skinning program if the cvar is set.
 	 * No-op when cvar is 0 (default). Logs success/failure inline. */
 	R_VitaGpuSkin_Init();
+	/* Perf instrumentation — gated by r_vita_perflog. Prints 1×/sec. */
+	VitaPerf_Init();
 #endif
 
 	ri.Printf( PRINT_ALL, "----- finished R_Init -----\n" );

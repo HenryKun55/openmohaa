@@ -50,6 +50,9 @@ AliasList_t *AliasList_New(const char *name)
     list->sorted_list = NULL;
     list->data_list   = NULL;
     list->dirty       = qfalse;
+    list->hash_table  = NULL;
+    list->hash_size   = 0;
+    list->hash_mask   = 0;
 
     if (name) {
         strncpy(list->name, name, sizeof(list->name));
@@ -69,6 +72,10 @@ void Alias_ListClear(AliasList_t *list)
         Z_Free(list->sorted_list);
     }
 
+    if (list->hash_table) {
+        Z_Free(list->hash_table);
+    }
+
     for (node = list->data_list; node != NULL; node = next) {
         if (node->subtitle) {
             // Added in OPM
@@ -83,6 +90,9 @@ void Alias_ListClear(AliasList_t *list)
     list->dirty       = qfalse;
     list->sorted_list = NULL;
     list->data_list   = NULL;
+    list->hash_table  = NULL;
+    list->hash_size   = 0;
+    list->hash_mask   = 0;
 }
 
 void Alias_ListDelete(AliasList_t *list)
@@ -310,6 +320,70 @@ void Alias_ListAddParms(AliasListNode_t *node, const char *parameters)
     }
 }
 
+// Build the hash index lazily once a list grows big enough to matter.
+// Below this many entries the linear dup-scan is cheaper than the table.
+#define ALIAS_HASH_THRESHOLD 32
+
+// Hash the raw alias bytes. Stored alias_names are lowercased, so a
+// lowercase query lands in the same bucket as its stored node — exactly
+// the cases the old linear strcmp(node->alias_name, alias) matched.
+static unsigned int Alias_HashKey(const char *s, int mask)
+{
+    unsigned int h = 0;
+
+    while (*s) {
+        h = h * 31u + (unsigned char)*s;
+        s++;
+    }
+
+    return h & (unsigned int)mask;
+}
+
+static void Alias_HashInsertNode(AliasList_t *list, AliasListNode_t *node)
+{
+    unsigned int b = Alias_HashKey(node->alias_name, list->hash_mask);
+
+    node->hash_next        = list->hash_table[b];
+    list->hash_table[b]    = node;
+}
+
+// Allocate (or grow + rehash) the bucket array, then repopulate it from
+// data_list. Called when the table is first built and whenever the load
+// factor would exceed 1.
+static void Alias_HashRebuild(AliasList_t *list, int newSize)
+{
+    AliasListNode_t *node;
+
+    if (list->hash_table) {
+        Z_Free(list->hash_table);
+    }
+
+    list->hash_size  = newSize;
+    list->hash_mask  = newSize - 1;
+    list->hash_table = Z_TagMalloc(newSize * sizeof(AliasListNode_t *), TAG_TIKI);
+    memset(list->hash_table, 0, newSize * sizeof(AliasListNode_t *));
+
+    for (node = list->data_list; node != NULL; node = node->next) {
+        Alias_HashInsertNode(list, node);
+    }
+}
+
+// Find an existing node whose alias_name equals `alias` (same comparison
+// the old dirty-path linear scan used), in O(1) average.
+static AliasListNode_t *Alias_HashFind(AliasList_t *list, const char *alias)
+{
+    AliasListNode_t *node;
+    unsigned int     b = Alias_HashKey(alias, list->hash_mask);
+
+    for (node = list->hash_table[b]; node != NULL; node = node->hash_next) {
+        if (!strcmp(node->alias_name, alias)) {
+            return node;
+        }
+    }
+
+    return NULL;
+}
+
 qboolean Alias_ListAdd(AliasList_t *list, const char *alias, const char *name, const char *parameters)
 {
     AliasListNode_t *ptr = NULL;
@@ -320,7 +394,12 @@ qboolean Alias_ListAdd(AliasList_t *list, const char *alias, const char *name, c
         return qfalse;
     }
 
-    if (list->dirty) {
+    if (list->hash_table) {
+        // O(1) dup detection — the whole point of this fix. Replaces the
+        // O(n) linear scan that made loading ubersound.scr O(n^2) (~21 s
+        // on Vita for thousands of aliases).
+        ptr = Alias_HashFind(list, alias);
+    } else if (list->dirty) {
         for (node = list->data_list; node != NULL; node = node->next) {
             if (!strcmp(node->alias_name, alias)) {
                 Com_DPrintf("DUPLICATE ALIASES: %s and %s\n", node->alias_name, alias);
@@ -346,6 +425,21 @@ qboolean Alias_ListAdd(AliasList_t *list, const char *alias, const char *name, c
         list->num_in_list++;
         node->next      = list->data_list;
         list->data_list = node;
+
+        // Maintain / build the hash index.
+        if (list->hash_table) {
+            if (list->num_in_list > list->hash_size) {
+                Alias_HashRebuild(list, list->hash_size * 2); // also inserts node
+            } else {
+                Alias_HashInsertNode(list, node);
+            }
+        } else if (list->num_in_list >= ALIAS_HASH_THRESHOLD) {
+            int sz = 64;
+            while (sz < list->num_in_list * 2) {
+                sz *= 2;
+            }
+            Alias_HashRebuild(list, sz); // builds from data_list, includes node
+        }
     } else if (strcmp(name, ptr->real_name)) {
         Com_DPrintf("Duplicate Aliases for %s in list %s.\n", alias, name);
     }

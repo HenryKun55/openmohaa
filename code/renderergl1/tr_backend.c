@@ -20,6 +20,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 #include "tr_local.h"
+#ifdef __vita__
+#include "tr_vita_perflog.h"
+#endif
 
 backEndData_t	*backEndData;
 backEndState_t	backEnd;
@@ -70,6 +73,9 @@ void GL_Bind( image_t *image ) {
 		glState.currenttextures[glState.currenttmu] = texnum;
 		qglBindTexture (GL_TEXTURE_2D, texnum);
 		backEnd.pc.c_glBinds++;
+#ifdef __vita__
+		if (r_vita_perflog && r_vita_perflog->integer) g_vitaPerf.glBinds++;
+#endif
 	}
 }
 
@@ -101,6 +107,9 @@ void GL_SelectTexture( int unit )
 	}
 
 	glState.currenttmu = unit;
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) g_vitaPerf.glSelectTextures++;
+#endif
 }
 
 
@@ -230,6 +239,9 @@ void GL_State( unsigned long stateBits )
 	}
 
 	backEnd.pc.c_glStateChanges++;
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) g_vitaPerf.glStateChanges++;
+#endif
 
 	//
 	// check depthFunc bits
@@ -707,6 +719,10 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	int				oldSort;
 	float			originalTime;
 
+#ifdef __vita__
+	int _vp_dsl_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;
+#endif
+
 	// save original time for entity shader offsets
 	originalTime = backEnd.refdef.floatTime;
 
@@ -907,10 +923,19 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	RB_DrawSun();
 #endif
 	// darken down any stencil shadows
-	RB_ShadowFinish();		
+	RB_ShadowFinish();
 
 	// add light flares on lights that aren't obscured
 	RB_RenderFlares();
+
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) {
+		int _vp_dsl_t1 = Sys_Milliseconds();
+		g_vitaPerf.us_drawSurfList   += (_vp_dsl_t1 - _vp_dsl_t0);
+		g_vitaPerf.drawSurfList_calls++;
+		g_vitaPerf.drawSurfList_surfs += numDrawSurfs;
+	}
+#endif
 }
 
 /*

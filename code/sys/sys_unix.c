@@ -678,6 +678,12 @@ FILE *Sys_FOpen( const char *ospath, const char *mode ) {
 	 * returns NULL on directories on its own. Logging was removed once
 	 * we confirmed external reads work, it was the largest source of
 	 * boot.log growth (every Pak* lookup writes a line). */
+	/* Loose files (ux0:data/openmohaa/main/...) are NOT stdio-buffered:
+	 * the only large loose files are the video/*.RoQ cinematics, which the
+	 * RoQ player streams with seeks — a big stdio buffer turned those into
+	 * 256 KB refills per frame and dropped the intros to ~10 FPS. The bulk
+	 * load assets (sounds/textures/models) live in the pk3s and ARE buffered
+	 * in the zip ioapi path instead (see ioapi.c / fs_vita_io_buf_bytes). */
 	return fopen( ospath, mode );
 #else
 	struct stat buf;
