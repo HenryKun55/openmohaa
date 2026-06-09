@@ -588,17 +588,21 @@ void ScriptMaster::InitConstStrings(void)
     }
 
 #ifdef __SWITCH__
-    {
-        // The command lists are rebuilt from the permanent event maps. On the Vita
-        // the game module reloads each level so this re-runs against a freshly
-        // re-registered eventDefList; on the single-binary Switch the maps persist
-        // and re-running walks a stale/aliased table (NULL key -> crash). Build the
-        // command lists ONCE and keep them across InitGame, like the maps themselves.
-        static bool s_cmdListsBuilt = false;
-        if (s_cmdListsBuilt) {
-            return;
-        }
-        s_cmdListsBuilt = true;
+    // The command lists are rebuilt from the permanent event maps. On the Vita
+    // the game module reloads each level so this re-runs against a freshly
+    // re-registered eventDefList; on the single-binary Switch the maps persist
+    // and re-running walks a stale/aliased table (NULL key -> crash). Build the
+    // command lists ONCE and keep them across InitGame, like the maps themselves.
+    //
+    // CRITICAL: mark "built" only AFTER the populate below actually runs (which
+    // requires EventSystemStarted == true). The earlier version set the flag here,
+    // before the `!EventSystemStarted` early-return — so the very first (too-early)
+    // call consumed the run-once flag WITHOUT ever filling normalCommandList,
+    // leaving every script command "unknown" and breaking ALL script compilation
+    // (no level script -> no loadout/weapon, no music, no intro, no AI, empty world).
+    static bool s_cmdListsBuilt = false;
+    if (s_cmdListsBuilt) {
+        return;
     }
 #endif
 
@@ -637,6 +641,12 @@ void ScriptMaster::InitConstStrings(void)
             Event::setterCommandList[name] = eventnum;
         }
     }
+
+#ifdef __SWITCH__
+    // The command lists are now populated from a live eventDefList — lock them so
+    // subsequent InitGame calls don't rebuild (and crash on the persistent maps).
+    s_cmdListsBuilt = true;
+#endif
 }
 
 ScriptThread *ScriptMaster::CreateThread(str filename, str label, Listener *self)
