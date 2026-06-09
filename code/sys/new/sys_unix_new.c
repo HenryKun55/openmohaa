@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <signal.h>
 #include <unistd.h>
-#ifndef __vita__
+#if !defined(__vita__) && !defined(__SWITCH__)
 #include <execinfo.h>
 #endif
 
@@ -51,7 +51,7 @@ Sys_PrintBackTrace
 ==================
 */
 void Sys_PrintBackTrace() {
-#ifndef __vita__
+#if !defined(__vita__) && !defined(__SWITCH__)
     void* backtrace_arr[128];
     char** backtrace_symbols_arr;
     size_t backtrace_size;

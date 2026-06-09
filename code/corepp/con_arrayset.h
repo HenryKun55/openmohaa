@@ -257,6 +257,25 @@ void con_arrayset<key, value>::clear()
     Entry       *next  = NULL;
     unsigned int i;
 
+#ifdef __SWITCH__
+    /* Switch: the single-binary symbol isolation corrupts these script-VM
+     * string sets across the InitGame re-init — an entry->next goes wild and
+     * crashes the free loop below (Data Abort on a garbage pointer). Mirror
+     * the Z_Free leak-guard: reset the set state and LEAK the old entries/table
+     * instead of dereferencing corrupted pointers. A small per-reload leak is
+     * far better than aborting the whole boot. */
+    (void)entry;
+    (void)next;
+    tableLength      = 1;
+    table            = &defaultEntry;
+    reverseTable     = &defaultEntry;
+    threshold        = 1;
+    count            = 0;
+    tableLengthIndex = 0;
+    defaultEntry     = NULL;
+    return;
+#endif
+
     if (tableLength > 1) {
         DeleteTable(reverseTable);
         reverseTable = &defaultEntry;

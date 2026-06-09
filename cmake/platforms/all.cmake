@@ -1,6 +1,7 @@
 include(platforms/emscripten)
 include(platforms/linux)
 include(platforms/macos)
+include(platforms/switch)
 include(platforms/unix)
 include(platforms/vita)
 include(platforms/windows)

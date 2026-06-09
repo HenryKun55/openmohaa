@@ -1594,18 +1594,23 @@ void SV_ShutdownGameProgs( void ) {
 	ge->Shutdown();
 	Sys_UnloadGame();
 
-#ifndef __vita__
-	// Free all memory allocated by the game module
+	// Free all memory allocated by the game module.
+	//
+	// VITA (2026-05-29): this used to be SKIPPED on Vita (the porters'
+	// band-aid against a dangling-hash-chain crash from the non-reloading
+	// C++ statics). But skipping it LEAKS ~50MB of per-map game memory, and
+	// the next level's InitGame then OOMs on the tight 240MB heap (confirmed:
+	// works on a 24GB Mac, crashes on Vita). G_ShutdownGame() ran just above
+	// (level.CleanUp / L_ShutdownEvents / G_DeAllocGameData), so the per-map
+	// containers are already torn down; Z_Free on Vita now also guards bad
+	// ZONEID/trailer instead of aborting. Reclaim the bulk so the next map
+	// fits. [MEM] snapshots bracket it to confirm the reclaim.
+#ifdef __vita__
+	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("pre Z_FreeTags(TAG_GAME)"); }
+#endif
 	Z_FreeTags(TAG_GAME);
-#else
-	/* On Vita, game.suprx is loaded once and stays in memory: our PRX
-	 * dlopen/dlclose just refcounts the same kernel module, so a
-	 * subsequent dlopen does NOT re-run the C++ static initialisers.
-	 * That means fgame's globals (Director.StringDict, level.m_Vars,
-	 * etc.) keep pointing at the gi.Malloc blocks they allocated for
-	 * the previous map. If we wipe those blocks via Z_FreeTags(TAG_GAME),
-	 * the next InitGame's Reset() walks dangling hash chains and crashes.
-	 * Skip the tag purge: fgame's own Reset() frees its per-map data. */
+#ifdef __vita__
+	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("post Z_FreeTags(TAG_GAME)"); }
 #endif
 
 	ge = NULL;
@@ -1976,7 +1981,17 @@ void SV_InitGameProgs( void ) {
 			GAME_API_VERSION );
 	}
 
+#ifdef __vita__
+	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("pre ge->Init (InitGame)"); }
+	/* Per-tag breakdown of the Z zone going INTO the new level's InitGame —
+	 * shows WHICH pool holds the ~73MB (or, if the Z total is far below the
+	 * mallinfo arena, the bulk is raw C++ new via the vitashim). */
+	{ extern void Z_Meminfo_f(void); Z_Meminfo_f(); }
+#endif
 	ge->Init( svs.startTime, Com_Milliseconds() );
+#ifdef __vita__
+	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("post ge->Init (InitGame)"); }
+#endif
 
 	err = ge->errorMessage;
 	if( err )

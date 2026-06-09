@@ -190,6 +190,28 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #endif
 
+//======================================================= NINTENDO SWITCH ===
+
+// devkitPro / libnx homebrew target. devkitA64's newlib does NOT define
+// __linux__, so without this block the Switch falls through every platform
+// section and trips the "PATH_SEP not defined" guards. aarch64, always
+// little-endian.
+#ifdef __SWITCH__
+
+#include <stdint.h>
+
+#define OS_STRING "switch"
+#define ID_INLINE inline
+#define PATH_SEP '/'
+
+#define ARCH_STRING "arm64"
+#define Q3_LITTLE_ENDIAN
+
+#define DLL_EXT ".so"
+#define EXE_EXT ""
+
+#endif
+
 //================================================================= LINUX ===
 
 #ifdef __linux__

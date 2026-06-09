@@ -287,6 +287,19 @@ void Container<Type>::FreeObjectList(void)
     size_t i;
 
     if (objlist) {
+#ifdef __SWITCH__
+        /* Switch: the single-binary symbol isolation leaves global containers in
+         * a stale/corrupted state across the InitGame map-transition — objlist
+         * can point into a freed string buffer or numobjects can be garbage.
+         * Bail out and leak rather than iterating destructors over wild memory
+         * (mirrors the Z_Free / con_arrayset / str Switch guards). */
+        if ((size_t)objlist < 0x100000000ULL || (size_t)objlist >= 0x10000000000ULL
+            || numobjects > 0x100000) {
+            objlist    = NULL;
+            numobjects = 0;
+            return;
+        }
+#endif
         for (i = 0; i < numobjects; ++i) {
             objlist[i].~Type();
         }
@@ -483,17 +496,48 @@ void Container<Type>::Resize(int maxelements)
             maxobjects = numobjects;
         }
 
+#if defined(__SWITCH__) && defined(GAME_DLL)
+        gi.Printf("[rs] Resize move: n=%d max=%d sizeofType=%d alloc...\n", (int)numobjects, maxobjects, (int)sizeof(Type));
+#endif
         objlist = (Type *)CONTAINER_Alloc(sizeof(Type) * maxobjects);
 
+#if defined(__SWITCH__) && defined(GAME_DLL)
+        gi.Printf("[rs] alloc done objlist=%p, copy loop...\n", (void *)objlist);
+#endif
         for (i = 0; i < numobjects; i++) {
+#if defined(__SWITCH__) && defined(GAME_DLL)
+            gi.Printf("[rs]   i=%d construct...\n", (int)i);
+#endif
+#ifdef __SWITCH__
+            // The SafePtr move-constructor (SafePtrBase::Move) relinks the
+            // object's safe-pointer list and faults here on aarch64 during the
+            // first SafePtr<Listener> container realloc (level entity spawn).
+            // Use the well-exercised copy path instead — copy-construct
+            // registers a fresh reference, then the old element's destructor
+            // unregisters it. Correct, just slightly slower than a move.
+            new (objlist + i) Type(temp[i]);
+#else
             // move the older type
             new (objlist + i) Type(std::move(temp[i]));
+#endif
 
+#if defined(__SWITCH__) && defined(GAME_DLL)
+            gi.Printf("[rs]   i=%d destruct...\n", (int)i);
+#endif
             // destruct the older type
             temp[i].~Type();
+#if defined(__SWITCH__) && defined(GAME_DLL)
+            gi.Printf("[rs]   i=%d done\n", (int)i);
+#endif
         }
 
+#if defined(__SWITCH__) && defined(GAME_DLL)
+        gi.Printf("[rs] Resize move done, free temp\n");
+#endif
         CONTAINER_Free(temp);
+#if defined(__SWITCH__) && defined(GAME_DLL)
+        gi.Printf("[rs] Resize free done\n");
+#endif
     }
 }
 

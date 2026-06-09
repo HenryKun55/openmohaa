@@ -208,10 +208,27 @@ inline size_t str::length(void) const
 
 inline str::~str()
 {
+#ifdef __SWITCH__
+    /* The single-binary symbol isolation leaves global str containers in a
+     * stale state across the InitGame map-transition: FreeObjectList walks past
+     * the live count into uninitialised slots whose m_data is garbage (e.g.
+     * 0x1), and DelRef() then faults. Don't dereference a pointer that cannot be
+     * a real heap address — leak it instead of crashing (mirrors the Z_Free /
+     * con_arrayset Switch guards). */
+    /* Valid Switch heap pointers live high (~0xe_00000000); stomped/partial
+     * garbage from the stale-globals corruption lands low (0x1, 0x433f0000) or
+     * absurdly high (ASCII bytes). Only deref m_data when it's a plausible heap
+     * address — worst case we leak the strdata instead of faulting. */
+    if ((size_t)m_data > 0x100000000ULL && (size_t)m_data < 0x10000000000ULL) {
+        m_data->DelRef();
+    }
+    m_data = NULL;
+#else
     if (m_data) {
         m_data->DelRef();
         m_data = NULL;
     }
+#endif
 }
 
 inline str::str()

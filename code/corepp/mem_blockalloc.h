@@ -258,6 +258,13 @@ MEM_BlockAlloc<a, b>::~MEM_BlockAlloc()
 template<typename a, size_t b>
 void *MEM_BlockAlloc<a, b>::Alloc()
 {
+#ifdef __SWITCH__
+    // Switch: bypass the pooled block allocator entirely. Its per-type static
+    // pool + the single-binary symbol isolation produced heap corruption
+    // (NULL control-flow crashes in the script VM / con_set). Hand out a plain
+    // allocation instead — Free() matches with a plain MEM_Free.
+    return MEM_Alloc((int)sizeof(a));
+#endif
 #if _DEBUG_MEMBLOCK
     block_t *block = new (MEM_Alloc(sizeof(block_t))) block_t();
 
@@ -341,6 +348,10 @@ void *MEM_BlockAlloc<aclass, blocksize>::TakeFree(block_t *block, uintptr_t free
 template<typename a, size_t b>
 void MEM_BlockAlloc<a, b>::Free(void *ptr) noexcept
 {
+#ifdef __SWITCH__
+    MEM_Free(ptr);
+    return;
+#endif
 #if _DEBUG_MEMBLOCK
     block_t *block = (block_t *)ptr - offsetof(block_t, data);
 

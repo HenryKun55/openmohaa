@@ -425,6 +425,14 @@ str& SimpleEntity::TargetName()
 
 void SimpleEntity::SetOrigin(Event *ev)
 {
+    /* Guard the arg like SetAngles() does below. A script calling setorigin
+     * with no/too-few args (the "Index 1 out of range" script errors seen in
+     * m1l1's exploder.scr) made ev->GetVector(1) dereference a NULL
+     * ScriptVariable -> EXC_BAD_ACCESS in ScriptVariable::vectorValue (crash
+     * caught under lldb 2026-06-08). */
+    if (ev->NumArgs() < 1) {
+        return;
+    }
     setOriginEvent(ev->GetVector(1));
 }
 

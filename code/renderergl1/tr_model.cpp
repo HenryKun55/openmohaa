@@ -1132,6 +1132,20 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
 
     assert(bFound);
 
+#ifdef __vita__
+    /* Phase 2b: GPU skinning. Try to draw this surface through the vertex
+     * shader (vgl* pipeline). If it handles it, skip the whole CPU skin
+     * path below. Ineligible surfaces (morphs/face anim, >4 weights, or a
+     * missing bone channel) return qfalse and fall through to the CPU loop.
+     * bones is the same palette the CPU path uses a few lines down. */
+    if (r_vita_gpu_skinning && r_vita_gpu_skinning->integer && R_VitaGpuSkin_IsReady()) {
+        skelBoneCache_t *gpuBones = &TIKI_Skel_Bones[backEnd.currentEntity->e.bonestart];
+        if (R_VitaGpuSkin_DrawSurf(sf, tiki, skelmodel, gpuBones, scale)) {
+            return;
+        }
+    }
+#endif
+
     //
     // Process LOD
     //

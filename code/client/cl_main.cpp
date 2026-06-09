@@ -3773,7 +3773,7 @@ void CL_Init( void ) {
 	Cmd_AddCommand ("tiki", CL_TikiInfoCommand_f );
 	Cmd_AddCommand ("vidmode", CL_VidMode_f );
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	{
 		extern void CL_VitaPerfMenu_Init(void);
 		CL_VitaPerfMenu_Init();

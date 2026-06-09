@@ -1577,6 +1577,10 @@ void CacheResource(const char *stuff)
         return;
     }
 
+#ifdef __SWITCH__
+    gi.Printf("[cache] %s\n", stuff);
+#endif
+
     if (gi.fsDebug->integer == 2) {
         Com_Printf("server cache: %s\n", stuff);
     }

@@ -25,6 +25,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "sys_local.h"
 
 #include <stdio.h>
+#ifdef __SWITCH__
+#include <unistd.h>
+#endif
 
 /*
 ==================
@@ -65,4 +68,13 @@ void CON_Print( const char *msg )
 		Sys_AnsiColorPrint( msg );
 	else
 		fputs( msg, stderr );
+
+#ifdef __SWITCH__
+	/* Bring-up: sdmc: writes are block-cached by the libnx fs layer, so a
+	 * hard crash drops the unflushed tail of boot.log and hides where we
+	 * actually died. Force a commit after every line. Slow, but during the
+	 * port we need a truthful log more than we need throughput. */
+	fflush( stderr );
+	fsync( fileno( stderr ) );
+#endif
 }

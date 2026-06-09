@@ -99,21 +99,30 @@ void R_LoadTGA ( const char *name, byte **pic, int *width, int *height)
 
 	buf_p += 18;
 
-	if (targa_header.image_type!=2 
+	// A single odd texture must not take the whole level down. Warn and bail
+	// gracefully (leaving *pic == NULL) so the caller substitutes the default
+	// texture and the map keeps loading, instead of ERR_DROP'ing to the menu.
+	if (targa_header.image_type!=2
 		&& targa_header.image_type!=10
-		&& targa_header.image_type != 3 ) 
+		&& targa_header.image_type != 3 )
 	{
-		ri.Error (ERR_DROP, "LoadTGA: Only type 2 (RGB), 3 (gray), and 10 (RGB) TGA images supported");
+		ri.Printf(PRINT_WARNING, "LoadTGA: %s: unsupported image_type %d (only 2/3/10) - using default\n", name, targa_header.image_type);
+		ri.FS_FreeFile (buffer.v);
+		return;
 	}
 
 	if ( targa_header.colormap_type != 0 )
 	{
-		ri.Error( ERR_DROP, "LoadTGA: colormaps not supported" );
+		ri.Printf(PRINT_WARNING, "LoadTGA: %s: colormaps not supported - using default\n", name);
+		ri.FS_FreeFile (buffer.v);
+		return;
 	}
 
 	if ( ( targa_header.pixel_size != 32 && targa_header.pixel_size != 24 ) && targa_header.image_type != 3 )
 	{
-		ri.Error (ERR_DROP, "LoadTGA: Only 32 or 24 bit images supported (no colormaps)");
+		ri.Printf(PRINT_WARNING, "LoadTGA: %s: %d-bit unsupported (need 24/32) - using default\n", name, targa_header.pixel_size);
+		ri.FS_FreeFile (buffer.v);
+		return;
 	}
 
 	columns = targa_header.width;

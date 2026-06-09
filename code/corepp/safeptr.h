@@ -41,7 +41,19 @@ protected:
 
 public:
     SafePtrBase();
+#ifdef __SWITCH__
+    // Non-virtual on Switch. In the single-binary symbol-isolated build the
+    // weak `vtable for SafePtr<T>` ends up with NULL destructor slots (the
+    // COMDAT destructor gets discarded during ld -r while the vtable's reloc to
+    // it survives), so `delete SafePtr<T>*` calls a virtual dtor through a NULL
+    // slot -> PC=0. SafePtr is never deleted polymorphically via SafePtrBase*,
+    // so the virtual is unnecessary; removing it drops the vtable entirely and
+    // makes every `delete` a direct (static) call. Engine + game both compile
+    // this header on Switch, so the layout stays consistent across the binary.
+    ~SafePtrBase();
+#else
     virtual ~SafePtrBase();
+#endif
     void   InitSafePtr(Class *newptr);
     Class *Pointer(void);
     void   Clear(void);
@@ -62,6 +74,24 @@ inline void SafePtrBase::AddReference(Class *ptr)
 
 inline void SafePtrBase::RemoveReference(Class *ptr)
 {
+#ifdef __SWITCH__
+    /* Defensive unlink: on aarch64 the plain LL_Remove faulted while
+     * relinking a multi-node safe-pointer list during entity spawn / script
+     * execution. Guard every dereference and only touch the head when it is
+     * actually this node. Functionally identical when the list is well-formed,
+     * but it won't dereference a stray NULL. */
+    if (ptr->SafePtrList == this) {
+        ptr->SafePtrList = (next == this) ? nullptr : next;
+    }
+    if (prev) {
+        prev->next = next;
+    }
+    if (next) {
+        next->prev = prev;
+    }
+    next = this;
+    prev = this;
+#else
     if (ptr->SafePtrList == this) {
         if (ptr->SafePtrList->next == this) {
             ptr->SafePtrList = nullptr;
@@ -72,6 +102,7 @@ inline void SafePtrBase::RemoveReference(Class *ptr)
     } else {
         LL_Remove(this, next, prev);
     }
+#endif
 }
 
 inline void SafePtrBase::Clear(void)

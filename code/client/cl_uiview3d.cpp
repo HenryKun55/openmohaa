@@ -39,7 +39,7 @@ float   subLife[MAX_SUBTITLES];
 float   alpha[MAX_SUBTITLES];
 char    oldStrings[MAX_SUBTITLES][2048];
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 /* ============================================================
  * VITA PERF MENU — categorised tree of EVERY perf-relevant cvar.
  *
@@ -96,7 +96,7 @@ static VitaPerfMenuItem g_pmEffects[] = {
     { "Decals (Marks)",   "cg_marks_add",         qfalse, 0 },
     { "Blood / Gore",     "com_blood",            qfalse, 0 },
     { "Weapon Model",     "cg_drawGun",           qfalse, 0 },
-    { "Crosshair",        "ui_crosshair",         qfalse, 0 },
+    { "Crosshair",        "ui_crosshair",         qfalse, 0 }, /* master on/off; per-state in AIM category */
     { "HUD",              "cg_hud",               qfalse, 0 },
     { "Engine 2D Pass",   "vita_skip_draw2d",     qtrue,  0 }, /* ON = normal, OFF = stripped */
 };
@@ -106,6 +106,14 @@ static VitaPerfMenuItem g_pmTextures[] = {
     { "Texture LOD",      "r_picmip",             qfalse, 3 }, /* 0=sharp .. 3=tiny */
     { "Lod Bias",         "r_lodbias",            qfalse, 4 }, /* 0..4 = far cull more */
     { "Curve Detail",     "r_subdivisions",       qfalse, 24 }, /* 4..24, latched */
+};
+
+/* ---------- AIM / LOOK ---------- */
+static VitaPerfMenuItem g_pmAim[] = {
+    { "Look Sens (hip)",  "vita_hip_sens",        qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while NOT aiming */
+    { "Look Sens (aim)",  "vita_aim_sens",        qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while aiming */
+    { "Crosshair (hip)",  "cg_crosshair_hip",     qfalse, 0 },  /* show crosshair while NOT aiming */
+    { "Crosshair (aim)",  "cg_crosshair_zoom",    qfalse, 0 },  /* show crosshair while aiming */
 };
 
 /* ---------- DEBUG / DIAG ---------- */
@@ -127,12 +135,14 @@ static VitaPerfMenuItem g_pmDebug[] = {
     { "VITA-PERF log (1×/sec)",   "r_vita_perflog",    qfalse, 0 }, /* timing breakdown of render subsystems */
     { "VITA force multitexture",  "r_vita_force_mtex", qfalse, 0 }, /* Phase 3 — diffuse+lightmap single pass */
     { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0 }, /* Phase 1 — BSP geometry from VRAM VBO */
+    { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0 }, /* Phase 2b — NPC skinning on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
 };
 
 static VitaPerfMenuCategory g_pmCats[] = {
     { "WORLD",     g_pmWorld,    sizeof(g_pmWorld)    / sizeof(VitaPerfMenuItem) },
     { "LIGHTING",  g_pmLighting, sizeof(g_pmLighting) / sizeof(VitaPerfMenuItem) },
     { "EFFECTS",   g_pmEffects,  sizeof(g_pmEffects)  / sizeof(VitaPerfMenuItem) },
+    { "AIM",       g_pmAim,      sizeof(g_pmAim)      / sizeof(VitaPerfMenuItem) },
     { "TEXTURES",  g_pmTextures, sizeof(g_pmTextures) / sizeof(VitaPerfMenuItem) },
     { "DEBUG",     g_pmDebug,    sizeof(g_pmDebug)    / sizeof(VitaPerfMenuItem) },
 };
@@ -888,7 +898,7 @@ void View3D::Draw2D(void)
         DrawProf();
     }
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
     /* Perf menu overlay — drawn last so it sits on top of everything. */
     if (CL_VitaPerfMenu_IsActive()) {
         setFont("verdana-14");

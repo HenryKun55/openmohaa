@@ -761,10 +761,13 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 	UI_LoadResource( "*137" );
 
 	// set game dll map
+	Com_Printf("[sv] ge->SetMap\n");
 	ge->SetMap( sv_mapname->string );
 
 	if( !keep_scripts ) {
+		Com_Printf("[sv] ge->Precache\n");
 		ge->Precache();
+		Com_Printf("[sv] ge->Precache done\n");
 	}
 
 	UI_LoadResource( "*138" );
@@ -794,13 +797,16 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 		UI_LoadResource( "*139a" );
 
 		// tell the game dll to spawn entities
+		Com_Printf("[sv] ge->SpawnEntities\n");
 		ge->SpawnEntities( CM_EntityString(), svs.time );
+		Com_Printf("[sv] ge->SpawnEntities done\n");
 
 		UI_LoadResource( "*140" );
 
 		p = ge->errorMessage;
 		if( p )
 		{
+			Com_Printf("[sv] SpawnEntities errorMessage: %s\n", p);
 			ge->errorMessage = NULL;
 			Com_Error(ERR_DROP, "%s", p);
 		}

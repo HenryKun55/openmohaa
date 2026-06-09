@@ -239,6 +239,15 @@ Sys_GetGameAPI
 */
 void* Sys_GetGameAPI(void* parms)
 {
+#ifdef __SWITCH__
+    /* Switch links the game module statically into the NRO (libnx has no
+     * runtime code loader). Call its exported GetGameAPI directly; the
+     * static lib is symbol-isolated at build time so only this entry point
+     * is global (see the SWITCH branch in basegame.cmake). */
+    extern void* GetGameAPI(void*);
+    Com_Printf("Sys_GetGameAPI: static link (Switch)\n");
+    return GetGameAPI(parms);
+#else
     void* (*GetGameAPI) (void*);
     const char* gamename = "game" DLL_SUFFIX DLL_EXT;
 
@@ -263,6 +272,7 @@ void* Sys_GetGameAPI(void* parms)
     }
 
     return GetGameAPI(parms);
+#endif
 }
 
 /*
@@ -288,6 +298,13 @@ Sys_GetCGameAPI
 */
 void* Sys_GetCGameAPI(void* parms)
 {
+#ifdef __SWITCH__
+    /* Switch links the cgame module statically into the NRO; call its
+     * exported GetCGameAPI directly (symbol-isolated at build time). */
+    extern void* GetCGameAPI(void*);
+    Com_Printf("Sys_GetCGameAPI: static link (Switch)\n");
+    return GetCGameAPI(parms);
+#else
     void* (*GetCGameAPI) (void*);
     const char* gamename = "cgame" DLL_SUFFIX DLL_EXT;
 
@@ -312,6 +329,7 @@ void* Sys_GetCGameAPI(void* parms)
     }
 
     return GetCGameAPI(parms);
+#endif
 }
 
 void VM_Forced_Unload_Start(void) {

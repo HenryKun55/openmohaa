@@ -564,8 +564,26 @@ void L_InitEvents(void)
     g_watch      = LISTENER_Cvar_Get("g_watch", "0", 0);
     g_eventstats = LISTENER_Cvar_Get("g_eventstats", "0", 0);
 
+#ifdef __SWITCH__
+    // The event tables (eventDefList) and per-ClassDef response/waittill con_sets
+    // are PERMANENT data, derived from static EventDef definitions. On the Vita the
+    // game module is dlopen/dlclose'd so these are rebuilt fresh each level; on the
+    // single-binary Switch there is no reload, so re-running LoadEvents /
+    // BuildEventResponses re-populates already-built, persistent con_sets and walks
+    // stale/aliased tables (crashes in con_set::resize / addKeyEntry / AddWaitTill).
+    // Build them ONCE and keep them intact across every InitGame.
+    {
+        static bool s_eventTablesBuilt = false;
+        if (!s_eventTablesBuilt) {
+            s_eventTablesBuilt = true;
+            Event::LoadEvents();
+            ClassDef::BuildEventResponses();
+        }
+    }
+#else
     Event::LoadEvents();
     ClassDef::BuildEventResponses();
+#endif
 
     LL_Reset(&Event::EventQueue, next, prev);
 
@@ -616,16 +634,27 @@ void L_ShutdownEvents(void)
 
     L_ClearEventList();
 
+#ifndef __SWITCH__
+    // The event DEFINITION maps are populated once, at static-init time, by the
+    // EventDef constructors. On the Vita the game module is dlopen/dlclose'd and
+    // those constructors re-run on every level, so clearing the maps here is
+    // safe. On the single-binary Switch build there is NO reload: clearing them
+    // destroys the definitions permanently, and the engine then rebuilds them
+    // incrementally via operator[] access — whose con_set::resize() walks a
+    // half-rebuilt/aliased table and crashes (addKeyEntry / resize). Keep the
+    // permanent maps intact across InitGame; only the transient event QUEUE
+    // (L_ClearEventList above) is cleared, and the system stays "started".
     Event::commandList.clear();
     Event::eventDefList.clear();
-#ifdef WITH_SCRIPT_ENGINE
+#    ifdef WITH_SCRIPT_ENGINE
     Event::normalCommandList.clear();
     Event::returnCommandList.clear();
     Event::getterCommandList.clear();
     Event::setterCommandList.clear();
-#endif
+#    endif
 
     Listener::EventSystemStarted = false;
+#endif
 }
 
 //===========================================================================

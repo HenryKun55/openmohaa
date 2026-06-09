@@ -832,10 +832,11 @@ int main( int argc, char **argv )
 #endif
 
 	Sys_ParseArgs( argc, argv );
-#ifndef __vita__
-	/* On Vita argv[0] is empty/garbage and dirname gives ".", which sends
-	 * Sys_LoadDll looking for ./game.suprx. Sys_PlatformInit already set
-	 * binaryPath to app0:/module where the .suprx modules actually live;
+#if !defined(__vita__) && !defined(__SWITCH__)
+	/* On Vita / Switch argv[0] is empty/garbage (NULL under Ryujinx), so
+	 * Sys_Dirname(argv[0]) either gives "." or dereferences NULL and crashes.
+	 * Sys_PlatformInit already set binaryPath to the console's data root
+	 * (app0:/ or sdmc:/switch/openmohaa) where modules/autoexec live;
 	 * don't clobber it here. */
 	Sys_SetBinaryPath( Sys_Dirname( argv[ 0 ] ) );
 #endif

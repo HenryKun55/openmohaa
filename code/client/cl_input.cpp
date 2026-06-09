@@ -450,15 +450,15 @@ void CL_MouseEvent( int dx, int dy, int time ) {
 		if( cl.mousey > cls.glconfig.vidHeight )
 			cl.mousey = cls.glconfig.vidHeight;
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 		/* Engine upstream allows cl.mousex == vidWidth (one column past
 		 * the last visible pixel) because the click hotspot is the
 		 * top-left of the cursor and a desktop OS cursor would still be
-		 * visible past the framebuffer. Vita renders the whole cursor
+		 * visible past the framebuffer. Vita/Switch render the whole cursor
 		 * into the framebuffer, so a hotspot at vidWidth means the
 		 * arrow's tip pixel is off-screen. Clamp 4 px inside the edge
 		 * so the tip always lands on a visible pixel — matches what the
-		 * user sees on the physical Vita display. */
+		 * user sees on the physical display. */
 		if( cl.mousex > cls.glconfig.vidWidth  - 4 )
 			cl.mousex = cls.glconfig.vidWidth  - 4;
 		if( cl.mousey > cls.glconfig.vidHeight - 4 )
@@ -526,6 +526,25 @@ void CL_JoystickMove( usercmd_t *cmd ) {
 	float forward = j_forward->value * cl.joystickAxis[j_forward_axis->integer];
 	float pitch   = j_pitch->value   * cl.joystickAxis[j_pitch_axis->integer];
 	float up      = j_up->value      * cl.joystickAxis[j_up_axis->integer];
+
+#if defined(__vita__) || defined(__SWITCH__)
+	/* Vita/Switch: separate look-sensitivity multipliers for hip-fire vs
+	 * aiming (iron sights / zoom). Stored as integers 0..10 = 0.0x..1.0x so
+	 * the in-game perf menu can cycle them; CVAR_ARCHIVE so they persist.
+	 * Defaults: hip 1.0x (unchanged from j_yaw/j_pitch tuning), aim 0.5x
+	 * for steadier shots. Only scales the camera look, not movement. */
+	{
+		static cvar_t *vita_hip_sens = NULL;
+		static cvar_t *vita_aim_sens = NULL;
+		if (!vita_hip_sens) vita_hip_sens = Cvar_Get("vita_hip_sens", "10", CVAR_ARCHIVE);
+		if (!vita_aim_sens) vita_aim_sens = Cvar_Get("vita_aim_sens", "5",  CVAR_ARCHIVE);
+		float lookScale = (cl.snap.ps.stats[STAT_INZOOM] != 0)
+			? vita_aim_sens->integer * 0.1f
+			: vita_hip_sens->integer * 0.1f;
+		yaw   *= lookScale;
+		pitch *= lookScale;
+	}
+#endif
 
 	if ( in_speed.active ^ cl_run->integer ) {
 		cmd->buttons |= BUTTON_RUN;

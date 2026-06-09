@@ -81,7 +81,7 @@ include(renderer_gl2)
 include(client)
 include(basegame)
 #include(missionpack)
-if(NOT VITA)
+if(NOT VITA AND NOT SWITCH)
     include(launcher)
 endif()
 

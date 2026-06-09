@@ -43,11 +43,11 @@ set(CLIENT_SOURCES
     ${SOURCE_DIR}/client/cl_uiview3d.cpp
 )
 
-# Files that need POSIX bits vitasdk lacks. cl_uiserverlist pulls
+# Files that need POSIX bits vitasdk / libnx lack. cl_uiserverlist pulls
 # gamespy/goaceng.h → gsPlatform.h (BSD sockets). libmumblelink.c
 # wants sys/mman.h. Both belong to features (MP browser, voice chat)
-# already disabled on Vita.
-if(NOT VITA)
+# already disabled on Vita and Switch.
+if(NOT VITA AND NOT SWITCH)
     list(APPEND CLIENT_SOURCES
         ${SOURCE_DIR}/client/cl_uiserverlist.cpp
         ${SOURCE_DIR}/client/libmumblelink.c
@@ -72,9 +72,9 @@ list(APPEND CLIENT_SOURCES
     ${CLIENT_PLATFORM_SOURCES}
 )
 
-# Gamespy SDK glue — only built on platforms with BSD sockets.
-# Vita uses gamespy_vita_stub.c added by shared_sources.cmake.
-if(NOT VITA)
+# Gamespy SDK glue — only built on platforms with the full GameSpy SDK.
+# Vita and Switch use gamespy_vita_stub.c added by shared_sources.cmake.
+if(NOT VITA AND NOT SWITCH)
     list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/gamespy/cl_gamespy.c)
 endif()
 

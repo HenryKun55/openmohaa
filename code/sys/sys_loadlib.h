@@ -35,7 +35,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #		define Sys_LibraryError() dlerror()
 #	endif
 #else
-#	ifdef __vita__
+#	ifdef __SWITCH__
+/* Switch homebrew links game/cgame statically into the NRO (libnx has no
+ * general-purpose runtime code loader). Sys_GetGameAPI / Sys_GetCGameAPI
+ * call the statically-linked GetGameAPI / GetCGameAPI directly via a
+ * __SWITCH__ branch in sys_main_new.c, so these loader entry points are
+ * never exercised — stub them so the header still compiles. */
+#		ifdef USE_INTERNAL_SDL_HEADERS
+#			include "SDL.h"
+#		else
+#			include <SDL.h>
+#		endif
+#		define Sys_LoadLibrary(f) ((void*)0)
+#		define Sys_UnloadLibrary(h) ((void)(h))
+#		define Sys_LoadFunction(h,fn) ((void*)0)
+#		define Sys_LibraryError() "static-link (no dlopen on Switch)"
+#	elif defined(__vita__)
 /* SDL2-Vita has SDL_LoadObject stubbed. Use the custom dlopen wrapper
  * around sceKernelLoadStartModule (psp2/dll_psp2.c) for module
  * loading. We still pull SDL.h in because Sys_*Clipboard/etc. callers

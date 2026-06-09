@@ -107,13 +107,13 @@ void Z_Free( void *ptr )
 	}
 
 	if( block->id != ZONEID ) {
-#ifdef __vita__
-		/* Game/cgame .suprx PRX modules keep their globals across the
-		 * dlopen/dlclose cycle on Vita (the kernel ref-counts the same
-		 * image), so on the second InitGame the fgame singletons may
-		 * point at memory we already freed (or never owned). Don't
-		 * blow up the whole boot for that — leak the pointer and let
-		 * the engine continue into gameplay. */
+#if defined(__vita__) || defined(__SWITCH__)
+		/* Game/cgame modules keep their globals across the InitGame cycle
+		 * (Vita: the kernel ref-counts the .suprx image; Switch: it's a single
+		 * statically-linked binary with symbol isolation), so on a second
+		 * InitGame the fgame singletons may point at memory we already freed
+		 * (or never owned). Don't blow up the whole boot for that — leak the
+		 * pointer and let the engine continue into gameplay. */
 		Com_DPrintf( "Z_Free: ignoring pointer %p without ZONEID\n", ptr );
 		return;
 #else
@@ -126,7 +126,7 @@ void Z_Free( void *ptr )
 	if( block->size > 64 * 1024 * 1024 ||
 	    ( byte * )block + block->size < ( byte * )block ||
 	    *( int * )( ( byte * )block + block->size - sizeof( int ) ) != ZONEID ) {
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 		/* See note above — same reload/aliasing pattern can leave the
 		 * size word stomped (libc free-list bookkeeping re-uses the
 		 * memory once the block has been handed back). Don't abort. */

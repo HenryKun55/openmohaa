@@ -358,12 +358,11 @@ static void IN_ActivateMouse( qboolean isFullscreen )
 
 	if( !mouseActive )
 	{
-#ifdef __vita__
-		/* The Vita has no real mouse — input comes from the front/back
-		 * touchpads. SDL_SetRelativeMouseMode(SDL_TRUE) on SDL2-Vita hides
-		 * the cursor and gives only deltas, which means absolute-position
-		 * touch events stop generating useful SDL_MOUSEMOTION. Keep
-		 * absolute mode so finger taps translate to a cursor position. */
+#if defined(__vita__) || defined(__SWITCH__)
+		/* The Vita/Switch have no real mouse — input is the right stick
+		 * driven through IN_VitaPollTouch. SDL_SetRelativeMouseMode(TRUE)
+		 * hides the cursor and gives only deltas; keep absolute mode so the
+		 * synthesised motion translates to an on-screen cursor position. */
 		SDL_SetRelativeMouseMode( SDL_FALSE );
 #else
 		SDL_SetRelativeMouseMode( SDL_TRUE );
@@ -1047,8 +1046,10 @@ static void IN_JoyMove( void )
 	stick_state.oldaxes = axes;
 }
 
+#if defined(__vita__) || defined(__SWITCH__)
 #ifdef __vita__
 #include <psp2/touch.h>
+#endif
 /*
 ===============
 IN_VitaPollTouch
@@ -1098,6 +1099,38 @@ static void IN_VitaPollTouch( void )
 	 * one pixel short of the real edge because our local copy stayed
 	 * frozen while the engine kept absorbing further deltas, desyncing
 	 * the two cursors. */
+#ifdef __SWITCH__
+	/* This poll runs at the TOP of IN_ProcessEvents, BEFORE the SDL_PollEvent
+	 * loop that pumps the HID. On SDL2-switch the GameController/Joystick state
+	 * cache is only refreshed by SDL_PumpEvents() (reads the real HID) — NOT by
+	 * SDL_GameControllerUpdate() — so without this the GetAxis/GetButton reads
+	 * here return stale 0. Pump first so the cursor poll sees live input. */
+	SDL_PumpEvents();
+	{
+		extern qboolean in_guimouse;
+		extern int Sys_Milliseconds(void);
+		static int _curdbg = 0;
+		int _now = Sys_Milliseconds();
+		if (_now - _curdbg > 500) {
+			_curdbg = _now;
+			int _rx = gamepad ? SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_RIGHTX) : -9999;
+			int _ry = gamepad ? SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_RIGHTY) : -9999;
+			SDL_Joystick *_js = gamepad ? SDL_GameControllerGetJoystick(gamepad) : NULL;
+			SDL_JoystickUpdate();
+			int _j0 = _js ? SDL_JoystickGetAxis(_js, 0) : -9999;
+			int _j1 = _js ? SDL_JoystickGetAxis(_js, 1) : -9999;
+			int _j2 = _js ? SDL_JoystickGetAxis(_js, 2) : -9999;
+			int _j3 = _js ? SDL_JoystickGetAxis(_js, 3) : -9999;
+			int _dl = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT) : -1;
+			int _dr = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) : -1;
+			int _du = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP) : -1;
+			int _dd = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN) : -1;
+			int _ba = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_A) : -1;
+			(void)_j0;(void)_j1;(void)_j2;(void)_j3;(void)_rx;(void)_ry;
+			Com_Printf("[cur] dpad L=%d R=%d U=%d D=%d | A=%d\n", _dl, _dr, _du, _dd, _ba);
+		}
+	}
+#endif
 	if ( gamepad == NULL || !( Key_GetCatcher() & KEYCATCH_UI ) )
 		return;
 
@@ -1109,12 +1142,27 @@ static void IN_VitaPollTouch( void )
 	else if ( rx < -dead ) dx = ( rx + dead ) * 10 / 32768;
 	if ( ry > dead )       dy = ( ry - dead ) * 10 / 32768;
 	else if ( ry < -dead ) dy = ( ry + dead ) * 10 / 32768;
+
+#ifdef __SWITCH__
+	/* D-pad cursor fallback. Ryujinx does not forward analog-stick values to
+	 * homebrew (both the GameController and raw-Joystick axis APIs read 0),
+	 * but BUTTONS work. Let the D-pad nudge the cursor so menus are usable
+	 * regardless of analog support — this also works on the real Switch. */
+	{
+		const int step = 9;
+		if ( SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT ) )  dx -= step;
+		if ( SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT ) ) dx += step;
+		if ( SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP ) )    dy -= step;
+		if ( SDL_GameControllerGetButton( gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN ) )  dy += step;
+	}
+#endif
+
 	if ( !dx && !dy )
 		return;
 
 	IN_PushMotion( dx, dy );
 }
-#endif /* __vita__ */
+#endif /* __vita__ || __SWITCH__ */
 
 /*
 ===============
@@ -1130,12 +1178,26 @@ static void IN_ProcessEvents( void )
 	if( !SDL_WasInit( SDL_INIT_VIDEO ) )
 			return;
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	IN_VitaPollTouch();
 #endif
 
 	while( SDL_PollEvent( &e ) )
 	{
+#ifdef __SWITCH__
+		if ( e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP
+			|| e.type == SDL_CONTROLLERAXISMOTION || e.type == SDL_JOYBUTTONDOWN
+			|| e.type == SDL_JOYAXISMOTION || e.type == SDL_JOYHATMOTION
+			|| e.type == SDL_KEYDOWN || e.type == SDL_FINGERDOWN ) {
+			Com_Printf("[ev] type=0x%x a=%d v=%d\n", (unsigned)e.type,
+				(e.type == SDL_CONTROLLERAXISMOTION ? e.caxis.axis :
+				 e.type == SDL_JOYAXISMOTION ? e.jaxis.axis :
+				 e.type == SDL_CONTROLLERBUTTONDOWN ? e.cbutton.button :
+				 e.type == SDL_JOYBUTTONDOWN ? e.jbutton.button : -1),
+				(e.type == SDL_CONTROLLERAXISMOTION ? e.caxis.value :
+				 e.type == SDL_JOYAXISMOTION ? e.jaxis.value : 0));
+		}
+#endif
 		switch( e.type )
 		{
 			case SDL_KEYDOWN:
@@ -1347,11 +1409,11 @@ void IN_Frame( void )
 
 	// update isFullscreen since it might of changed since the last vid_restart
 	cls.glconfig.isFullscreen = Cvar_VariableIntegerValue( "r_fullscreen" ) != 0;
-#ifdef __vita__
-	/* The Vita has no window manager — there is always only one app on
-	 * screen, and SDL2-Vita reports r_fullscreen=0 because the "window"
-	 * doesn't go through a fullscreen toggle. Pin isFullscreen=true so
-	 * IN_Frame doesn't deactivate the mouse the moment a menu opens. */
+#if defined(__vita__) || defined(__SWITCH__)
+	/* The Vita/Switch have no window manager — there is always only one app
+	 * on screen, and SDL reports r_fullscreen=0 because the "window" doesn't
+	 * go through a fullscreen toggle. Pin isFullscreen=true so IN_Frame
+	 * doesn't deactivate the mouse the moment a menu opens. */
 	cls.glconfig.isFullscreen = qtrue;
 #endif
 
@@ -1365,7 +1427,7 @@ void IN_Frame( void )
 		// Loading in windowed mode
 		IN_DeactivateMouse( cls.glconfig.isFullscreen );
 	}
-#ifndef __vita__
+#if !defined(__vita__) && !defined(__SWITCH__)
 	else if( !( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_INPUT_FOCUS ) )
 	{
 		// Window not got focus

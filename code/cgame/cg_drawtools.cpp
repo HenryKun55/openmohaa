@@ -1359,26 +1359,6 @@ void CG_DrawCrosshair()
 
     shader = (qhandle_t)0;
 
-#ifdef __vita__
-    /* DIAGNOSTIC: dump the gate state once per second so we can see why
-     * the crosshair never draws. Remove after the root cause is fixed. */
-    {
-        static int s_lastDumpMsec = 0;
-        int now = cgi.Milliseconds();
-        if (cg.snap && (now - s_lastDumpMsec) >= 1000) {
-            s_lastDumpMsec = now;
-            cgi.Printf("CROSSHAIR: cg_hud=%d ui_crosshair=%d snap=%p pm_flags=0x%x STAT_CROSSHAIR=%d STAT_INZOOM=%d cg_crosshair='%s'\n",
-                cg_hud ? cg_hud->integer : -999,
-                ui_crosshair ? ui_crosshair->integer : -999,
-                (void *)cg.snap,
-                cg.snap->ps.pm_flags,
-                cg.snap->ps.stats[STAT_CROSSHAIR],
-                cg.snap->ps.stats[STAT_INZOOM],
-                cg_crosshair ? cg_crosshair->string : "(null)");
-        }
-    }
-#endif
-
     if (!cg_hud->integer || !ui_crosshair->integer) {
         return;
     }
@@ -1390,6 +1370,24 @@ void CG_DrawCrosshair()
     if ((cg.snap->ps.pm_flags & PMF_NO_HUD) || (cg.snap->ps.pm_flags & PMF_INTERMISSION)) {
         return;
     }
+
+#ifdef __vita__
+    /* Vita: independent crosshair toggles for "aiming" (iron sights / zoom,
+     * STAT_INZOOM != 0) vs "hip fire" (not zoomed). Both default ON; the
+     * in-game perf menu (EFFECTS) flips them and they persist (CVAR_ARCHIVE).
+     * Registered lazily here so we don't touch cgame init ordering. */
+    {
+        static cvar_t *cg_crosshair_hip  = NULL;
+        static cvar_t *cg_crosshair_zoom = NULL;
+        if (!cg_crosshair_hip)  cg_crosshair_hip  = cgi.Cvar_Get("cg_crosshair_hip",  "1", CVAR_ARCHIVE);
+        if (!cg_crosshair_zoom) cg_crosshair_zoom = cgi.Cvar_Get("cg_crosshair_zoom", "1", CVAR_ARCHIVE);
+        if (cg.snap->ps.stats[STAT_INZOOM] != 0) {
+            if (!cg_crosshair_zoom->integer) return;
+        } else {
+            if (!cg_crosshair_hip->integer) return;
+        }
+    }
+#endif
 
     if (!cg.snap->ps.stats[STAT_CROSSHAIR]
         && (!cg.snap->ps.stats[STAT_INZOOM] || cg.snap->ps.stats[STAT_INZOOM] > 30)) {
@@ -1450,26 +1448,6 @@ void CG_DrawCrosshair()
             shader = cgi.R_RegisterShaderNoMip(cg_crosshair->string);
         }
     }
-
-#ifdef __vita__
-    /* DIAGNOSTIC: log shader handle + computed draw rect once per second.
-     * If shader==0 the texture failed to register (probably wrong path /
-     * missing from pak). If width/height are 0/tiny, uiHiResScale or the
-     * shader's intrinsic size is the culprit. */
-    {
-        static int s_lastShDumpMsec = 0;
-        int now = cgi.Milliseconds();
-        if ((now - s_lastShDumpMsec) >= 1000) {
-            s_lastShDumpMsec = now;
-            float w = shader ? cgi.R_GetShaderWidth(shader) : 0.f;
-            float h = shader ? cgi.R_GetShaderHeight(shader) : 0.f;
-            cgi.Printf("CROSSHAIR-DRAW: shader=%d intrinsic=%.0fx%.0f hiResScale=%.2fx%.2f vid=%dx%d\n",
-                (int)shader, w, h,
-                cgs.uiHiResScale[0], cgs.uiHiResScale[1],
-                cgs.glconfig.vidWidth, cgs.glconfig.vidHeight);
-        }
-    }
-#endif
 
     if (shader) {
         width  = cgi.R_GetShaderWidth(shader) * cgs.uiHiResScale[0];

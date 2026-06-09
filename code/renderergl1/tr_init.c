@@ -1819,6 +1819,11 @@ void RE_BeginRegistration(glconfig_t* glconfigOut) {
 
 	R_LevelMarksFree();
 	R_TerrainFree();
+#ifdef __vita__
+	/* Phase 2b: drop the GPU-skin per-surface caches — the TIKIs reload for
+	 * the new level, so cached buffers + the sf->slot registry are stale. */
+	R_VitaGpuSkin_LevelReset();
+#endif
 
 	ri.Hunk_Clear();
 

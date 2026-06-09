@@ -51,8 +51,11 @@ list(APPEND SERVER_LIBRARIES m)
 if(COMPILER_OUTPUT MATCHES "musl|freebsd|openbsd|netbsd")
     list(APPEND CLIENT_LIBRARIES execinfo)
     list(APPEND SERVER_LIBRARIES execinfo)
-elseif (NOT APPLE)
-    # For when using GLIBC versions older than 2.34
+elseif (NOT APPLE AND NOT NINTENDO_SWITCH)
+    # For when using GLIBC versions older than 2.34. libnx folds the
+    # realtime API into libc, so -lrt does not exist on Switch.
+    # (NINTENDO_SWITCH is set by the toolchain before our SWITCH var,
+    # which platforms/all.cmake only defines after compilers/all.cmake.)
     list(APPEND CLIENT_LIBRARIES rt)
     list(APPEND SERVER_LIBRARIES rt)
 endif()

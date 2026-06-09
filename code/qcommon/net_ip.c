@@ -80,7 +80,7 @@ static qboolean	winsockInitialized = qfalse;
 #	include <sys/types.h>
 #	include <sys/time.h>
 #	include <unistd.h>
-#	if !defined(__sun) && !defined(__sgi)
+#	if !defined(__sun) && !defined(__sgi) && !defined(__SWITCH__)
 #		include <ifaddrs.h>
 #	endif
 
@@ -124,6 +124,19 @@ static SOCKET	ip_socket = INVALID_SOCKET;
 static SOCKET	ip6_socket = INVALID_SOCKET;
 static SOCKET	socks_socket = INVALID_SOCKET;
 static SOCKET	multicast6_socket = INVALID_SOCKET;
+
+#ifdef __SWITCH__
+/* libnx's BSD socket layer ships struct sockaddr_in6 / in6_addr but not the
+ * IPv6 multicast bits (struct ipv6_mreq, if_nametoindex). Provide the minimal
+ * definitions so net_ip.c compiles; IPv6 multicast LAN discovery is then a
+ * runtime no-op (the join just fails), which is irrelevant to single-player
+ * and direct-IP IPv4 play. */
+struct ipv6_mreq {
+	struct in6_addr ipv6mr_multiaddr;
+	unsigned int    ipv6mr_interface;
+};
+static unsigned int if_nametoindex(const char *ifname) { (void)ifname; return 0; }
+#endif
 
 // Keep track of currently joined multicast group.
 static struct ipv6_mreq curgroup;

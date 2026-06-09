@@ -1525,7 +1525,12 @@ void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes);
 extern cvar_t *r_vita_gpu_skinning;
 void     R_VitaGpuSkin_Init(void);
 void     R_VitaGpuSkin_Shutdown(void);
+void     R_VitaGpuSkin_LevelReset(void);
 qboolean R_VitaGpuSkin_IsReady(void);
+/* Phase 2b: GPU-skin a TIKI surface. void* params dodge a tiki_shared.h
+ * dependency here (skelBoneCache_t is an anonymous typedef). Returns qtrue
+ * if drawn on GPU (caller skips the CPU path), qfalse to fall back. */
+qboolean R_VitaGpuSkin_DrawSurf(void *sf, void *tiki, void *skelmodel, void *bones, float scale);
 
 /* Load-time: when 1, mipmaps are built on the GXM GPU via
  * glGenerateMipmap instead of the CPU R_MipMap loop in Upload32.

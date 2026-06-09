@@ -2238,6 +2238,52 @@ int Com_TimeVal(int minMsec)
 	return timeVal;
 }
 
+#ifdef __SWITCH__
+#include <stdio.h>
+/*
+=================
+Com_PollSwitchCmdFile
+
+libnx has no named pipes, so com_pipefile (Sys_Mkfifo) is a no-op on Switch, and
+Ryujinx never feeds input to a homebrew NRO — which makes the emulator unusable
+for driving gameplay. Workaround: poll a plain text file each frame. The host
+(Mac) writes console commands into ohcmd.txt on the SD card; we execute them and
+truncate the file. This lets us steer the running game from outside (advance the
+briefing, move, noclip, etc.) for testing in Ryujinx.
+=================
+*/
+void Com_PollSwitchCmdFile( void )
+{
+	static int counter = 0;
+	FILE      *f;
+	char       buf[1024];
+	size_t     n;
+
+	if ( ( ++counter & 7 ) != 0 ) {
+		return; // ~8x/sec is plenty
+	}
+
+	f = fopen( "sdmc:/switch/openmohaa/main/ohcmd.txt", "rb" );
+	if ( !f ) {
+		return;
+	}
+	n = fread( buf, 1, sizeof( buf ) - 1, f );
+	fclose( f );
+	if ( n == 0 ) {
+		return;
+	}
+	buf[n] = '\0';
+	Com_Printf( "[cmdfile] running: %s\n", buf );
+	Cbuf_AddText( buf );
+	Cbuf_AddText( "\n" );
+
+	f = fopen( "sdmc:/switch/openmohaa/main/ohcmd.txt", "wb" ); // truncate so it runs once
+	if ( f ) {
+		fclose( f );
+	}
+}
+#endif
+
 /*
 =================
 Com_Frame
@@ -2514,6 +2560,9 @@ void Com_Frame( void ) {
 	}
 
 	Com_ReadFromPipe();
+#ifdef __SWITCH__
+	Com_PollSwitchCmdFile();
+#endif
 
     Sys_ProcessBackgroundTasks();
 

@@ -1131,6 +1131,23 @@ void Level::SpawnEntities(char *entities, int svsTime)
     int         start, end;
     char        name[128];
 
+    gi.Printf("[se] Level::SpawnEntities entry\n");
+
+#ifdef __SWITCH__
+    // Pre-reserve g_spawnlist so AddObject never has to Resize() (relocate)
+    // during the spawn loop. Relocating a Container<SafePtr<Listener>> on
+    // aarch64 faults while relinking the entity's safe-pointer list (works on
+    // armv7/x86; root cause still under investigation). Reserving up front
+    // while the list is still empty takes the simple alloc path (no move), so
+    // every spawn just placement-news into the pre-sized array.
+    {
+        extern Container<SafePtr<Listener>> g_spawnlist;
+        if (g_spawnlist.NumObjects() == 0) {
+            g_spawnlist.Resize(16384);
+        }
+    }
+#endif
+
     if (gi.Cvar_Get("g_invulnoverride", "0", 0)->integer == 1) {
         // Added in 2.30
         //  Clear the invulnerable override when loading
@@ -1154,16 +1171,22 @@ void Level::SpawnEntities(char *entities, int svsTime)
     sv_numtraces = 0;
 
     // parse world
+    gi.Printf("[se] parse worldspawn\n");
     entities     = args.Parse(entities);
     spawn_entnum = ENTITYNUM_WORLD;
+    gi.Printf("[se] worldspawn SpawnInternal\n");
     args.SpawnInternal();
+    gi.Printf("[se] worldspawn done\n");
 
     gi.LoadResource("*147");
 
     // Set up for a new map
+    gi.Printf("[se] PathManager.LoadNodes\n");
     PathManager.LoadNodes();
+    gi.Printf("[se] PathManager.LoadNodes done\n");
 
     gi.LoadResource("*147a");
+    gi.Printf("[se] LoadResource 147a done, entering entity loop\n");
 
     Com_Printf("-------------------- Actual Spawning Entities -----------------------\n");
 
@@ -1172,7 +1195,9 @@ void Level::SpawnEntities(char *entities, int svsTime)
     // parse ents
     inhibit = 0;
 
+    int _se_iter = 0;
     for (entities = args.Parse(entities); entities != NULL; entities = args.Parse(entities)) {
+        gi.Printf("[se] loop iter %d, classname=%s\n", _se_iter++, args.getArg("classname") ? args.getArg("classname") : "?");
         // remove things (except the world) from different skill levels or deathmatch
         spawnflags = 0;
         value      = args.getArg("spawnflags");
@@ -1190,6 +1215,7 @@ void Level::SpawnEntities(char *entities, int svsTime)
         }
 
         listener = args.SpawnInternal();
+        gi.Printf("[se]   SpawnInternal done (listener=%p)\n", (void *)listener);
 
         if (listener) {
             radnum++;
@@ -1202,9 +1228,12 @@ void Level::SpawnEntities(char *entities, int svsTime)
 
                 Q_strncpyz(ent->edict->entname, ent->getClassID(), sizeof(ent->edict->entname));
 
+                gi.Printf("[se]   PostEvent EV_Entity_Start (%s)\n", ent->getClassID());
                 ent->PostEvent(EV_Entity_Start, -1.0, 0);
+                gi.Printf("[se]   PostEvent returned\n");
                 Com_sprintf(name, sizeof(name), "i%d", radnum);
                 gi.LoadResource(name);
+                gi.Printf("[se]   LoadResource returned\n");
             }
         }
     }
@@ -1634,16 +1663,22 @@ void Level::Precache(void)
         // temporarily disable the loop protection
         // because caching models require time
         m_LoopProtection = false;
+        gi.Printf("[pc] precache script: %s\n", m_precachescript.c_str());
         Director.ExecuteThread(m_precachescript);
+        gi.Printf("[pc] precache script done\n");
         m_LoopProtection = true;
     }
 
     if (g_gametype->integer == GT_SINGLE_PLAYER) {
+        gi.Printf("[pc] LoadAllScripts anim\n");
         LoadAllScripts("anim", ".scr");
     }
 
+    gi.Printf("[pc] LoadAllScripts global\n");
     LoadAllScripts("global", ".scr");
+    gi.Printf("[pc] InitVoteOptions\n");
     InitVoteOptions();
+    gi.Printf("[pc] Level::Precache done\n");
 
     // Added in OPM
     //  Cache all player models in multi-player

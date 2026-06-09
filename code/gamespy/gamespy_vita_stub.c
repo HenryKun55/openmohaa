@@ -14,7 +14,7 @@
  * the stock net_chan / net_ip layer.
  */
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"

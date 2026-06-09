@@ -115,17 +115,26 @@ qboolean CM_LoadTGA(const char *name, byte **pic, int *width, int *height)
     targa_header.pixel_size = *buf_p++;
     targa_header.attributes = *buf_p++;
 
+    // A fence mask in an odd TGA format must not take the whole map load down.
+    // Warn and skip it (return qfalse, *pic stays NULL) so collision falls back
+    // to the solid surface instead of ERR_DROP'ing the level back to the menu.
     if (targa_header.image_type != 2 && targa_header.image_type != 10 && targa_header.image_type != 3) {
-        Com_Error(ERR_DROP, "LoadTGA: Only type 2 (RGB), 3 (gray), and 10 (RGB) TGA images supported\n");
+        Com_Printf("CM_LoadTGA: %s: unsupported image_type %d (only 2/3/10) - skipping fence mask\n", name, targa_header.image_type);
+        FS_FreeFile(buffer);
+        return qfalse;
     }
 
     if (targa_header.colormap_type != 0) {
-        Com_Error(ERR_DROP, "LoadTGA: colormaps not supported\n");
+        Com_Printf("CM_LoadTGA: %s: colormaps not supported - skipping fence mask\n", name);
+        FS_FreeFile(buffer);
+        return qfalse;
     }
 
     if (targa_header.pixel_size != 32) {
         if (targa_header.pixel_size != 24 && targa_header.image_type != 3) {
-            Com_Error(ERR_DROP, "LoadTGA: Only 32 or 24 bit images supported (no colormaps)\n");
+            Com_Printf("CM_LoadTGA: %s: %d-bit unsupported (need 24/32) - skipping fence mask\n", name, targa_header.pixel_size);
+            FS_FreeFile(buffer);
+            return qfalse;
         }
 
         FS_FreeFile(buffer);

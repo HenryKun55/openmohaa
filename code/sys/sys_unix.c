@@ -34,7 +34,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <stdlib.h>
 #include <dirent.h>
 #include <unistd.h>
-#ifndef __vita__
+#if !defined(__vita__) && !defined(__SWITCH__)
 #include <sys/mman.h>
 #include <pwd.h>
 #include <libgen.h>
@@ -91,7 +91,7 @@ Sys_Exec
 */
 static int Sys_Exec( void )
 {
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	// fork/exec/wait are not available on the Vita.
 	// Sys_Exec is only used by the Linux dialog helpers (zenity/kdialog),
 	// which we don't ship on Vita.
@@ -136,7 +136,19 @@ char *Sys_DefaultHomeConfigPath(void) { return vitaHomePath; }
 char *Sys_DefaultHomeDataPath(void)   { return vitaHomePath; }
 char *Sys_DefaultHomeStatePath(void)  { return vitaHomePath; }
 qboolean Sys_MigrateToXDG(void)       { return qfalse; }
-#else /* !__vita__ */
+#elif defined(__SWITCH__)
+/* Switch homebrew: no XDG/$HOME either — everything lives under the SD
+ * card at sdmc:/switch/openmohaa/ which Sys_PlatformInit creates. */
+static char switchHomePath[] = "sdmc:/switch/openmohaa/";
+
+char *Sys_HomeConfigPath(void)        { return switchHomePath; }
+char *Sys_HomeDataPath(void)          { return switchHomePath; }
+char *Sys_HomeStatePath(void)         { return switchHomePath; }
+char *Sys_DefaultHomeConfigPath(void) { return switchHomePath; }
+char *Sys_DefaultHomeDataPath(void)   { return switchHomePath; }
+char *Sys_DefaultHomeStatePath(void)  { return switchHomePath; }
+qboolean Sys_MigrateToXDG(void)       { return qfalse; }
+#else /* !__vita__ && !__SWITCH__ */
 
 #ifdef __APPLE__
 
@@ -603,7 +615,7 @@ Sys_GetCurrentUser
 */
 char *Sys_GetCurrentUser( void )
 {
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	return "player";
 #else
 	struct passwd *p;
@@ -636,7 +648,7 @@ Sys_Basename
 */
 const char *Sys_Basename( char *path )
 {
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	const char *slash = strrchr( path, '/' );
 	return slash ? slash + 1 : path;
 #else
@@ -651,7 +663,7 @@ Sys_Dirname
 */
 const char *Sys_Dirname( char *path )
 {
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	static char buf[ MAX_OSPATH ];
 	char *slash;
 	Q_strncpyz( buf, path, sizeof( buf ) );
@@ -718,10 +730,11 @@ Sys_Mkfifo
 */
 FILE *Sys_Mkfifo( const char *ospath )
 {
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 	(void)ospath;
-	/* Named pipes aren't part of the Vita's IO API; only the dedicated-server
-	 * console uses Sys_Mkfifo and we don't ship a dedicated build on Vita. */
+	/* Named pipes aren't part of the Vita / libnx IO API; only the
+	 * dedicated-server console uses Sys_Mkfifo and we don't ship a
+	 * dedicated build on either console. */
 	return NULL;
 #else
 	FILE	*fifo;
@@ -1283,10 +1296,10 @@ Sys_PlatformInit
 Unix specific initialisation
 ==============
 */
-#ifndef __vita__
-/* Vita provides its own Sys_PlatformInit / Sys_PlatformExit in
- * sys_vita.c (sceSysmodule + sceKernelExitProcess). The signal-based
- * setup below assumes a terminal, which the Vita does not have. */
+#if !defined(__vita__) && !defined(__SWITCH__)
+/* Vita and Switch provide their own Sys_PlatformInit / Sys_PlatformExit in
+ * sys_vita.c / sys_switch.c (kernel/libnx service bring-up). The signal-based
+ * setup below assumes a terminal, which neither console has. */
 void Sys_PlatformInit( void )
 {
 	const char* term = getenv( "TERM" );

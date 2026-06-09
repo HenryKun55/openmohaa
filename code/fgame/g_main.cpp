@@ -261,22 +261,44 @@ void G_InitGame(int levelTime, int randomSeed)
     G_Printf("gamename: %s\n", GAMEVERSION);
     G_Printf("gamedate: %s\n", __DATE__);
 
+#ifdef __SWITCH__
+    /* Self-test: does C++ exception throw/catch survive the static-link symbol
+     * isolation on Switch? If this prints "caught OK", exceptions work and the
+     * m1l1.scr crash is elsewhere; if it crashes after "throwing", the
+     * exception unwinder is broken (the real root cause). */
+    G_Printf("[exctest] throwing ScriptException...\n");
+    try {
+        throw ScriptException("self-test");
+    } catch (ScriptException& e) {
+        G_Printf("[exctest] caught OK: %s\n", e.string.c_str());
+    } catch (...) {
+        G_Printf("[exctest] caught via catch(...)\n");
+    }
+    G_Printf("[exctest] done\n");
+#endif
+
     g_protocol    = gi.Cvar_Get("com_protocol", "", 0)->integer;
     g_target_game = (target_game_e)gi.Cvar_Get("com_target_game", "0", 0)->integer;
 
     srand(randomSeed);
 
+    G_Printf("[ig] CVAR_Init\n");
     CVAR_Init();
 
+    G_Printf("[ig] Vars()->ClearList\n");
     game.Vars()->ClearList();
 
     // set some level globals
     level.svsStartTime = levelTime;
 
+    G_Printf("[ig] G_InitConsoleCommands\n");
     G_InitConsoleCommands();
 
+    G_Printf("[ig] Director.Reset\n");
     Director.Reset();
+    G_Printf("[ig] Actor::Init\n");
     Actor::Init();
+    G_Printf("[ig] G_BotInit\n");
     G_BotInit();
 
     sv_numtraces   = 0;
@@ -298,8 +320,10 @@ void G_InitGame(int levelTime, int randomSeed)
         game.maxclients += sv_maxbots->integer;
     }
 
+    G_Printf("[ig] L_InitEvents\n");
     L_InitEvents();
 
+    G_Printf("[ig] G_AllocGameData\n");
     G_AllocGameData();
 
     if (g_target_game < TG_MOHTA) {
@@ -307,6 +331,7 @@ void G_InitGame(int levelTime, int randomSeed)
         //  This frees alias list to avoid filling up memory
         gi.GlobalAlias_Clear();
     }
+    G_Printf("[ig] ==== InitGame DONE ====\n");
 }
 
 /*
@@ -317,7 +342,9 @@ G_SpawnEntities
 */
 void G_SpawnEntities(char *entities, int svsTime)
 {
+    G_Printf("[se] G_SpawnEntities entities=%p\n", (void *)entities);
     level.SpawnEntities(entities, svsTime);
+    G_Printf("[se] G_SpawnEntities done\n");
 }
 
 /*

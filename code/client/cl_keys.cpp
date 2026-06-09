@@ -1059,7 +1059,7 @@ CL_KeyEvent
 Called by the system for both key up and key down events
 ===================
 */
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
 extern qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down);
 #endif
 
@@ -1068,7 +1068,7 @@ void CL_KeyEvent(int key, qboolean down, unsigned time)
     char *kb;
     char  cmd[1024];
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
     /* Perf menu intercepts ALL keys when active so gameplay binds don't
      * fire while the user navigates the tree. Returns true if consumed. */
     if (CL_VitaPerfMenu_HandleKey(key, down)) {
@@ -1141,11 +1141,11 @@ void CL_KeyEvent(int key, qboolean down, unsigned time)
         ctrlkeys[key].down = down;
     }
 
-#ifdef __vita__
+#if defined(__vita__) || defined(__SWITCH__)
     /* The MOHAA UI is cursor-based (war room is point-and-click): clicks
      * go through K_MOUSE1 at (cl.mousex, cl.mousey), not K_ENTER. Map
-     * the X (Cross) button to K_MOUSE1 so the user can click whatever
-     * the cursor is hovering. K_PAD0_B and START close menus.
+     * the bottom face button (K_PAD0_A) to K_MOUSE1 so the user can click
+     * whatever the cursor is hovering. K_PAD0_B and START close menus.
      *
      * D-pad still translates to arrow keys for list-style sub-menus
      * (controls/options) that genuinely use keyboard nav. */

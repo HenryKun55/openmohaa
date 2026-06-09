@@ -128,6 +128,50 @@ if(BUILD_GAME_LIBRARIES)
         if(TARGET ${CLIENT_BINARY})
             add_dependencies(${CLIENT_BINARY} cgame_suprx-self game_suprx-self)
         endif()
+    elseif(SWITCH)
+        # Nintendo Switch: libnx has no runtime code loader, so game / cgame
+        # are STATIC-linked into the NRO instead of dlopen'd. They share class
+        # NAMES with the engine but compile them with DIFFERENT layouts (e.g.
+        # ScriptVariable carries a `short3 key` member only under GAME_DLL), so
+        # the copies must NOT be merged. Each module is partial-linked into one
+        # object and every defined symbol is prefixed except its API entry
+        # (switch_isolate.sh), giving it a private symbol namespace. The
+        # isolated objects are then linked into the client NRO.
+        add_library(${CGAME_MODULE_BINARY_BASEGAME} STATIC
+            ${CGAME_SOURCES_BASEGAME} ${BG_SOURCES} ${CGAME_BINARY_SOURCES})
+        target_compile_definitions(${CGAME_MODULE_BINARY_BASEGAME} PRIVATE CGAME_DLL)
+
+        add_library(${GAME_MODULE_BINARY_BASEGAME} STATIC
+            ${GAME_SOURCES_BASEGAME} ${BG_SOURCES} ${GAME_BINARY_SOURCES})
+        target_compile_definitions(${GAME_MODULE_BINARY_BASEGAME} PRIVATE
+            GAME_DLL WITH_SCRIPT_ENGINE ARCHIVE_SUPPORTED)
+        target_link_libraries(${GAME_MODULE_BINARY_BASEGAME} PRIVATE
+            RecastNavigation::Detour RecastNavigation::DetourCrowd RecastNavigation::Recast)
+
+        set(CGAME_ISO_OBJ ${CMAKE_BINARY_DIR}/cgame_iso.o)
+        set(GAME_ISO_OBJ  ${CMAKE_BINARY_DIR}/game_iso.o)
+        set(ISO_SCRIPT    ${CMAKE_SOURCE_DIR}/cmake/utils/switch_isolate.sh)
+
+        add_custom_command(OUTPUT ${CGAME_ISO_OBJ}
+            COMMAND sh ${ISO_SCRIPT} ${CMAKE_C_COMPILER} ${CMAKE_NM} ${CMAKE_OBJCOPY}
+                $<TARGET_FILE:${CGAME_MODULE_BINARY_BASEGAME}> GetCGameAPI CGAMEISO_ ${CGAME_ISO_OBJ}
+            DEPENDS ${CGAME_MODULE_BINARY_BASEGAME} ${ISO_SCRIPT}
+            COMMENT "Isolating cgame symbols for static NRO link")
+        add_custom_command(OUTPUT ${GAME_ISO_OBJ}
+            COMMAND sh ${ISO_SCRIPT} ${CMAKE_C_COMPILER} ${CMAKE_NM} ${CMAKE_OBJCOPY}
+                $<TARGET_FILE:${GAME_MODULE_BINARY_BASEGAME}> GetGameAPI GAMEISO_ ${GAME_ISO_OBJ}
+            DEPENDS ${GAME_MODULE_BINARY_BASEGAME} ${ISO_SCRIPT}
+            COMMENT "Isolating game symbols for static NRO link")
+
+        add_custom_target(cgame_iso DEPENDS ${CGAME_ISO_OBJ})
+        add_custom_target(game_iso  DEPENDS ${GAME_ISO_OBJ})
+
+        if(TARGET ${CLIENT_BINARY})
+            add_dependencies(${CLIENT_BINARY} cgame_iso game_iso)
+            target_link_libraries(${CLIENT_BINARY} PRIVATE
+                ${GAME_ISO_OBJ} ${CGAME_ISO_OBJ}
+                RecastNavigation::Detour RecastNavigation::DetourCrowd RecastNavigation::Recast)
+        endif()
     else()
         add_library(                ${CGAME_MODULE_BINARY_BASEGAME} SHARED ${CGAME_SOURCES_BASEGAME} ${BG_SOURCES} ${CGAME_BINARY_SOURCES})
         target_compile_definitions( ${CGAME_MODULE_BINARY_BASEGAME} PRIVATE CGAME_DLL)

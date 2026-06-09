@@ -163,8 +163,13 @@ void R_VitaWorldVBO_Build(void)
     }
 
     worldVboSurfCount = tr.world->numsurfaces;
+    /* ri.Malloc (heap), NOT Hunk_AllocateTempMemory: this array must SURVIVE
+     * the whole level (the draw path reads it every frame) and is released
+     * with ri.Free in R_VitaWorldVBO_Free. Hunk temp memory gets reclaimed by
+     * the next level's Hunk_Clear, after which ri.Free on it crashed the
+     * level transition (worked on level 1, died loading level 2). */
     worldVboSurf      = (vitaWorldVboSurf_t *)
-        ri.Hunk_AllocateTempMemory(sizeof(vitaWorldVboSurf_t) * worldVboSurfCount);
+        ri.Malloc(sizeof(vitaWorldVboSurf_t) * worldVboSurfCount);
 
     /* Pass 1: tally + record offsets. Also stamp the parallel
      * vitaVboSurfIdx field inside srfTriangles_t so the draw path
@@ -209,7 +214,7 @@ void R_VitaWorldVBO_Build(void)
 
     if (eligibleSurfaces == 0 || accumVerts == 0) {
         ri.Printf(PRINT_ALL, "[VITA-VBO] no eligible SF_TRIANGLES world surfaces, skipping\n");
-        ri.Hunk_FreeTempMemory(worldVboSurf);
+        ri.Free(worldVboSurf);
         worldVboSurf      = NULL;
         worldVboSurfCount = 0;
         return;
@@ -230,7 +235,7 @@ void R_VitaWorldVBO_Build(void)
                 ((srfTriangles_t *)s->data)->vitaVboSurfIdx = -1;
             }
         }
-        ri.Hunk_FreeTempMemory(worldVboSurf);
+        ri.Free(worldVboSurf);
         worldVboSurf      = NULL;
         worldVboSurfCount = 0;
         return;
@@ -284,7 +289,8 @@ void R_VitaWorldVBO_Build(void)
 
     ri.Hunk_FreeTempMemory(indexBuf);
     ri.Hunk_FreeTempMemory(vertBuf);
-    /* worldVboSurf stays around — needed at draw time later. */
+    /* worldVboSurf (ri.Malloc) stays alive for the level — the draw path
+     * reads it every frame; R_VitaWorldVBO_Free releases it on level change. */
 }
 
 /*

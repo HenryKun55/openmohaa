@@ -224,6 +224,26 @@ void con_set<key, value>::clear()
     Entry       *next  = NULL;
     unsigned int i;
 
+#ifdef __SWITCH__
+    /* Switch: the single-binary build keeps globals like Event::eventDefList /
+     * commandList across the InitGame re-init (the Vita reloads the module and
+     * re-runs their constructors; we cannot). L_ShutdownEvents() clears them on
+     * every re-init, and freeing the stale/aliased entries here corrupts the
+     * heap so the subsequent re-registration crashes in addKeyEntry. Leak-reset
+     * to a clean empty set instead (mirrors con_arrayset::clear / the Z_Free
+     * guard) — a small per-reload leak beats a heap-corrupting double free. */
+    (void)entry;
+    (void)next;
+    (void)i;
+    tableLength      = 1;
+    table            = &defaultEntry;
+    threshold        = 1;
+    count            = 0;
+    tableLengthIndex = 0;
+    defaultEntry     = NULL;
+    return;
+#endif
+
     for (i = 0; i < tableLength; i++) {
         for (entry = table[i]; entry != NULL; entry = next) {
             next = entry->next;
