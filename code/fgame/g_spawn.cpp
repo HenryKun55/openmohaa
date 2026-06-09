@@ -379,13 +379,7 @@ Listener *SpawnArgs::SpawnInternal(void)
     t1 = gi.Milliseconds();
 
     classname = getArg("classname", "Unspecified");
-#ifdef __SWITCH__
-    gi.Printf("[si] getClassDef for %s\n", classname.c_str());
-#endif
     cls       = getClassDef(&tikiWasStatic);
-#ifdef __SWITCH__
-    gi.Printf("[si] getClassDef -> %p\n", (void *)cls);
-#endif
 
     if (!cls) {
         if (!tikiWasStatic) {
@@ -403,18 +397,9 @@ Listener *SpawnArgs::SpawnInternal(void)
         // use the existing node that was loaded
         obj = PathManager.GetSpawnNode(cls);
     } else {
-#ifdef __SWITCH__
-        gi.Printf("[si] newInstance %s\n", classname.c_str());
-#endif
         obj = (Listener *)cls->newInstance();
-#ifdef __SWITCH__
-        gi.Printf("[si] newInstance -> %p\n", (void *)obj);
-#endif
     }
 
-#ifdef __SWITCH__
-    gi.Printf("[si] g_spawnlist prune (n=%d)\n", g_spawnlist.NumObjects());
-#endif
     for (int i = g_spawnlist.NumObjects(); i > 0; i--) {
         if (g_spawnlist.ObjectAt(i) == NULL) {
             g_spawnlist.RemoveObjectAt(i);
@@ -424,27 +409,18 @@ Listener *SpawnArgs::SpawnInternal(void)
 #ifdef __SWITCH__
     if (g_spawnlist.NumObjects() >= 1) {
         Listener *_e0 = (Listener *)g_spawnlist.ObjectAt(1).Pointer();
-        gi.Printf("[si] TEST: making SafePtr to entity[0]=%p\n", (void *)_e0);
         {
             SafePtr<Listener> _testref(_e0);   // exercises AddReference -> _e0->SafePtrList
-            gi.Printf("[si] TEST: SafePtr AddReference OK (ptr=%p)\n", (void *)_testref.Pointer());
         }
-        gi.Printf("[si] TEST: SafePtr destruct OK\n");
     }
 #endif
     g_spawnlist.AddObject(obj);
-#ifdef __SWITCH__
-    gi.Printf("[si] g_spawnlist AddObject done (n=%d)\n", g_spawnlist.NumObjects());
-#endif
 
     // post spawnarg events
     for (i = 0; i < NumArgs(); i++) {
         key   = getKey(i);
         value = getValue(i);
 
-#ifdef __SWITCH__
-        gi.Printf("[se]     arg[%d] %s = %s\n", i, key ? key : "?", value ? value : "?");
-#endif
 
         if (*key == '#') {
             // don't count the prefix

@@ -496,18 +496,9 @@ void Container<Type>::Resize(int maxelements)
             maxobjects = numobjects;
         }
 
-#if defined(__SWITCH__) && defined(GAME_DLL)
-        gi.Printf("[rs] Resize move: n=%d max=%d sizeofType=%d alloc...\n", (int)numobjects, maxobjects, (int)sizeof(Type));
-#endif
         objlist = (Type *)CONTAINER_Alloc(sizeof(Type) * maxobjects);
 
-#if defined(__SWITCH__) && defined(GAME_DLL)
-        gi.Printf("[rs] alloc done objlist=%p, copy loop...\n", (void *)objlist);
-#endif
         for (i = 0; i < numobjects; i++) {
-#if defined(__SWITCH__) && defined(GAME_DLL)
-            gi.Printf("[rs]   i=%d construct...\n", (int)i);
-#endif
 #ifdef __SWITCH__
             // The SafePtr move-constructor (SafePtrBase::Move) relinks the
             // object's safe-pointer list and faults here on aarch64 during the
@@ -521,23 +512,11 @@ void Container<Type>::Resize(int maxelements)
             new (objlist + i) Type(std::move(temp[i]));
 #endif
 
-#if defined(__SWITCH__) && defined(GAME_DLL)
-            gi.Printf("[rs]   i=%d destruct...\n", (int)i);
-#endif
             // destruct the older type
             temp[i].~Type();
-#if defined(__SWITCH__) && defined(GAME_DLL)
-            gi.Printf("[rs]   i=%d done\n", (int)i);
-#endif
         }
 
-#if defined(__SWITCH__) && defined(GAME_DLL)
-        gi.Printf("[rs] Resize move done, free temp\n");
-#endif
         CONTAINER_Free(temp);
-#if defined(__SWITCH__) && defined(GAME_DLL)
-        gi.Printf("[rs] Resize free done\n");
-#endif
     }
 }
 

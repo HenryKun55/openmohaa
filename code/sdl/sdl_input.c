@@ -1127,7 +1127,6 @@ static void IN_VitaPollTouch( void )
 			int _dd = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN) : -1;
 			int _ba = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_A) : -1;
 			(void)_j0;(void)_j1;(void)_j2;(void)_j3;(void)_rx;(void)_ry;
-			Com_Printf("[cur] dpad L=%d R=%d U=%d D=%d | A=%d\n", _dl, _dr, _du, _dd, _ba);
 		}
 	}
 #endif
@@ -1189,13 +1188,6 @@ static void IN_ProcessEvents( void )
 			|| e.type == SDL_CONTROLLERAXISMOTION || e.type == SDL_JOYBUTTONDOWN
 			|| e.type == SDL_JOYAXISMOTION || e.type == SDL_JOYHATMOTION
 			|| e.type == SDL_KEYDOWN || e.type == SDL_FINGERDOWN ) {
-			Com_Printf("[ev] type=0x%x a=%d v=%d\n", (unsigned)e.type,
-				(e.type == SDL_CONTROLLERAXISMOTION ? e.caxis.axis :
-				 e.type == SDL_JOYAXISMOTION ? e.jaxis.axis :
-				 e.type == SDL_CONTROLLERBUTTONDOWN ? e.cbutton.button :
-				 e.type == SDL_JOYBUTTONDOWN ? e.jbutton.button : -1),
-				(e.type == SDL_CONTROLLERAXISMOTION ? e.caxis.value :
-				 e.type == SDL_JOYAXISMOTION ? e.jaxis.value : 0));
 		}
 #endif
 		switch( e.type )

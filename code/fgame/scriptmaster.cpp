@@ -662,47 +662,28 @@ ScriptThread *ScriptMaster::CreateThread(GameScript *scr, str label, Listener *s
 
 void ScriptMaster::ExecuteThread(str filename, str label)
 {
-#ifdef __SWITCH__
-    gi.Printf("[et] GetScript: %s\n", filename.c_str());
-#endif
     GameScript *scr = GetScript(filename);
 
     if (!scr) {
         return;
     }
 
-#ifdef __SWITCH__
-    gi.Printf("[et] GetScript ok, ExecuteThread(scr)\n");
-#endif
     ExecuteThread(scr, label);
 }
 
 void ScriptMaster::ExecuteThread(GameScript *scr, str label)
 {
-#ifdef __SWITCH__
-    gi.Printf("[et] CreateThread\n");
-#endif
     ScriptThread *thread = CreateThread(scr, label);
 
     try {
         if (thread) {
-#ifdef __SWITCH__
-            gi.Printf("[et] thread->Execute\n");
-#endif
             thread->Execute();
-#ifdef __SWITCH__
-            gi.Printf("[et] thread->Execute done\n");
-#endif
         }
     } catch (ScriptException& exc) {
-#ifdef __SWITCH__
-        gi.Printf("[et] caught ScriptException: %s\n", exc.string.c_str());
-#endif
         gi.DPrintf("ScriptMaster::ExecuteThread: %s\n", exc.string.c_str());
     }
 #ifdef __SWITCH__
     catch (...) {
-        gi.Printf("[et] caught UNKNOWN (non-Script) exception\n");
     }
 #endif
 }

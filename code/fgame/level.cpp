@@ -1131,7 +1131,6 @@ void Level::SpawnEntities(char *entities, int svsTime)
     int         start, end;
     char        name[128];
 
-    gi.Printf("[se] Level::SpawnEntities entry\n");
 
 #ifdef __SWITCH__
     // Pre-reserve g_spawnlist so AddObject never has to Resize() (relocate)
@@ -1171,22 +1170,16 @@ void Level::SpawnEntities(char *entities, int svsTime)
     sv_numtraces = 0;
 
     // parse world
-    gi.Printf("[se] parse worldspawn\n");
     entities     = args.Parse(entities);
     spawn_entnum = ENTITYNUM_WORLD;
-    gi.Printf("[se] worldspawn SpawnInternal\n");
     args.SpawnInternal();
-    gi.Printf("[se] worldspawn done\n");
 
     gi.LoadResource("*147");
 
     // Set up for a new map
-    gi.Printf("[se] PathManager.LoadNodes\n");
     PathManager.LoadNodes();
-    gi.Printf("[se] PathManager.LoadNodes done\n");
 
     gi.LoadResource("*147a");
-    gi.Printf("[se] LoadResource 147a done, entering entity loop\n");
 
     Com_Printf("-------------------- Actual Spawning Entities -----------------------\n");
 
@@ -1197,7 +1190,6 @@ void Level::SpawnEntities(char *entities, int svsTime)
 
     int _se_iter = 0;
     for (entities = args.Parse(entities); entities != NULL; entities = args.Parse(entities)) {
-        gi.Printf("[se] loop iter %d, classname=%s\n", _se_iter++, args.getArg("classname") ? args.getArg("classname") : "?");
         // remove things (except the world) from different skill levels or deathmatch
         spawnflags = 0;
         value      = args.getArg("spawnflags");
@@ -1215,7 +1207,6 @@ void Level::SpawnEntities(char *entities, int svsTime)
         }
 
         listener = args.SpawnInternal();
-        gi.Printf("[se]   SpawnInternal done (listener=%p)\n", (void *)listener);
 
         if (listener) {
             radnum++;
@@ -1228,12 +1219,9 @@ void Level::SpawnEntities(char *entities, int svsTime)
 
                 Q_strncpyz(ent->edict->entname, ent->getClassID(), sizeof(ent->edict->entname));
 
-                gi.Printf("[se]   PostEvent EV_Entity_Start (%s)\n", ent->getClassID());
                 ent->PostEvent(EV_Entity_Start, -1.0, 0);
-                gi.Printf("[se]   PostEvent returned\n");
                 Com_sprintf(name, sizeof(name), "i%d", radnum);
                 gi.LoadResource(name);
-                gi.Printf("[se]   LoadResource returned\n");
             }
         }
     }
