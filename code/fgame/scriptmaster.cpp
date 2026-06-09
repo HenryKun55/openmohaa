@@ -790,7 +790,17 @@ void ScriptMaster::Reset(qboolean samemap)
         }
 
         CloseGameScript();
+#ifndef __SWITCH__
+        // SWITCH: keep the StringDict (the const_str index table) across maps. On the
+        // single-binary Switch the script command lists (con_map<const_str, eventnum>)
+        // are built ONCE and kept (InitConstStrings has a run-once guard). Clearing
+        // the dict here renumbers every const_str, so those persistent command-list
+        // keys go stale -> FindNormalEventNum misses -> "unknown command" for every
+        // command -> the NEXT level's scripts fail to compile and it loads UNSCRIPTED
+        // (no loadout / AI / objectives). Persisting the dict keeps the indices stable
+        // (AddString stays idempotent); the small string leak fits the Switch's RAM.
         StringDict.clear();
+#endif
         InitConstStrings();
     }
 

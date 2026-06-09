@@ -2674,6 +2674,15 @@ void Player::ChooseSpawnPoint(void)
     // set up the player's spawn location
     PlayerStart *p = SelectSpawnPoint(this);
     setOrigin(p->origin + Vector(0, 0, 1));
+#ifdef __SWITCH__
+    // Keep the player-state origin in sync with the entity origin so the first
+    // Pmove (which reads client->ps.origin) doesn't snap the player back to
+    // (0,0,0). The MP ClientBegin path does this explicitly; the SP path relied
+    // on it happening implicitly, which doesn't hold on the single-binary Switch.
+    client->ps.origin[0] = origin[0];
+    client->ps.origin[1] = origin[1];
+    client->ps.origin[2] = origin[2];
+#endif
     origin.copyTo(edict->s.origin2);
     edict->s.renderfx |= RF_FRAMELERP;
 

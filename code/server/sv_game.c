@@ -1608,7 +1608,21 @@ void SV_ShutdownGameProgs( void ) {
 #ifdef __vita__
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("pre Z_FreeTags(TAG_GAME)"); }
 #endif
+#ifdef __SWITCH__
+	// SWITCH: do NOT free the game zone on a map change. On the single-binary
+	// Switch the game's C++ statics persist across InitGame (no per-level module
+	// reload like the Vita's dlopen/dlclose), and several of them cache pointers
+	// INTO TAG_GAME memory — most importantly the compiled-script cache
+	// (ScriptMaster::m_GameScripts -> each GameScript's bytecode buffer). Freeing
+	// TAG_GAME here leaves those statics dangling, so the NEXT level's InitGame
+	// dereferences freed memory and crashes at varying points (Actor::Init,
+	// LoadAllScripts, ...). Keep the memory alive instead. The Switch has far more
+	// RAM than the Vita's 240MB (where this leak OOM'd), so the per-map retention
+	// is acceptable, and the compiled scripts are correctly reused next level.
+	(void)0;
+#else
 	Z_FreeTags(TAG_GAME);
+#endif
 #ifdef __vita__
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("post Z_FreeTags(TAG_GAME)"); }
 #endif

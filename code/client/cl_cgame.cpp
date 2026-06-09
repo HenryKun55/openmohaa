@@ -548,7 +548,17 @@ void CL_ShutdownCGame( void ) {
 		re.FreeModels();
 	}
 
+#ifdef __SWITCH__
+	// SWITCH: same reasoning as TAG_GAME in SV_ShutdownGameProgs. The single-binary
+	// cgame's C++ statics persist across CL_InitCGame (no per-level module reload),
+	// and cache pointers into TAG_CGAME memory (compiled cgame scripts, the
+	// ubersound/uberdialog alias data). Freeing TAG_CGAME on a map change leaves
+	// them dangling, so the next level's CL_InitCGame crashes re-parsing ubersound.
+	// Keep the cgame zone alive; the Switch has the RAM the Vita's 240MB lacked.
+	(void)0;
+#else
 	Z_FreeTags( TAG_CGAME );
+#endif
 }
 
 static int	FloatAsInt( float f ) {
