@@ -71,6 +71,17 @@ The entire single-player campaign should work (Allied Assault, Spearhead and Bre
 
 You can host your own [OpenMoHAA server](docs/markdown/02-running/02-running-server.md#) or join others using OpenMoHAA.
 
+## Console homebrew ports (PS Vita / Nintendo Switch)
+
+This fork (`vita-port` branch) adds experimental homebrew ports to the **PlayStation Vita** (vitaGL / vitasdk) and the **Nintendo Switch** (libnx / devkitPro). Copy a full retail MoHAA `main/` data set (all of `Pak0`–`Pak5.pk3` plus `sound/`) onto the device alongside the build.
+
+| Platform | Status |
+|----------|--------|
+| **PS Vita** | Playable — single-player runs; ongoing performance work (VBO world draw, GPU skinning, faster loads). |
+| **Nintendo Switch** | Boots to the menu and loads Mission 1 **fully textured with music**, on real hardware and in the Ryujinx emulator. Reaching in-mission gameplay still trips a map-transition (briefing → level reload) memory issue that is being worked on. |
+
+The Switch build links the engine, game and cgame into a single NRO with per-module symbol isolation (it has no runtime code loader), so the desktop/Linux/Windows/macOS builds are unaffected — all console-specific changes are guarded behind `__vita__` / `__SWITCH__`.
+
 ## Screenshots
 
 |                                                                                   |                                                                            |
