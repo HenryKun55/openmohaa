@@ -706,6 +706,23 @@ static keyNum_t IN_KeyFor( SDL_GameControllerButton sdlButton )
 	return 0;
 }
 
+#ifdef __SWITCH__
+// SDL2-switch's SDL_GameController state stays dead under Ryujinx (the controller
+// opens but Get*/events never update). Read the libnx HID directly instead
+// (implemented in sys_switch.c). Only stable SDL enum ints cross the boundary,
+// so switch.h never has to meet SDL.h here.
+extern void Switch_PadUpdate(void);
+extern int  Switch_PadButtonPressed(int sdlBtn);
+extern int  Switch_PadAxis(int sdlAxis);
+#    define GP_UPDATE()  Switch_PadUpdate()
+#    define GP_BUTTON(b) Switch_PadButtonPressed(b)
+#    define GP_AXIS(a)   Switch_PadAxis(a)
+#else
+#    define GP_UPDATE()  SDL_GameControllerUpdate()
+#    define GP_BUTTON(b) SDL_GameControllerGetButton(gamepad, b)
+#    define GP_AXIS(a)   SDL_GameControllerGetAxis(gamepad, a)
+#endif
+
 /*
 ===============
 IN_GamepadMove
@@ -717,13 +734,13 @@ static void IN_GamepadMove( void )
 	int translatedAxes[MAX_JOYSTICK_AXIS];
 	qboolean translatedAxesSet[MAX_JOYSTICK_AXIS];
 
-	SDL_GameControllerUpdate();
+	GP_UPDATE();
 
 	// check buttons
 	for (i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++)
 	{
 		SDL_GameControllerButton sdlButton = SDL_CONTROLLER_BUTTON_A + i;
-		qboolean pressed = SDL_GameControllerGetButton(gamepad, sdlButton);
+		qboolean pressed = GP_BUTTON(sdlButton);
 		if (pressed != stick_state.buttons[i])
 		{
 			Com_QueueEvent(in_eventTime, SE_KEY, IN_KeyFor(sdlButton), pressed, 0, NULL);
@@ -745,7 +762,7 @@ static void IN_GamepadMove( void )
 	// check axes
 	for (i = 0; i < SDL_CONTROLLER_AXIS_MAX; i++)
 	{
-		int axis = SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_LEFTX + i);
+		int axis = GP_AXIS(SDL_CONTROLLER_AXIS_LEFTX + i);
 		int oldAxis = stick_state.oldaaxes[i];
 
 		// Smoothly ramp from dead zone to maximum value
@@ -1100,41 +1117,15 @@ static void IN_VitaPollTouch( void )
 	 * frozen while the engine kept absorbing further deltas, desyncing
 	 * the two cursors. */
 #ifdef __SWITCH__
-	/* This poll runs at the TOP of IN_ProcessEvents, BEFORE the SDL_PollEvent
-	 * loop that pumps the HID. On SDL2-switch the GameController/Joystick state
-	 * cache is only refreshed by SDL_PumpEvents() (reads the real HID) — NOT by
-	 * SDL_GameControllerUpdate() — so without this the GetAxis/GetButton reads
-	 * here return stale 0. Pump first so the cursor poll sees live input. */
-	SDL_PumpEvents();
-	{
-		extern qboolean in_guimouse;
-		extern int Sys_Milliseconds(void);
-		static int _curdbg = 0;
-		int _now = Sys_Milliseconds();
-		if (_now - _curdbg > 500) {
-			_curdbg = _now;
-			int _rx = gamepad ? SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_RIGHTX) : -9999;
-			int _ry = gamepad ? SDL_GameControllerGetAxis(gamepad, SDL_CONTROLLER_AXIS_RIGHTY) : -9999;
-			SDL_Joystick *_js = gamepad ? SDL_GameControllerGetJoystick(gamepad) : NULL;
-			SDL_JoystickUpdate();
-			int _j0 = _js ? SDL_JoystickGetAxis(_js, 0) : -9999;
-			int _j1 = _js ? SDL_JoystickGetAxis(_js, 1) : -9999;
-			int _j2 = _js ? SDL_JoystickGetAxis(_js, 2) : -9999;
-			int _j3 = _js ? SDL_JoystickGetAxis(_js, 3) : -9999;
-			int _dl = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT) : -1;
-			int _dr = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT) : -1;
-			int _du = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP) : -1;
-			int _dd = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN) : -1;
-			int _ba = gamepad ? SDL_GameControllerGetButton(gamepad, SDL_CONTROLLER_BUTTON_A) : -1;
-			(void)_j0;(void)_j1;(void)_j2;(void)_j3;(void)_rx;(void)_ry;
-		}
-	}
+	/* SDL2-switch's controller state is dead under Ryujinx, so refresh the libnx
+	 * HID directly before reading the right stick for the cursor. */
+	GP_UPDATE();
 #endif
 	if ( gamepad == NULL || !( Key_GetCatcher() & KEYCATCH_UI ) )
 		return;
 
-	int rx = SDL_GameControllerGetAxis( gamepad, SDL_CONTROLLER_AXIS_RIGHTX );
-	int ry = SDL_GameControllerGetAxis( gamepad, SDL_CONTROLLER_AXIS_RIGHTY );
+	int rx = GP_AXIS( SDL_CONTROLLER_AXIS_RIGHTX );
+	int ry = GP_AXIS( SDL_CONTROLLER_AXIS_RIGHTY );
 	const int dead = 32767 * 15 / 100;
 	int dx = 0, dy = 0;
 	if ( rx > dead )       dx = ( rx - dead ) * 10 / 32768;

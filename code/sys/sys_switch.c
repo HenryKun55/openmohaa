@@ -158,4 +158,85 @@ void Sys_PlatformExit(void)
  * under a __SWITCH__ branch, alongside the matching __vita__ one, so the
  * path strings stay in one place and can't drift from qcommon.h. */
 
+/*
+=================================================================
+Gamepad input via the libnx HID (`pad`) API.
+
+SDL2-switch's SDL_GameController state never updates under Ryujinx (the emulator
+doesn't pump HID into the SDL layer for a homebrew NRO — the controller opens but
+GetButton/GetAxis return 0 and no events fire). So sdl_input.c reads the pad
+through these thin wrappers, which talk to the libnx HID directly. Works the same
+on real hardware and in Ryujinx, and keeps SDL/switch.h header conflicts out of
+sdl_input.c (only int enum values cross the boundary).
+=================================================================
+*/
+static PadState s_switchPad;
+static int      s_switchPadInit = 0;
+
+static void Switch_PadEnsure(void)
+{
+    if (!s_switchPadInit) {
+        padConfigureInput(8, HidNpadStyleSet_NpadStandard);
+        padInitializeDefault(&s_switchPad);
+        s_switchPadInit = 1;
+    }
+}
+
+void Switch_PadUpdate(void)
+{
+    Switch_PadEnsure();
+    padUpdate(&s_switchPad);
+}
+
+/* sdlBtn == SDL_CONTROLLER_BUTTON_* (stable SDL2 enum int). 1 if held.
+ * SDL uses an Xbox-positional layout; Nintendo swaps A/B and X/Y, so the
+ * face buttons are crossed here to keep the existing PAD0_* binds correct. */
+int Switch_PadButtonPressed(int sdlBtn)
+{
+    u64 b;
+    if (!s_switchPadInit) {
+        return 0;
+    }
+    b = padGetButtons(&s_switchPad);
+    switch (sdlBtn) {
+    case 0:  return (b & HidNpadButton_B)      ? 1 : 0; /* A  (bottom) = Nintendo B */
+    case 1:  return (b & HidNpadButton_A)      ? 1 : 0; /* B  (right)  = Nintendo A */
+    case 2:  return (b & HidNpadButton_Y)      ? 1 : 0; /* X  (left)   = Nintendo Y */
+    case 3:  return (b & HidNpadButton_X)      ? 1 : 0; /* Y  (top)    = Nintendo X */
+    case 4:  return (b & HidNpadButton_Minus)  ? 1 : 0; /* BACK  */
+    case 6:  return (b & HidNpadButton_Plus)   ? 1 : 0; /* START */
+    case 7:  return (b & HidNpadButton_StickL) ? 1 : 0; /* LEFTSTICK click  */
+    case 8:  return (b & HidNpadButton_StickR) ? 1 : 0; /* RIGHTSTICK click */
+    case 9:  return (b & HidNpadButton_L)      ? 1 : 0; /* LEFTSHOULDER  */
+    case 10: return (b & HidNpadButton_R)      ? 1 : 0; /* RIGHTSHOULDER */
+    case 11: return (b & HidNpadButton_Up)     ? 1 : 0; /* DPAD_UP    */
+    case 12: return (b & HidNpadButton_Down)   ? 1 : 0; /* DPAD_DOWN  */
+    case 13: return (b & HidNpadButton_Left)   ? 1 : 0; /* DPAD_LEFT  */
+    case 14: return (b & HidNpadButton_Right)  ? 1 : 0; /* DPAD_RIGHT */
+    default: return 0;
+    }
+}
+
+/* sdlAxis == SDL_CONTROLLER_AXIS_* (stable SDL2 enum int). Range -32768..32767. */
+int Switch_PadAxis(int sdlAxis)
+{
+    u64                 b;
+    HidAnalogStickState l, r;
+    if (!s_switchPadInit) {
+        return 0;
+    }
+    b = padGetButtons(&s_switchPad);
+    l = padGetStickPos(&s_switchPad, 0);
+    r = padGetStickPos(&s_switchPad, 1);
+    switch (sdlAxis) {
+    case 0:  return l.x;                                  /* LEFTX  */
+    case 1:  return -l.y;                                 /* LEFTY  (SDL +Y = down, libnx +y = up) */
+    case 2:  return r.x;                                  /* RIGHTX */
+    case 3:  return -r.y;                                 /* RIGHTY */
+    case 4:  return (b & HidNpadButton_ZL) ? 32767 : 0;   /* TRIGGERLEFT  */
+    case 5:  return (b & HidNpadButton_ZR) ? 32767 : 0;   /* TRIGGERRIGHT */
+    default: return 0;
+    }
+}
+
 #endif /* __SWITCH__ */
