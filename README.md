@@ -221,8 +221,9 @@ choices persist in `configs/omconfig.cfg` across reboots.
   GreemDev / LotP) that continues the emulator after the original was
   discontinued in Oct 2024. Tested on the **macOS** build with **stock, default
   settings: no config changes, worked out of the box.** Builds for
-  Windows / macOS / Linux are at
-  [github.com/Ryubing/Ryujinx](https://github.com/Ryubing/Ryujinx) and are
+  Windows / macOS / Linux live on the project's own Forgejo,
+  [git.ryujinx.app](https://git.ryujinx.app/ryubing/ryujinx/-/releases) (the
+  canonical home after the 2024 takedown — a GitHub mirror also exists), and are
   released together, so grab the latest matching version for your OS.
 
 > Reminder: this is `v0.0.1`. The Switch build can still **freeze at certain
