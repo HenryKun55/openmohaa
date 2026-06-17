@@ -217,9 +217,13 @@ choices persist in `configs/omconfig.cfg` across reboots.
 **Tested on:**
 - **Real Nintendo Switch** on custom firmware (Atmosphère) — the primary target
   and the source of truth for crashes.
-- **Ryujinx `1.3.3`** (the community-maintained fork) — runs with **stock,
-  default emulator settings: we made no config changes at all and it worked out
-  of the box.**
+- **Ryubing `1.3.3`** — the community fork of Ryujinx (maintained by
+  GreemDev / LotP) that continues the emulator after the original was
+  discontinued in Oct 2024. Tested on the **macOS** build with **stock, default
+  settings: no config changes, worked out of the box.** Builds for
+  Windows / macOS / Linux are at
+  [github.com/Ryubing/Ryujinx](https://github.com/Ryubing/Ryujinx) and are
+  released together, so grab the latest matching version for your OS.
 
 > Reminder: this is `v0.0.1`. The Switch build can still **freeze at certain
 > moments or hit crashes that aren't mapped yet**. When that happens,
