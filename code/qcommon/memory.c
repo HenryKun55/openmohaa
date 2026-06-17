@@ -259,6 +259,48 @@ void Z_CheckHeap( void )
 #endif
 }
 
+#ifdef __SWITCH__
+/*
+========================
+Z_CheckHeapSwitch
+
+Heap-corruption hunt for the single-binary Switch. Walks every tag's block
+list, validates each block's header id and end trailer, and LOGS the first bad
+blocks (tag/addr/id/size) instead of aborting -- so we can see WHEN (which
+map-change boundary) and WHERE the heap first breaks. Bounded so a corrupt
+next-chain can't loop forever.
+========================
+*/
+void Z_CheckHeapSwitch( const char *whenLabel )
+{
+	int k;
+	memblock_t *block;
+	int bad = 0;
+
+	for( k = 0; k < TAG_NUM_TOTAL_TAGS; k++ )
+	{
+		int guard = 0;
+		for( block = mem_blocks[ k ].next; block != &mem_blocks[ k ]; block = block->next )
+		{
+			if( ++guard > 4000000 ) {
+				Com_Printf( "[heapchk] %s tag=%d LINK-LOOP (next chain corrupt)\n", whenLabel, k );
+				break;
+			}
+			if( block->id != ZONEID ) {
+				Com_Printf( "[heapchk] %s tag=%d block=%p BAD-ID id=0x%x size=%lu\n",
+					whenLabel, k, (void *)block, block->id, (unsigned long)block->size );
+				if( ++bad > 16 ) return;
+			} else if( *( int * )( ( byte * )block + block->size - 4 ) != ZONEID ) {
+				Com_Printf( "[heapchk] %s tag=%d block=%p PAST-END size=%lu\n",
+					whenLabel, k, (void *)block, (unsigned long)block->size );
+				if( ++bad > 16 ) return;
+			}
+		}
+	}
+	Com_Printf( "[heapchk] %s OK (bad=%d)\n", whenLabel, bad );
+}
+#endif
+
 /*
 ========================
 Z_TouchMemory

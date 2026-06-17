@@ -1467,22 +1467,34 @@ qboolean G_ArchiveLevel(
             }
         }
 
+#ifdef __SWITCH__
+#define SAVEDBG(x) do { if (arc.Saving()) gi.Printf("[save] >> " x "\n"); } while(0)
+#else
+#define SAVEDBG(x) ((void)0)
+#endif
+
         // archive the game object
+        SAVEDBG("game");
         arc.ArchiveObject(&game);
 
         // archive Level
+        SAVEDBG("level");
         arc.ArchiveObject(&level);
 
         // archive camera paths
+        SAVEDBG("CameraMan");
         arc.ArchiveObject(&CameraMan);
 
         // archive paths
+        SAVEDBG("PathManager");
         arc.ArchiveObject(&PathManager);
 
         // archive script controller
+        SAVEDBG("Director");
         arc.ArchiveObject(&Director);
 
         // archive lightstyles
+        SAVEDBG("lightStyles");
         arc.ArchiveObject(&lightStyles);
 
         if (arc.Saving()) {
@@ -1503,6 +1515,7 @@ qboolean G_ArchiveLevel(
 
         if (arc.Saving()) {
             // write out the world
+            SAVEDBG("world");
             arc.ArchiveObject(world);
 
             for (edict = active_edicts.next; edict != &active_edicts; edict = edict->next) {
@@ -1510,6 +1523,9 @@ qboolean G_ArchiveLevel(
                     continue;
                 }
 
+#ifdef __SWITCH__
+                gi.Printf("[save] ent %d %s\n", edict->entity->entnum, edict->entity->getClassID());
+#endif
                 arc.ArchiveObject(edict->entity);
             }
         } else {

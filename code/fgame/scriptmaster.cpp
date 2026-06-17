@@ -883,6 +883,16 @@ ScriptClass *ScriptMaster::CurrentScriptClass(void)
 
 void ScriptMaster::CloseGameScript(void)
 {
+#ifdef __SWITCH__
+    /* Keep the compiled-script cache across map changes / restarts on the
+     * single-binary Switch. Deleting the GameScripts here ran ~GameScript() ->
+     * Close(), which faulted reading a corrupt m_CatchBlocks container (a
+     * use-after-free of the cached script). Scripts are keyed per source file
+     * and the StringDict (the cache keys) is also kept across maps, so the
+     * cache stays valid and is correctly reused next level -- just don't tear
+     * it down. */
+    return;
+#endif
     con_map_enum<const_str, GameScript *> en(m_GameScripts);
     GameScript                          **g;
     Container<GameScript *>               gameScripts;

@@ -655,6 +655,17 @@ void CL_MouseMove( usercmd_t *cmd ) {
 		}
 	}
 
+#ifdef __SWITCH__
+	/* Dev-menu "Sens. MIRANDO (ADS)" scales the aim sensitivity only while the
+	 * cgame is applying a zoom scale (aiming/scoped), independently of the
+	 * hip-fire "sensitivity" cvar. */
+	if( cgameSensitivity != 1.0f )
+	{
+		extern cvar_t *cl_ads_sensitivity;
+		if( cl_ads_sensitivity ) cgameSensitivity *= cl_ads_sensitivity->value;
+	}
+#endif
+
 	mx *= cgameSensitivity;
 	my *= cgameSensitivity;
 

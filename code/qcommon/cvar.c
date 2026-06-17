@@ -1749,7 +1749,14 @@ void Cvar_Init (void)
 	Com_Memset(cvar_indexes, '\0', sizeof(cvar_indexes));
 	Com_Memset(hashTable, '\0', sizeof(hashTable));
 
+#ifdef __SWITCH__
+	/* Drop CVAR_LATCH on the Switch so the dev menu's "cheats 1" takes effect
+	 * immediately instead of only after a restart ("cheats will be changed upon
+	 * restarting"). Default stays 1 = cheats available. */
+	cvar_cheats = Cvar_Get("cheats", "1", CVAR_SYSTEMINFO );
+#else
 	cvar_cheats = Cvar_Get("cheats", "1", CVAR_LATCH | CVAR_SYSTEMINFO );
+#endif
 
 	Cmd_AddCommand ("print", Cvar_Print_f);
 	Cmd_AddCommand ("toggle", Cvar_Toggle_f);

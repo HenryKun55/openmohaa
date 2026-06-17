@@ -1106,6 +1106,18 @@ void View3D::Draw(void)
 #endif
 
     Draw2D();
+
+#ifdef __SWITCH__
+    /* Draw the dev-menu overlay LAST -- after set2D() + Draw2D(), so it's in the
+     * 2D state and sits on top of the HUD during 3D gameplay. Drawing it inside
+     * SCR_DrawScreenField (before set2D) left it in the 3D state, hidden behind
+     * the scene + HUD -> it only ever showed on flat 2D menu screens. */
+    {
+        extern void CL_DevMenu_Draw(void);
+        CL_DevMenu_Draw();
+    }
+#endif
+
 #ifdef __vita__
     _v3_t4 = Sys_Milliseconds();
     if (_v3_doPrint) {

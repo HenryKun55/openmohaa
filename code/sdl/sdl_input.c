@@ -736,6 +736,18 @@ static void IN_GamepadMove( void )
 
 	GP_UPDATE();
 
+#ifdef __SWITCH__
+	{
+		/* When the on-screen dev menu is open, the pad drives the menu only;
+		 * feed nothing to the game so the player doesn't move/shoot. The pad
+		 * was already polled by GP_UPDATE() above, so the menu still sees it. */
+		extern int cl_devmenu_active;
+		if (cl_devmenu_active) {
+			return;
+		}
+	}
+#endif
+
 	// check buttons
 	for (i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++)
 	{
@@ -1465,7 +1477,17 @@ void IN_Init( void *windowData )
 	SDL_EventState( SDL_DROPFILE, SDL_ENABLE );
 #endif
 
+#ifndef __SWITCH__
 	SDL_StartTextInput( );
+#else
+	/* On the Switch SDL_StartTextInput() pops the system on-screen keyboard
+	 * (swkbd applet) the moment input initialises -- so the player saw a
+	 * keyboard at boot, and the phantom key event it queued was eaten by the
+	 * intro stage (UI_StartStageKeyEvent), skipping the EA logo. The Switch is
+	 * controller-driven, so don't start text input until something actually
+	 * needs it. */
+	SDL_StopTextInput( );
+#endif
 
 	mouseAvailable = ( in_mouse->value != 0 );
 	IN_DeactivateMouse( Cvar_VariableIntegerValue( "r_fullscreen" ) != 0 );

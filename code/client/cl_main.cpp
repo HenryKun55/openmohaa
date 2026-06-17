@@ -2856,6 +2856,12 @@ void CL_Frame ( int msec ) {
 #endif
 
 	// update the screen
+#ifdef __SWITCH__
+	{
+		extern void CL_DevMenu_Frame(void);
+		CL_DevMenu_Frame();
+	}
+#endif
 	SCR_UpdateScreen();
 #ifdef __vita__
 	_vita_t4 = Sys_Milliseconds();

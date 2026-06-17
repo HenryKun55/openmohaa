@@ -239,4 +239,11 @@ int Switch_PadAxis(int sdlAxis)
     }
 }
 
+/* 1 when docked (TV mode), 0 in handheld. Used to pick the render resolution:
+ * 1080p docked, 720p handheld. */
+int Switch_IsDocked(void)
+{
+    return appletGetOperationMode() == AppletOperationMode_Console;
+}
+
 #endif /* __SWITCH__ */

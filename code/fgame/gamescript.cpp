@@ -169,6 +169,16 @@ void AbstractScript::PrintSourcePos(unsigned char *m_pCodePos, bool dev)
         return;
     }
 
+#ifdef __SWITCH__
+    /* On the single-binary Switch, after a level change m_ProgToSource can be a
+     * dangling con_set -- its internal table pointer reads back as garbage (a
+     * float-as-pointer, e.g. 0xbf72...), so findKeyValue() faults here. This is
+     * only the cosmetic "where in the source" annotation for a script error, so
+     * skip it: HandleScriptException still prints the actual error text and the
+     * exception is handled normally instead of crashing the whole game. */
+    return;
+#endif
+
     sourceinfo_t *codePos = m_ProgToSource->findKeyValue(m_pCodePos);
 
     if (!codePos) {

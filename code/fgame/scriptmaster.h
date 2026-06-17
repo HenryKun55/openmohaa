@@ -30,7 +30,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../corepp/con_timer.h"
 
 #define MAX_COMMANDS       20
+#if defined(__SWITCH__) || defined(__vita__)
+/* Console CPUs are far slower per script command, so a legitimate heavy
+ * gameplay thread can exceed the stock 3s wall-clock budget and trip a FALSE
+ * "Command overflow. Possible infinite loop" that drops the player to the main
+ * menu. Give the slow CPU a much larger budget; a genuine runaway still trips,
+ * just later (and on Switch m_LoopDrop=false keeps it from dropping anyway). */
+#define MAX_EXECUTION_TIME 30000
+#else
 #define MAX_EXECUTION_TIME 3000
+#endif
 
 void Showmenu(const str& name, qboolean bForce);
 void Hidemenu(const str& name, qboolean bForce);

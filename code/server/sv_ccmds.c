@@ -179,16 +179,17 @@ static void SV_Map_f( void ) {
 		Com_sprintf( mapname, sizeof( mapname ), "%s", Cmd_Argv( 1 ) );
 	}
 
-#ifdef __vita__
-	/* Briefing → first-level transition is unstable on Vita because the
-	 * .suprx PRX modules can't truly reload (sceKernelLoadStartModule
-	 * refcounts the same image; static C++ initialisers don't re-run),
-	 * leaving fgame globals + engine-side UI caches in a half-stale
-	 * state that corrupts the heap during the second InitGame. Until we
-	 * have a real module-reload story, rewrite the campaign launcher's
-	 * "map briefing/briefingN" into the corresponding mission start
-	 * map. That way the user clicks Mission N from the menu, watches
-	 * the cutscene flow, and jumps straight into the level. */
+#if defined(__vita__) || defined(__SWITCH__)
+	/* Briefing → first-level transition is unstable on the single-binary
+	 * console ports (Vita .suprx PRX and Switch NRO): the modules can't
+	 * truly reload (static C++ initialisers don't re-run), so the second
+	 * InitGame leaves fgame globals + engine-side UI caches half-stale.
+	 * On Switch this specifically leaves the briefing MENU stuck on top of
+	 * the level holding KEYCATCH_UI, so the player can't move or look.
+	 * Rewrite the campaign launcher's "map briefing/briefingN" into the
+	 * corresponding mission start map: the user clicks Mission N from the
+	 * menu and jumps straight into the level — single fresh module/state,
+	 * no double InitGame, no stuck briefing. */
 	{
 		static const struct { const char *brief; const char *level; } redirect[] = {
 			{ "briefing/briefing1", "m1l1" },
@@ -202,7 +203,7 @@ static void SV_Map_f( void ) {
 		int i;
 		for( i = 0; redirect[i].brief; i++ ) {
 			if( !Q_stricmp( mapname, redirect[i].brief ) ) {
-				Com_Printf( "[vita] Redirecting %s -> %s (briefing skip)\n",
+				Com_Printf( "[port] Redirecting %s -> %s (briefing skip)\n",
 				            mapname, redirect[i].level );
 				Q_strncpyz( mapname, redirect[i].level, sizeof( mapname ) );
 				break;
@@ -2283,6 +2284,32 @@ qboolean SV_ArchiveLevelFile(qboolean loading, qboolean autosave)
 			FS_FCloseFile(f);
 		}
 	} else {
+#ifdef __SWITCH__
+		/* Saving the level via G_ArchiveLevel dereferences a bad pointer in the
+		 * level state on the single-binary Switch build -> data-abort crash.
+		 * Seen on BOTH the level-start autosave ("<map>0000", float-as-pointer)
+		 * and the scripted mid-level checkpoint ("<map>0001", NULL deref).
+		 * In-map autosaves on the FIRST level worked, so the archiver itself is
+		 * fine -- the cross-level transition leaves a stale/uninitialised
+		 * pointer in the persistent statics. Skip ALL level saves so the
+		 * campaign can be played through end to end; proper cross-level save
+		 * serialization is still TODO (the deep transition-stability fix).
+		 *
+		 * Per the user request: NO automatic level-start / transition autosave on
+		 * the Switch (that is the one that crashed on the m1l1 -> m1l2a load).
+		 * Manual menu saves and scripted checkpoints (autosave == qfalse) still
+		 * run -- the object that crashed the save (a stray HelmetObject) is now
+		 * FL_DONTSAVE, so they should serialize cleanly. The [save] >> ... and
+		 * [save] ent ... instrumentation stays in G_ArchiveLevel to pin any
+		 * remaining bad object if a manual/scripted save still aborts. */
+		/* UPDATE: the user confirmed even the scripted "automatic" checkpoint
+		 * saves (autosave == qfalse) crash -- they archive fine and print
+		 * "Game Saved", then abort in the post-save path (Z_Free of the cgame
+		 * state buffer). The whole level-save path is unstable on the
+		 * single-binary Switch, so skip ALL level saves. The campaign plays
+		 * crash-free; real saving waits on the deep serialization fix. */
+		return qtrue;
+#endif
 		cls.savedCgameStateSize = cge->CG_SaveStateToBuffer(&cls.savedCgameState, svs.time);
 		ge->WriteLevel(name, autosave, (byte **)&cls.savedCgameState, &cls.savedCgameStateSize);
 		Z_Free(cls.savedCgameState);

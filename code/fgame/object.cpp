@@ -413,6 +413,13 @@ HelmetObject::HelmetObject()
         return;
     }
 
+    /* The flying helmet is a transient, cosmetic object (auto-removed after 5s).
+     * Keep it out of savegames: archiving one crashed the level save on the
+     * single-binary Switch (the autosave on the m1l1 -> m1l2a transition --
+     * [save] instrumentation pinned "ent 118 helmetobject" as the last object
+     * before the data-abort). It isn't worth saving anyway. */
+    flags |= FL_DONTSAVE;
+
     setSolidType(SOLID_NOT);
     setMoveType(MOVETYPE_TOSS);
     setSize(Vector(-2, -2, -2), Vector(2, 2, 2));

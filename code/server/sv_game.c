@@ -1591,6 +1591,10 @@ void SV_ShutdownGameProgs( void ) {
 		return;
 	}
 
+#ifdef __SWITCH__
+	{ extern void Z_CheckHeapSwitch(const char *); Z_CheckHeapSwitch("pre-shutdown"); }
+#endif
+
 	ge->Shutdown();
 	Sys_UnloadGame();
 
@@ -1625,6 +1629,10 @@ void SV_ShutdownGameProgs( void ) {
 #endif
 #ifdef __vita__
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("post Z_FreeTags(TAG_GAME)"); }
+#endif
+
+#ifdef __SWITCH__
+	{ extern void Z_CheckHeapSwitch(const char *); Z_CheckHeapSwitch("post-shutdown"); }
 #endif
 
 	ge = NULL;
@@ -2005,6 +2013,9 @@ void SV_InitGameProgs( void ) {
 	ge->Init( svs.startTime, Com_Milliseconds() );
 #ifdef __vita__
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("post ge->Init (InitGame)"); }
+#endif
+#ifdef __SWITCH__
+	{ extern void Z_CheckHeapSwitch(const char *); Z_CheckHeapSwitch("post-init"); }
 #endif
 
 	err = ge->errorMessage;

@@ -4541,7 +4541,19 @@ void ScriptThread::AddObjective(int index, int status, str text, Vector location
             last_time = level.inttime;
         }
         if (g_gametype->integer == GT_SINGLE_PLAYER) {
+#ifdef __SWITCH__
+            /* Switch: log + guard entity-0's pointer. Across a level change it can
+             * read back as a tiny garbage value (ZONEID 0x7331), and the virtual
+             * IsSubclassOfPlayer() then jumps through a bogus vtable -> data abort
+             * right after the objective-completed message. The heap is intact
+             * (Z_CheckHeapSwitch), so this is a dangling reference. */
+            gi.Printf("[obj] complete g_ents=%p ent0=%p\n",
+                (void *)g_entities, (void *)(g_entities ? g_entities->entity : 0));
+            if (g_entities && (size_t)g_entities->entity >= 0x10000
+                && g_entities->entity->IsSubclassOfPlayer()) {
+#else
             if (g_entities->entity->IsSubclassOfPlayer()) {
+#endif
                 ((Player *)g_entities->entity)->m_iObjectivesCompleted++;
             }
         }

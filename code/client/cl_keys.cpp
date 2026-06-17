@@ -1142,6 +1142,14 @@ void CL_KeyEvent(int key, qboolean down, unsigned time)
     }
 
 #if defined(__vita__) || defined(__SWITCH__)
+    /* Start (+) is the ESC button EVERYWHERE: it opens the in-game menu while
+     * playing and backs out of menus in the UI. Previously this only happened
+     * inside KEYCATCH_UI, so in-game the button did nothing. (Minus already
+     * maps to the TAB/objectives key, which works fine.) */
+    if (key == K_PAD0_START) {
+        key = K_ESCAPE;
+    }
+
     /* The MOHAA UI is cursor-based (war room is point-and-click): clicks
      * go through K_MOUSE1 at (cl.mousex, cl.mousey), not K_ENTER. Map
      * the bottom face button (K_PAD0_A) to K_MOUSE1 so the user can click

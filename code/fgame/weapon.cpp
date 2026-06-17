@@ -2471,6 +2471,23 @@ void Weapon::PickupWeapon(Event *ev)
     other = ev->GetEntity(1);
     assert(other);
 
+#ifdef __SWITCH__
+    /* ROOT HUNT: log the picker entity + its edict link. On the 2nd+ level the
+     * crash here is a bad pointer; this shows WHICH (the Entity, its edict, or
+     * the cast Sentient) so we can trace where the staleness comes from. Guard
+     * the bad ones so the game survives and keeps logging. */
+    if ((size_t)other < 0x10000) {
+        gi.Printf("[wpick] BAD other=%p -> skip\n", (void *)other);
+        return;
+    }
+    gi.Printf("[wpick] other=%p edict=%p item=%s\n",
+        (void *)other, (void *)other->edict, item_name.c_str());
+    if ((size_t)other->edict < 0x10000) {
+        gi.Printf("[wpick] BAD edict=%p -> skip\n", (void *)other->edict);
+        return;
+    }
+#endif
+
     if (!other->IsSubclassOfSentient()) {
         return;
     }

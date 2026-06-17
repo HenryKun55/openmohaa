@@ -543,6 +543,18 @@ void ScriptVM::executeCommandInternal<false>(
     transferVarsToEvent(ev, fromVar, iParamCount);
 
     checkValidEvent(ev, listener);
+#ifdef __SWITCH__
+    /* Switch use-after-free guard: a stale Listener (freed across a level change
+     * but still referenced by script state) reads back as a tiny garbage value
+     * -- notably ZONEID (0x7331) when its memory got a fresh block header. The
+     * heap itself is intact (Z_CheckHeapSwitch confirms), so this is a dangling
+     * reference, not corruption. Log which command+ptr and SKIP rather than
+     * dereferencing it (which crashed right after objective events). */
+    if ((size_t)listener < 0x10000) {
+        glbs.Printf("[cmd] SKIP stale listener=%p ev=%s\n", (void *)listener, ev.getName());
+        return;
+    }
+#endif
     listener->ProcessScriptEvent(ev);
 }
 
@@ -555,6 +567,11 @@ void ScriptVM::executeCommandInternal<true>(
 
     try {
         checkValidEvent(ev, listener);
+#ifdef __SWITCH__
+        if ((size_t)listener < 0x10000) {
+            glbs.Printf("[cmd] SKIP stale listener=%p ev=%s\n", (void *)listener, ev.getName());
+        } else
+#endif
         listener->ProcessScriptEvent(ev);
     } catch (...) {
         m_VMStack.GetTop().Clear();

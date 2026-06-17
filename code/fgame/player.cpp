@@ -2756,11 +2756,18 @@ void Player::Respawn(Event *ev)
         gi.centerprintf(edict, " ");
         m_bReadyToRespawn = false;
     } else {
+#ifdef __SWITCH__
+        /* Saving is disabled on the Switch, so g_lastsave still holds a stale
+         * save name from another level -- loadlastgame would warp the player to
+         * the wrong map on death. Restart the current level instead. */
+        gi.SendConsoleCommand("restart\n");
+#else
         if (g_lastsave->string && *g_lastsave->string) {
             gi.SendConsoleCommand("loadlastgame\n");
         } else {
             gi.SendConsoleCommand("restart\n");
         }
+#endif
 
         logfile_started = qfalse;
     }
