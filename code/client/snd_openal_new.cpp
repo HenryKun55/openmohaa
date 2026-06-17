@@ -4464,6 +4464,17 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     this->pSfx = pSfx;
     Q_strncpyz(this->fileName, pSfx->name, sizeof(this->fileName));
 
+#if defined(__SWITCH__) || defined(__vita__)
+    /* Negative cache: a prior load of this sfx already failed (missing file —
+     * e.g. m5l1's rain ambients, which simply aren't in the game data). The
+     * looping ambient re-calls set_sfx every frame; without this guard the
+     * failed disk-open + codec-init repeats forever and freezes the level.
+     * Bail fast once the sfx is known-bad. */
+    if (pSfx->iFlags & SFX_FLAG_DEFAULT_SOUND) {
+        return false;
+    }
+#endif
+
     /* PERF (2026-05-18): if a previous play of this sfx finished
      * within one chunk (short sound: pain, hit, weapon), the entire
      * decoded PCM lives in pSfx->cachedStreamBuffer. Reuse it and
@@ -4486,6 +4497,11 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     streamHandle = S_CodecLoad(pSfx->name, NULL);
     if (!streamHandle) {
         Com_DPrintf("OpenAL: Failed to load sound file.\n");
+#if defined(__SWITCH__) || defined(__vita__)
+        /* Mark known-bad so the looping ambient stops retrying the missing
+         * file every frame (see negative-cache guard at the top). */
+        pSfx->iFlags |= SFX_FLAG_DEFAULT_SOUND;
+#endif
         return false;
     }
 
