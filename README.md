@@ -217,8 +217,8 @@ choices persist in `configs/omconfig.cfg` across reboots.
 **Tested on:**
 - **Real Nintendo Switch** on custom firmware (Atmosphère) — the primary target
   and the source of truth for crashes.
-- **Ryujinx** emulator — runs with **stock, default emulator settings: we made
-  no config changes at all and it worked out of the box.**
+- **Ryujinx `1.2.0`** (emulator) — runs with **stock, default emulator settings:
+  we made no config changes at all and it worked out of the box.**
 
 > Reminder: this is `v0.0.1`. The Switch build can still **freeze at certain
 > moments or hit crashes that aren't mapped yet**. When that happens,
