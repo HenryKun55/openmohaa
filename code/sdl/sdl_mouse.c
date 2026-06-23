@@ -40,6 +40,22 @@ void IN_GetMousePosition(int *x, int *y) {
 qboolean IN_SetCursorFromImage(const byte *pic, int width, int height, pCursorFree cursorFreeFn) {
     IN_FreeCursor();
 
+#if defined(__vita__) || defined(__SWITCH__)
+    /* Vita/Switch have NO OS hardware cursor -- the engine draws the UI cursor
+     * itself (see IN_IsCursorActive below). Building an SDL color cursor here is
+     * not just useless, it CRASHES: SDL_CreateColorCursor blits the source
+     * surface, and on a level transition the UI re-pushes its menus (which calls
+     * refreshCursor) while the renderer's raw-image system is being torn down and
+     * rebuilt -- so the cursor pixels are freed/unmapped and SDL's blit walks off
+     * into bad memory, data-aborting inside Blit_RGB565_ABGR8888. (Root-caused
+     * from the Vita coredump on the m1l2a->m1l2b transition with vita-parse-core.)
+     * Skip the SDL cursor entirely; just release the caller's pixels so the raw
+     * image doesn't leak. */
+    if (pic && cursorFreeFn) {
+        cursorFreeFn((byte *)pic);
+    }
+    return qtrue;
+#else
     cursor_surface = SDL_CreateRGBSurfaceWithFormatFrom(pic, width, height, 32, 4 * width, SDL_PIXELFORMAT_ABGR8888);
     if (!cursor_surface) {
         return qfalse;
@@ -49,6 +65,7 @@ qboolean IN_SetCursorFromImage(const byte *pic, int width, int height, pCursorFr
     SDL_SetCursor(cursor);
 
     return qtrue;
+#endif
 }
 
 void IN_FreeCursor() {
