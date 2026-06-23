@@ -587,12 +587,12 @@ void ScriptMaster::InitConstStrings(void)
         AddString(ConstStrings[i]);
     }
 
-#ifdef __SWITCH__
-    // The command lists are rebuilt from the permanent event maps. On the Vita
-    // the game module reloads each level so this re-runs against a freshly
-    // re-registered eventDefList; on the single-binary Switch the maps persist
-    // and re-running walks a stale/aliased table (NULL key -> crash). Build the
-    // command lists ONCE and keep them across InitGame, like the maps themselves.
+#if defined(__SWITCH__) || defined(__vita__)
+    // The command lists are rebuilt from the permanent event maps. Both consoles
+    // keep those maps persistent across InitGame (the Vita coredump proved its
+    // game.suprx reload does NOT re-register eventDefList, same as the single-binary
+    // Switch), so re-running this walks a stale/aliased table (NULL key -> crash).
+    // Build the command lists ONCE and keep them across InitGame, like the maps.
     //
     // CRITICAL: mark "built" only AFTER the populate below actually runs (which
     // requires EventSystemStarted == true). The earlier version set the flag here,
@@ -642,7 +642,7 @@ void ScriptMaster::InitConstStrings(void)
         }
     }
 
-#ifdef __SWITCH__
+#if defined(__SWITCH__) || defined(__vita__)
     // The command lists are now populated from a live eventDefList — lock them so
     // subsequent InitGame calls don't rebuild (and crash on the persistent maps).
     s_cmdListsBuilt = true;
@@ -790,15 +790,18 @@ void ScriptMaster::Reset(qboolean samemap)
         }
 
         CloseGameScript();
-#ifndef __SWITCH__
-        // SWITCH: keep the StringDict (the const_str index table) across maps. On the
-        // single-binary Switch the script command lists (con_map<const_str, eventnum>)
-        // are built ONCE and kept (InitConstStrings has a run-once guard). Clearing
-        // the dict here renumbers every const_str, so those persistent command-list
-        // keys go stale -> FindNormalEventNum misses -> "unknown command" for every
-        // command -> the NEXT level's scripts fail to compile and it loads UNSCRIPTED
-        // (no loadout / AI / objectives). Persisting the dict keeps the indices stable
-        // (AddString stays idempotent); the small string leak fits the Switch's RAM.
+#if !defined(__SWITCH__) && !defined(__vita__)
+        // CONSOLES: keep the StringDict (the const_str index table) across maps. The
+        // script command lists (con_map<const_str, eventnum>) are built ONCE and kept
+        // (InitConstStrings has a run-once guard, now on Vita too). Clearing the dict
+        // here renumbers every const_str, so those persistent command-list keys go
+        // stale -> FindNormalEventNum misses -> "unknown command" for every command ->
+        // the NEXT level's scripts fail to compile and it loads UNSCRIPTED (no loadout
+        // / AI / objectives). Persisting the dict keeps the indices stable (AddString
+        // stays idempotent); the small string leak fits console RAM. Required on the
+        // Vita for the same reason as Switch now that its event maps persist too
+        // (the game.suprx reload does NOT re-run the static EventDef constructors --
+        // confirmed by the m1l2a->m1l2b coredump).
         StringDict.clear();
 #endif
         InitConstStrings();
@@ -883,14 +886,15 @@ ScriptClass *ScriptMaster::CurrentScriptClass(void)
 
 void ScriptMaster::CloseGameScript(void)
 {
-#ifdef __SWITCH__
-    /* Keep the compiled-script cache across map changes / restarts on the
-     * single-binary Switch. Deleting the GameScripts here ran ~GameScript() ->
-     * Close(), which faulted reading a corrupt m_CatchBlocks container (a
-     * use-after-free of the cached script). Scripts are keyed per source file
-     * and the StringDict (the cache keys) is also kept across maps, so the
-     * cache stays valid and is correctly reused next level -- just don't tear
-     * it down. */
+#if defined(__SWITCH__) || defined(__vita__)
+    /* Keep the compiled-script cache across map changes / restarts on the consoles.
+     * Deleting the GameScripts here ran ~GameScript() -> Close(), which faulted
+     * reading a corrupt m_CatchBlocks container (a use-after-free of the cached
+     * script). Scripts are keyed per source file and the StringDict (the cache keys)
+     * is also kept across maps -- now on the Vita too, since its game.suprx reload
+     * does NOT re-run the static constructors (the maps/dict persist exactly like the
+     * single-binary Switch) -- so the cache stays valid and is correctly reused next
+     * level; just don't tear it down. */
     return;
 #endif
     con_map_enum<const_str, GameScript *> en(m_GameScripts);

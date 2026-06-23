@@ -823,13 +823,14 @@ void Level::Init(void)
     m_numVoters    = 0;
 
     m_LoopProtection = true;
-#ifdef __SWITCH__
-    /* On the single-binary Switch a slow but legitimate heavy gameplay thread
-     * (m1l2a path/AI scripts when following the SAS agent, etc.) can run past
-     * the script loop-guard's wall-clock budget and trip a FALSE "Command
-     * overflow". Don't drop the whole server (which kicks the player back to
-     * the main menu) — let the guard abort just the offending thread so the
-     * level keeps running. */
+#if defined(__SWITCH__) || defined(__vita__)
+    /* On the single-binary console builds (Switch NRO / Vita .suprx) a slow but
+     * legitimate heavy gameplay thread (m1l2a path/AI scripts when following the
+     * SAS agent, etc.) can run past the script loop-guard's wall-clock budget and
+     * trip a FALSE "Command overflow". Don't drop the whole server (which kicks
+     * the player back to the main menu) — let the guard abort just the offending
+     * thread so the level keeps running. Paired with the longer MAX_EXECUTION_TIME
+     * in scriptmaster.h (also console-gated). */
     m_LoopDrop       = false;
 #else
     m_LoopDrop       = true;

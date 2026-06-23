@@ -564,14 +564,21 @@ void L_InitEvents(void)
     g_watch      = LISTENER_Cvar_Get("g_watch", "0", 0);
     g_eventstats = LISTENER_Cvar_Get("g_eventstats", "0", 0);
 
-#ifdef __SWITCH__
+#if defined(__SWITCH__) || defined(__vita__)
     // The event tables (eventDefList) and per-ClassDef response/waittill con_sets
-    // are PERMANENT data, derived from static EventDef definitions. On the Vita the
-    // game module is dlopen/dlclose'd so these are rebuilt fresh each level; on the
-    // single-binary Switch there is no reload, so re-running LoadEvents /
-    // BuildEventResponses re-populates already-built, persistent con_sets and walks
-    // stale/aliased tables (crashes in con_set::resize / addKeyEntry / AddWaitTill).
-    // Build them ONCE and keep them intact across every InitGame.
+    // are PERMANENT data, derived from static EventDef definitions, and must be
+    // built exactly ONCE and kept intact across every InitGame.
+    //
+    // We USED to rebuild these every level on the Vita, assuming its game.suprx
+    // dlclose/dlopen re-ran the static EventDef constructors. The Vita coredump
+    // (m1l2a->m1l2b transition, symbolicated with vita-parse-core) proved that
+    // assumption WRONG: the crash is a data abort in con_set::findKeyEntry
+    // (con_set.h:318) under L_InitEvents -> BuildEventResponses -> BuildResponseList
+    // on the SECOND InitGame -- i.e. the static maps persist across the reload just
+    // like the single-binary Switch, so L_ShutdownEvents's clear() + this rebuild
+    // walk a half-rebuilt/aliased table. Build once on BOTH consoles. (If a
+    // platform ever truly reloads the module, this function-static resets and the
+    // rebuild simply runs again against the freshly-constructed maps.)
     {
         static bool s_eventTablesBuilt = false;
         if (!s_eventTablesBuilt) {
@@ -634,16 +641,20 @@ void L_ShutdownEvents(void)
 
     L_ClearEventList();
 
-#ifndef __SWITCH__
+#if !defined(__SWITCH__) && !defined(__vita__)
     // The event DEFINITION maps are populated once, at static-init time, by the
-    // EventDef constructors. On the Vita the game module is dlopen/dlclose'd and
-    // those constructors re-run on every level, so clearing the maps here is
-    // safe. On the single-binary Switch build there is NO reload: clearing them
-    // destroys the definitions permanently, and the engine then rebuilds them
-    // incrementally via operator[] access — whose con_set::resize() walks a
-    // half-rebuilt/aliased table and crashes (addKeyEntry / resize). Keep the
-    // permanent maps intact across InitGame; only the transient event QUEUE
-    // (L_ClearEventList above) is cleared, and the system stays "started".
+    // EventDef constructors. On desktop (where the game module truly reloads and
+    // those constructors re-run) clearing the maps here is safe.
+    //
+    // NOT on the consoles. On the single-binary Switch there is NO reload, and the
+    // Vita coredump proved its game.suprx dlclose/dlopen does NOT re-run the static
+    // EventDef constructors either (the maps persist). On both, clearing here
+    // destroys the permanent definitions, and the next InitGame then rebuilds them
+    // incrementally via operator[] / LoadEvents — whose con_set::resize() walks a
+    // half-rebuilt/aliased table and crashes (data abort in findKeyEntry/resize/
+    // addKeyEntry). Keep the permanent maps intact across InitGame; only the
+    // transient event QUEUE (L_ClearEventList above) is cleared, and the system
+    // stays "started".
     Event::commandList.clear();
     Event::eventDefList.clear();
 #    ifdef WITH_SCRIPT_ENGINE

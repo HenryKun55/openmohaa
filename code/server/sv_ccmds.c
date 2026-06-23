@@ -2284,8 +2284,20 @@ qboolean SV_ArchiveLevelFile(qboolean loading, qboolean autosave)
 			FS_FCloseFile(f);
 		}
 	} else {
-#ifdef __SWITCH__
-		/* Saving the level via G_ArchiveLevel dereferences a bad pointer in the
+#if defined(__SWITCH__) || defined(__vita__)
+		/* CONSOLES: skip ALL level saves. The cross-level cached-module statics
+		 * make the save path unstable: the cgame-state archive
+		 * (CG_SaveStateToBuffer -> ClientGameCommandManager::ArchiveToMemory) walks
+		 * the persistent m_emitters/tempmodel lists, which now retain stale
+		 * spawnthings from the previous level (TAG_CGAME is kept alive for the
+		 * transition fix), and data-aborts in str::operator= on a freed model name
+		 * (Vita coredump, right after passing m1l2). Skipping keeps the campaign
+		 * playable end-to-end crash-free; real cross-level save serialization is the
+		 * deep TODO (needs the transient cgame state reset per level before it can
+		 * be archived safely).
+		 *
+		 * Original Switch notes follow:
+		 * Saving the level via G_ArchiveLevel dereferences a bad pointer in the
 		 * level state on the single-binary Switch build -> data-abort crash.
 		 * Seen on BOTH the level-start autosave ("<map>0000", float-as-pointer)
 		 * and the scripted mid-level checkpoint ("<map>0001", NULL deref).
@@ -2639,6 +2651,18 @@ void SV_SaveGame(const char *gamename, qboolean autosave)
 	if (!SV_AllowSaveGame()) {
 		return;
 	}
+
+#ifdef __vita__
+	/* Vita: the AUTOMATIC level-start/transition autosave (SV_Autosavegame_f ->
+	 * SV_SaveGame(NULL, qtrue), fired from SV_SpawnServer in sv_init.c) archives
+	 * the half-built next-level state on the single-binary .suprx and faults on
+	 * the cross-level transition -- the crash seen walking into the 2nd level.
+	 * The user wants MANUAL saves only, so drop every automatic save here.
+	 * Manual menu saves (autosave == qfalse) fall through and run normally. */
+	if (autosave) {
+		return;
+	}
+#endif
 
 	if (gamename) {
 		Q_strncpyz(name, gamename, sizeof(name));

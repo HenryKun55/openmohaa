@@ -548,13 +548,20 @@ void CL_ShutdownCGame( void ) {
 		re.FreeModels();
 	}
 
-#ifdef __SWITCH__
-	// SWITCH: same reasoning as TAG_GAME in SV_ShutdownGameProgs. The single-binary
-	// cgame's C++ statics persist across CL_InitCGame (no per-level module reload),
-	// and cache pointers into TAG_CGAME memory (compiled cgame scripts, the
-	// ubersound/uberdialog alias data). Freeing TAG_CGAME on a map change leaves
-	// them dangling, so the next level's CL_InitCGame crashes re-parsing ubersound.
-	// Keep the cgame zone alive; the Switch has the RAM the Vita's 240MB lacked.
+#if defined(__SWITCH__) || defined(__vita__)
+	// CONSOLES: same reasoning as TAG_GAME in SV_ShutdownGameProgs. The cgame's C++
+	// statics persist across CL_InitCGame (the Vita's game/cgame .suprx are dlopen'd
+	// ONCE and the handle is cached -- see sys_vita.c -- so the static constructors
+	// never re-run, exactly like the single-binary Switch). Those statics cache
+	// pointers INTO TAG_CGAME memory: the con_set/con_arrayset hash TABLES (con_set.h
+	// SET_Alloc -> cgi.Malloc -> TAG_CGAME), most visibly Event::commandList, plus
+	// the compiled cgame scripts and ubersound/uberdialog alias data. Freeing
+	// TAG_CGAME on a map change frees those tables under the persistent containers,
+	// so the next level's CL_InitCGame data-aborts in con_arrayset::findKeyEntry
+	// (a command_t str reads back as float-as-pointer garbage) -- the m1l2a->m1l2b
+	// crash after the TAG_GAME side was fixed. Keep the cgame zone alive too. The
+	// Vita's 240MB now fits because the heavy cgame data (scripts/aliases) is built
+	// ONCE and reused instead of re-allocated+leaked per map.
 	(void)0;
 #else
 	Z_FreeTags( TAG_CGAME );
