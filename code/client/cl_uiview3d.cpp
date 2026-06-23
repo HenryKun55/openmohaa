@@ -59,6 +59,7 @@ struct VitaPerfMenuItem {
     const char *cvarName;
     qboolean    inverted; /* "ON" means cvar=0 (e.g. r_fastsky) */
     int         cycleMax; /* if > 0, cycles 0..cycleMax instead of 0/1 toggle */
+    const char *cmd;      /* if set, A runs this console command instead of touching a cvar */
 };
 
 struct VitaPerfMenuCategory {
@@ -138,7 +139,40 @@ static VitaPerfMenuItem g_pmDebug[] = {
     { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0 }, /* Phase 2b — NPC skinning on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
 };
 
+/* ---------- FASES (level loader) ----------
+ * Same campaign list as the Switch dev menu (cl_scrn.cpp). A here runs
+ * "spmap <level>" via Cbuf and closes the menu so the load starts clean.
+ * cmd-items leave cvarName NULL — GetStateStr/ToggleItem skip the cvar path. */
+#define VFASE(n) { n, NULL, qfalse, 0, "spmap " n }
+static VitaPerfMenuItem g_pmFases[] = {
+    VFASE("training"),
+    VFASE("m1l1"), VFASE("m1l2a"), VFASE("m1l2b"), VFASE("m1l3a"), VFASE("m1l3b"), VFASE("m1l3c"),
+    VFASE("m2l1"), VFASE("m2l2a"), VFASE("m2l2b"), VFASE("m2l2c"), VFASE("m2l3"),
+    VFASE("m3l1a"), VFASE("m3l1b"), VFASE("m3l2"), VFASE("m3l3"),
+    VFASE("m4l0"), VFASE("m4l1"), VFASE("m4l2"), VFASE("m4l3"),
+    VFASE("m5l1a"), VFASE("m5l1b"), VFASE("m5l2a"), VFASE("m5l2b"), VFASE("m5l3"),
+    VFASE("m6l1a"), VFASE("m6l1b"), VFASE("m6l1c"), VFASE("m6l2a"), VFASE("m6l2b"),
+    VFASE("m6l3a"), VFASE("m6l3b"), VFASE("m6l3c"), VFASE("m6l3d"), VFASE("m6l3e"),
+};
+
+/* ---------- GAME (cheats / control) ---------- */
+static VitaPerfMenuItem g_pmGame[] = {
+    { "Main Menu",        NULL, qfalse, 0, "disconnect" },
+    { "Restart Level",    NULL, qfalse, 0, "restart" },
+    { "Suicide (kill)",   NULL, qfalse, 0, "kill" },
+    { "Cheats ON",        NULL, qfalse, 0, "cheats 1" },
+    { "Cheats OFF",       NULL, qfalse, 0, "cheats 0" },
+    { "God Mode",         NULL, qfalse, 0, "god" },
+    { "Noclip",           NULL, qfalse, 0, "noclip" },
+    { "Notarget",         NULL, qfalse, 0, "notarget" },
+    { "Give All",         NULL, qfalse, 0, "give all" },
+    { "Give Ammo",        NULL, qfalse, 0, "give ammo" },
+    { "Give Health",      NULL, qfalse, 0, "give health" },
+};
+
 static VitaPerfMenuCategory g_pmCats[] = {
+    { "FASES",     g_pmFases,    sizeof(g_pmFases)    / sizeof(VitaPerfMenuItem) },
+    { "GAME",      g_pmGame,     sizeof(g_pmGame)     / sizeof(VitaPerfMenuItem) },
     { "WORLD",     g_pmWorld,    sizeof(g_pmWorld)    / sizeof(VitaPerfMenuItem) },
     { "LIGHTING",  g_pmLighting, sizeof(g_pmLighting) / sizeof(VitaPerfMenuItem) },
     { "EFFECTS",   g_pmEffects,  sizeof(g_pmEffects)  / sizeof(VitaPerfMenuItem) },
@@ -151,10 +185,23 @@ static const int g_pmCatCount = sizeof(g_pmCats) / sizeof(g_pmCats[0]);
 static qboolean g_pmActive   = qfalse;
 static int      g_pmCatIdx   = 0;
 static int      g_pmItemIdx  = 0;
+static int      g_pmScroll   = 0;       /* first visible item (FASES is long) */
+#define VPM_VISIBLE 12                  /* items shown at once (box fits ~14) */
 
 static int VitaPerfMenu_GetValue(const VitaPerfMenuItem *it)
 {
+    if (!it->cvarName) return 0;
     return Cvar_VariableIntegerValue(it->cvarName);
+}
+
+/* Keep the selected item inside the visible window. */
+static void VitaPerfMenu_ClampScroll(void)
+{
+    int n = g_pmCats[g_pmCatIdx].itemCount;
+    if (g_pmItemIdx < g_pmScroll)               g_pmScroll = g_pmItemIdx;
+    if (g_pmItemIdx >= g_pmScroll + VPM_VISIBLE) g_pmScroll = g_pmItemIdx - VPM_VISIBLE + 1;
+    if (g_pmScroll < 0) g_pmScroll = 0;
+    if (g_pmScroll > n - 1) g_pmScroll = (n > 0) ? n - 1 : 0;
 }
 
 /* Returns a display string for the item's current state.
@@ -163,6 +210,7 @@ static int VitaPerfMenu_GetValue(const VitaPerfMenuItem *it)
 static const char *VitaPerfMenu_GetStateStr(const VitaPerfMenuItem *it)
 {
     static char buf[16];
+    if (it->cmd) return ">>";   /* action item: no checkbox, just "run me" */
     int cur = VitaPerfMenu_GetValue(it);
     if (it->cycleMax > 0) {
         Com_sprintf(buf, sizeof(buf), "[%d/%d]", cur, it->cycleMax);
@@ -174,6 +222,7 @@ static const char *VitaPerfMenu_GetStateStr(const VitaPerfMenuItem *it)
 
 static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
 {
+    if (it->cmd || !it->cvarName) return;   /* action items have no cvar to toggle */
     int cur = VitaPerfMenu_GetValue(it);
     int next;
     if (it->cycleMax > 0) {
@@ -241,27 +290,38 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
     if (key == k_left) {
         g_pmCatIdx--;
         if (g_pmCatIdx < 0) g_pmCatIdx = g_pmCatCount - 1;
-        g_pmItemIdx = 0;
+        g_pmItemIdx = 0; g_pmScroll = 0;
         return qtrue;
     }
     if (key == k_right) {
         g_pmCatIdx++;
         if (g_pmCatIdx >= g_pmCatCount) g_pmCatIdx = 0;
-        g_pmItemIdx = 0;
+        g_pmItemIdx = 0; g_pmScroll = 0;
         return qtrue;
     }
     if (key == k_up) {
         g_pmItemIdx--;
         if (g_pmItemIdx < 0) g_pmItemIdx = g_pmCats[g_pmCatIdx].itemCount - 1;
+        VitaPerfMenu_ClampScroll();
         return qtrue;
     }
     if (key == k_down) {
         g_pmItemIdx++;
         if (g_pmItemIdx >= g_pmCats[g_pmCatIdx].itemCount) g_pmItemIdx = 0;
+        VitaPerfMenu_ClampScroll();
         return qtrue;
     }
     if (key == k_cross) {
-        VitaPerfMenu_ToggleItem(&g_pmCats[g_pmCatIdx].items[g_pmItemIdx]);
+        VitaPerfMenuItem *it = &g_pmCats[g_pmCatIdx].items[g_pmItemIdx];
+        if (it->cmd) {
+            /* Action item (load a level, cheat, restart…). Close the menu first
+             * so input returns to the game, then queue the command. */
+            g_pmActive = qfalse;
+            Cbuf_AddText(va("%s\n", it->cmd));
+            Com_Printf("PERF-MENU: run '%s'\n", it->cmd);
+        } else {
+            VitaPerfMenu_ToggleItem(it);
+        }
         return qtrue;
     }
     /* Swallow all other keys so gameplay binds don't fire. */
@@ -301,9 +361,12 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
     }
     y += 28.0f;
 
-    /* Items in current category */
+    /* Items in current category — windowed [g_pmScroll, +VPM_VISIBLE) so long
+     * lists (FASES = 35 levels) scroll instead of overflowing the box. */
     VitaPerfMenuCategory *cat = &g_pmCats[g_pmCatIdx];
-    for (int i = 0; i < cat->itemCount; i++) {
+    int last = g_pmScroll + VPM_VISIBLE;
+    if (last > cat->itemCount) last = cat->itemCount;
+    for (int i = g_pmScroll; i < last; i++) {
         char line[128];
         Com_sprintf(line, sizeof(line), "%s %-20s  %s",
             i == g_pmItemIdx ? ">" : " ",
@@ -313,6 +376,12 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
         else                  menuFont->setColor(UWhite);
         menuFont->Print(boxX + 12.0f, y, line, -1, NULL);
         y += 20.0f;
+    }
+    if (cat->itemCount > VPM_VISIBLE) {
+        char more[64];
+        Com_sprintf(more, sizeof(more), "  -- %d/%d --", g_pmItemIdx + 1, cat->itemCount);
+        menuFont->setColor(UYellow);
+        menuFont->Print(boxX + 12.0f, y, more, -1, NULL);
     }
 
     re.SetColor(NULL);
@@ -1082,27 +1151,38 @@ void View3D::DrawFades(void)
 void View3D::Draw(void)
 {
 #ifdef __vita__
+    /* Per-frame FPS instrumentation (V3-PROF). MASTER SWITCH: gated entirely
+     * behind r_vita_perflog so a clean FPS-test run does ZERO timing calls and
+     * ZERO logfile writes. Toggle it live in the perf menu (DEBUG -> "VITA-PERF
+     * log") or `set r_vita_perflog 0/1`. When 0 none of the Sys_Milliseconds
+     * probes below run -- this is the one knob to silence Vita logging. */
     extern int Sys_Milliseconds(void);
-    int _v3_t0 = Sys_Milliseconds();
-    int _v3_t1, _v3_t2, _v3_t3, _v3_t4;
+    static cvar_t *_v3_perflog = NULL;
+    if (!_v3_perflog) _v3_perflog = Cvar_Get("r_vita_perflog", "0", CVAR_ARCHIVE);
+    qboolean   _v3_prof = (_v3_perflog->integer != 0);
+    int        _v3_t0 = 0, _v3_t1 = 0, _v3_t2 = 0, _v3_t3 = 0, _v3_t4 = 0;
     static int _v3_lastPrint = 0;
-    qboolean   _v3_doPrint   = (_v3_t0 - _v3_lastPrint) >= 1000;
+    qboolean   _v3_doPrint   = qfalse;
+    if (_v3_prof) {
+        _v3_t0      = Sys_Milliseconds();
+        _v3_doPrint = (_v3_t0 - _v3_lastPrint) >= 1000;
+    }
 #endif
     if (clc.state != CA_DISCONNECTED) {
         SCR_DrawScreenField();
     }
 #ifdef __vita__
-    _v3_t1 = Sys_Milliseconds();
+    if (_v3_prof) _v3_t1 = Sys_Milliseconds();
 #endif
 
     set2D();
 #ifdef __vita__
-    _v3_t2 = Sys_Milliseconds();
+    if (_v3_prof) _v3_t2 = Sys_Milliseconds();
 #endif
 
     re.SavePerformanceCounters();
 #ifdef __vita__
-    _v3_t3 = Sys_Milliseconds();
+    if (_v3_prof) _v3_t3 = Sys_Milliseconds();
 #endif
 
     Draw2D();
@@ -1119,12 +1199,14 @@ void View3D::Draw(void)
 #endif
 
 #ifdef __vita__
-    _v3_t4 = Sys_Milliseconds();
-    if (_v3_doPrint) {
-        _v3_lastPrint = _v3_t0;
-        Com_Printf("V3-PROF: scenefield=%d set2d=%d savepc=%d draw2d=%d total=%d\n",
-            _v3_t1 - _v3_t0, _v3_t2 - _v3_t1, _v3_t3 - _v3_t2, _v3_t4 - _v3_t3,
-            _v3_t4 - _v3_t0);
+    if (_v3_prof) {
+        _v3_t4 = Sys_Milliseconds();
+        if (_v3_doPrint) {
+            _v3_lastPrint = _v3_t0;
+            Com_Printf("V3-PROF: scenefield=%d set2d=%d savepc=%d draw2d=%d total=%d\n",
+                _v3_t1 - _v3_t0, _v3_t2 - _v3_t1, _v3_t3 - _v3_t2, _v3_t4 - _v3_t3,
+                _v3_t4 - _v3_t0);
+        }
     }
 #endif
 }
