@@ -819,6 +819,19 @@ static void UploadCompressed(
 		if (!scaled_width) scaled_width = 1;
 		if (!scaled_height) scaled_height = 1;
 
+#if defined(__vita__)
+		/* vitaGL-specific: its compressed-texture upload runs
+		 * sceGxmTransferCopy(w/4, h/4) internally; a mip level below 4x4 makes that
+		 * a 0x0 transfer and faults inside gpu_alloc_compressed_texture. Stop the
+		 * compressed mip chain at 4x4 once the base level was uploaded. (Gated to
+		 * __vita__ only -- the Switch uses a different GL backend, not vitaGL.
+		 * Currently inert: DXT is not enabled on the Vita until vitaGL's compressed
+		 * allocator is fixed; kept for when it is.) */
+		if ((scaled_width < 4 || scaled_height < 4) && i > iStartImage) {
+			break;
+		}
+#endif
+
 		h = (scaled_height + 3) / 4;
 		w = (scaled_width + 3) / 4;
 		size = blockSize * w * h;

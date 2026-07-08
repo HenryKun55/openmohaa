@@ -1103,6 +1103,14 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 		}
 	}
 
+	// DXT/.dds compressed textures on the Vita are DISABLED for now. Even with the
+	// vitaGL rebuilt from source (small-mip transfer guarded), the compressed
+	// upload still corrupts the GPU memory pool -- the crash surfaces later in
+	// vglSetUniformData -> sceClibMemcpy with a bad size. Pinning it needs runtime
+	// logging inside vitaGL's gpu_alloc_compressed_texture. The offline conditioner
+	// (tools/dxt_pak.py) and the patched vitaGL are ready; re-enable the force +
+	// qglCompressedTexImage2D bind here once that memory bug is fixed.
+
 	// OpenGL 1 fixed function pipeline
 	if ( fixedFunction )
 	{
