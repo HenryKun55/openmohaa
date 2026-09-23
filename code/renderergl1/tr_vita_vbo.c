@@ -43,6 +43,69 @@ extern void glNormalPointer        ( unsigned int type, int stride, const void *
 extern void glTexCoordPointer      ( int size, unsigned int type, int stride, const void *ptr );
 extern void glColorPointer         ( int size, unsigned int type, int stride, const void *ptr );
 extern void glClientActiveTexture  ( unsigned int texture );
+extern void glEnableClientState    ( unsigned int array );
+extern void glDisableClientState   ( unsigned int array );
+extern void glColor4f              ( float r, float g, float b, float a );
+
+/*
+====================
+R_VitaWorldVBO_ShaderEligible
+
+The VBO draw skips the per-vertex stage work (tess.numVertexes = 0), and
+BindAndDraw feeds TMU0 the base st, TMU1 the lightmap st and the stored vertex
+colours. Only surfaces whose shader that reproduces exactly may go in:
+  - one unfogged stage (collapsed multitexture or plain single pass); a
+    multipass lightmap stage would sample the lightmap with base UVs, which
+    rendered as flat garbage colours,
+  - TMU0 = tcGen texture, TMU1 (if any) = tcGen lightmap, no tcMod, no
+    animated images, no deformVertexes, no fog volume,
+  - rgbGen identity / identityLighting (drawn with a constant colour), or
+    exactVertex / vertex (the stored colours; vertex only when identityLight
+    is 1, since the VBO holds them unscaled). Identity used to be drawn with the
+    vertex-lighting colours, which tinted walls grey.
+====================
+*/
+static qboolean R_VitaWorldVBO_ShaderEligible(const msurface_t *surf)
+{
+    const shader_t      *sh = surf->shader;
+    const shaderStage_t *st;
+
+    if (!sh || sh->isSky || sh->isPortalSky) return qfalse;
+    if (sh->numDeforms || sh->numUnfoggedPasses != 1 || surf->fogIndex) return qfalse;
+
+    st = sh->unfoggedStages[0];
+    if (!st || !st->active) return qfalse;
+    if (st->bundle[0].tcGen != TCGEN_TEXTURE || st->bundle[0].numTexMods
+        || st->bundle[0].numImageAnimations > 1) {
+        return qfalse;
+    }
+    if (st->bundle[1].image[0]
+        && (st->bundle[1].tcGen != TCGEN_LIGHTMAP || st->bundle[1].numTexMods
+            || st->bundle[1].numImageAnimations > 1)) {
+        return qfalse;
+    }
+
+    switch (st->rgbGen) {
+    case CGEN_IDENTITY:
+    case CGEN_IDENTITY_LIGHTING:
+    case CGEN_EXACT_VERTEX:
+        break;
+    case CGEN_VERTEX:
+        if (tr.identityLight != 1.0f) return qfalse;
+        break;
+    default:
+        return qfalse;
+    }
+
+    switch (st->alphaGen) {
+    case AGEN_IDENTITY:
+    case AGEN_SKIP:
+        break;
+    default:
+        return qfalse;
+    }
+    return qtrue;
+}
 extern void glDrawElements         ( unsigned int mode, int count, unsigned int type, const void *indices );
 
 #ifndef GL_TEXTURE0
@@ -150,6 +213,7 @@ void R_VitaWorldVBO_Build(void)
     int               accumVerts   = 0;
     int               accumIndexes = 0;
     int               eligibleSurfaces = 0;
+    int               excludedSurfaces = 0;
     drawVert_t       *vertBuf      = NULL;
     unsigned short   *indexBuf     = NULL;
 
@@ -197,7 +261,8 @@ void R_VitaWorldVBO_Build(void)
          * (the "céu cagado" on m1l1). Leave them out: vitaVboSurfIdx
          * stays -1 so RB_SurfaceTriangles falls back to the normal
          * draw for them. Walls (the bulk) still go through the VBO. */
-        if (surf->shader && (surf->shader->isSky || surf->shader->isPortalSky)) {
+        if (!R_VitaWorldVBO_ShaderEligible(surf)) {
+            excludedSurfaces++;
             continue;
         }
 
@@ -282,8 +347,8 @@ void R_VitaWorldVBO_Build(void)
     worldVboBuilt        = qtrue;
 
     ri.Printf(PRINT_ALL,
-        "[VITA-VBO] built world VBO: %d surfaces, %d verts (%lu KB), %d indexes (%lu KB, u16)\n",
-        eligibleSurfaces,
+        "[VITA-VBO] built world VBO: %d surfaces (%d excluded: sky/multipass/tcMod/deform/fog/rgbGen), %d verts (%lu KB), %d indexes (%lu KB, u16)\n",
+        eligibleSurfaces, excludedSurfaces,
         accumVerts,   (unsigned long)(sizeof(drawVert_t)    * accumVerts)    / 1024,
         accumIndexes, (unsigned long)(sizeof(unsigned short) * accumIndexes) / 1024);
 
@@ -370,7 +435,19 @@ void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
      * convention so the engine's glState.currenttmu stays in sync. */
     glVertexPointer  (3, GL_FLOAT,         44, (const void *)(uintptr_t)0);
     glNormalPointer  (   GL_FLOAT,         44, (const void *)(uintptr_t)28);
-    glColorPointer   (4, GL_UNSIGNED_BYTE, 44, (const void *)(uintptr_t)40);
+
+    /* Colour: only eligible shaders get here (R_VitaWorldVBO_ShaderEligible), so the
+     * single stage's rgbGen is identity/identityLighting (constant colour, array off)
+     * or (exact)vertex (the stored colours). */
+    const int constColor = tess.xstages && tess.xstages[0]
+        && (tess.xstages[0]->rgbGen == CGEN_IDENTITY || tess.xstages[0]->rgbGen == CGEN_IDENTITY_LIGHTING);
+    if (constColor) {
+        const float c = tess.xstages[0]->rgbGen == CGEN_IDENTITY ? 1.0f : tr.identityLight;
+        glDisableClientState(GL_COLOR_ARRAY);
+        glColor4f(c, c, c, 1.0f);
+    } else {
+        glColorPointer(4, GL_UNSIGNED_BYTE, 44, (const void *)(uintptr_t)40);
+    }
 
     glClientActiveTexture(GL_TEXTURE1);
     glTexCoordPointer(2, GL_FLOAT,         44, (const void *)(uintptr_t)20); /* lightmap */
@@ -379,6 +456,12 @@ void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
 
     glDrawElements(GL_TRIANGLES, numIndexes, GL_UNSIGNED_SHORT,
                    (const void *)(uintptr_t)(firstIndex * sizeof(unsigned short)));
+
+    /* The stage iterator expects the colour array enabled (it re-enables it per stage,
+     * but restore it here so nothing else inherits the constant colour path). */
+    if (constColor) {
+        glEnableClientState(GL_COLOR_ARRAY);
+    }
 
     /* Unbind so other draws fall through to client arrays. */
     glBindBuffer(GL_ARRAY_BUFFER,         0);
