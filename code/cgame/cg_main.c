@@ -779,6 +779,13 @@ Called before every level change or subsystem restart
 */
 void CG_Shutdown(void)
 {
+    // Free queued effect events and temp models while the event system is still alive.
+    // The command manager is static, and on consoles the cgame module now stays loaded
+    // across level changes, so otherwise the queue keeps Events that L_ShutdownEvents
+    // frees, and the next CG_Init's CG_RestartCommandManager deletes them again
+    // (m1l1 -> m1l2a door crash).
+    CG_RestartCommandManager();
+
     L_ShutdownEvents();
     // Shutdown radar
     cgi.CL_InitRadar(NULL, NULL, -1);
