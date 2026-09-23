@@ -84,9 +84,9 @@ static VitaPerfMenuItem g_pmWorld[] = {
 static VitaPerfMenuItem g_pmLighting[] = {
     { "Dynamic Lights",   "r_dynamiclight",       qfalse, 0 },
     { "DLight Backfaces", "r_dlightBacks",        qfalse, 0 },
-    { "Vertex Light",     "r_vertexLight",        qfalse, 0 },
-    { "Lightmap Only",    "r_lightmap",           qfalse, 0 },
-    { "Light Spheres",    "r_drawSpheres",        qfalse, 0 },
+    /* r_vertexLight / r_lightmap / r_drawSpheres removed (2026-09-23): debug lighting
+     * modes that need a vid_restart; toggled live with the world VBO + collapsed
+     * multitexture on, they turned every BSP surface into flat garbage colours. */
     { "Stencil Shadows",  "cg_shadows",           qfalse, 0 },
     { "Coronas",          "cg_drawCorona",        qfalse, 0 },
     { "Lens Flares",      "r_flares",             qfalse, 0 },
@@ -136,7 +136,7 @@ static VitaPerfMenuItem g_pmDebug[] = {
     { "VITA-PERF log (1×/sec)",   "r_vita_perflog",    qfalse, 0 }, /* timing breakdown of render subsystems */
     { "VITA force multitexture",  "r_vita_force_mtex", qfalse, 0 }, /* Phase 3 — diffuse+lightmap single pass */
     { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0 }, /* Phase 1 — BSP geometry from VRAM VBO */
-    { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0 }, /* Phase 2b — NPC skinning on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
+    { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0 }, /* Phase 2b — NPC skinning+lighting on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
 };
 
 /* ---------- FASES (level loader) ----------
