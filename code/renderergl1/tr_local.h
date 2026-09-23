@@ -1518,6 +1518,8 @@ typedef struct vitaWorldVboSurf_s {
 } vitaWorldVboSurf_t;
 const vitaWorldVboSurf_t *R_VitaWorldVBO_LookupSurf(int idx);
 void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes);
+void R_VitaWorldVBO_BindAndDrawRanges(const int *first, const int *count, int numRanges);
+qboolean R_VitaWorldVBO_IsVboSurface(const surfaceType_t *surface);
 
 /* Phase 2: when 1, TIKI skeleton skinning runs in a vertex shader
  * (matrix palette) instead of the CPU loop in RB_SkelMesh. Default
@@ -1989,6 +1991,12 @@ typedef struct shaderCommands_s
     qboolean useVitaWorldVBO;
     int      vitaWorldVboFirstIndex;
     int      vitaWorldVboNumIndexes;
+    /* Consecutive VBO surfaces of the same shader are batched as index ranges
+     * (adjacent ranges merged) and drawn with one stage pass. */
+#define VITA_VBO_MAX_RANGES 128
+    int      vitaVboRangeCount;
+    int      vitaVboRangeFirst[VITA_VBO_MAX_RANGES];
+    int      vitaVboRangeCount_[VITA_VBO_MAX_RANGES];
 #endif
 } shaderCommands_t;
 

@@ -271,16 +271,41 @@ void RB_SurfaceTriangles( srfTriangles_t *srf ) {
         const vitaWorldVboSurf_t *vboSurf = R_VitaWorldVBO_LookupSurf(srf->vitaVboSurfIdx);
         if (vboSurf) {
             shader_t *shdr = tess.shader;
+
+            /* Same shader, already a VBO batch: append this surface as another index
+             * range (merged with the previous one when adjacent in the IBO) instead of
+             * flushing one draw per surface. */
+            if (tess.useVitaWorldVBO) {
+                const int n = tess.vitaVboRangeCount;
+                if (n > 0 && tess.vitaVboRangeFirst[n - 1] + tess.vitaVboRangeCount_[n - 1] == vboSurf->indexOffset) {
+                    tess.vitaVboRangeCount_[n - 1] += vboSurf->numIndexes;
+                    tess.numIndexes                += vboSurf->numIndexes;
+                    tess.dlightBits                |= srf->dlightBits[backEnd.smpFrame];
+                    return;
+                }
+                if (n < VITA_VBO_MAX_RANGES) {
+                    tess.vitaVboRangeFirst[n]  = vboSurf->indexOffset;
+                    tess.vitaVboRangeCount_[n] = vboSurf->numIndexes;
+                    tess.vitaVboRangeCount     = n + 1;
+                    tess.numIndexes           += vboSurf->numIndexes;
+                    tess.dlightBits           |= srf->dlightBits[backEnd.smpFrame];
+                    return;
+                }
+            }
+
             if (tess.numIndexes > 0 || tess.numVertexes > 0) {
                 /* tess already has client-array data from a prior
-                 * surface in this batch — flush it, then restart
-                 * the surface as VBO-only. */
+                 * surface in this batch (or the range list is full) —
+                 * flush it, then restart the surface as VBO-only. */
                 RB_EndSurface();
                 RB_BeginSurface(shdr);
             }
             tess.useVitaWorldVBO        = qtrue;
             tess.vitaWorldVboFirstIndex = vboSurf->indexOffset;
             tess.vitaWorldVboNumIndexes = vboSurf->numIndexes;
+            tess.vitaVboRangeFirst[0]   = vboSurf->indexOffset;
+            tess.vitaVboRangeCount_[0]  = vboSurf->numIndexes;
+            tess.vitaVboRangeCount      = 1;
             tess.dlightBits             |= srf->dlightBits[backEnd.smpFrame];
             /* Trick the stage iterator into firing R_DrawElements:
              * it short-circuits when numIndexes == 0. We set it to

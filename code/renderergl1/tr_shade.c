@@ -186,8 +186,8 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	 * tuple; each call binds + draws + unbinds so concurrent
 	 * non-VBO draws (HUD, entities) keep working. */
 	if (tess.useVitaWorldVBO) {
-		R_VitaWorldVBO_BindAndDraw(tess.vitaWorldVboFirstIndex,
-		                           tess.vitaWorldVboNumIndexes);
+		R_VitaWorldVBO_BindAndDrawRanges(tess.vitaVboRangeFirst, tess.vitaVboRangeCount_,
+		                                 tess.vitaVboRangeCount);
 		if (r_vita_perflog && r_vita_perflog->integer) {
 			g_vitaPerf.us_drawElems     += (Sys_Milliseconds() - _vp_de_t0);
 			g_vitaPerf.drawElems_calls++;
@@ -424,6 +424,7 @@ void RB_BeginSurface( shader_t *shader ) {
 	tess.useVitaWorldVBO         = qfalse;
 	tess.vitaWorldVboFirstIndex  = 0;
 	tess.vitaWorldVboNumIndexes  = 0;
+	tess.vitaVboRangeCount       = 0;
 #endif
 }
 

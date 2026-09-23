@@ -413,8 +413,20 @@ between stages — those calls also resolve against the bound VBO
 because we leave it bound throughout.
 ====================
 */
+qboolean R_VitaWorldVBO_IsVboSurface(const surfaceType_t *surface)
+{
+    return worldVboBuilt && *surface == SF_TRIANGLES
+        && ((const srfTriangles_t *)surface)->vitaVboSurfIdx >= 0;
+}
+
 void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
 {
+    R_VitaWorldVBO_BindAndDrawRanges(&firstIndex, &numIndexes, 1);
+}
+
+void R_VitaWorldVBO_BindAndDrawRanges(const int *first, const int *count, int numRanges)
+{
+    int r;
     if (!worldVboBuilt) return;
 
     glBindBuffer(GL_ARRAY_BUFFER,         worldVboId);
@@ -454,8 +466,10 @@ void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
     glClientActiveTexture(GL_TEXTURE0);
     glTexCoordPointer(2, GL_FLOAT,         44, (const void *)(uintptr_t)12); /* base */
 
-    glDrawElements(GL_TRIANGLES, numIndexes, GL_UNSIGNED_SHORT,
-                   (const void *)(uintptr_t)(firstIndex * sizeof(unsigned short)));
+    for (r = 0; r < numRanges; r++) {
+        glDrawElements(GL_TRIANGLES, count[r], GL_UNSIGNED_SHORT,
+                       (const void *)(uintptr_t)(first[r] * sizeof(unsigned short)));
+    }
 
     /* The stage iterator expects the colour array enabled (it re-enables it per stage,
      * but restore it here so nothing else inherits the constant colour path). */

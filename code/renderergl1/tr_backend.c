@@ -708,6 +708,21 @@ void RB_BeginDrawingView (void) {
 RB_RenderDrawSurfList
 ==================
 */
+#ifdef __vita__
+/* A tess batch in world-VBO mode draws only its VBO index ranges. If a surface that is
+ * NOT in the VBO (a patch, an excluded shader variant...) with the same shader followed,
+ * its triangles were appended to tess and silently dropped (missing corners/edges on
+ * hardware). Flush the VBO batch first so it goes through the normal path. */
+static void RB_VitaFlushVboBatchIfNeeded(const surfaceType_t *surface)
+{
+	if (tess.useVitaWorldVBO && !R_VitaWorldVBO_IsVboSurface(surface)) {
+		shader_t *shader = tess.shader;
+		RB_EndSurface();
+		RB_BeginSurface(shader);
+	}
+}
+#endif
+
 void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	shader_t		*shader, *oldShader;
 	int				entityNum, oldEntityNum;
@@ -745,6 +760,9 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	for (i = 0, drawSurf = drawSurfs ; i < numDrawSurfs ; i++, drawSurf++) {
 		if ( drawSurf->sort == (unsigned)oldSort && *drawSurf->surface != SF_SPRITE ) {
 			// fast path, same as previous sort
+#ifdef __vita__
+			RB_VitaFlushVboBatchIfNeeded(drawSurf->surface);
+#endif
 			rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
 			continue;
 		}
@@ -893,6 +911,9 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		}
 
 		// add the triangles for this surface
+#ifdef __vita__
+		RB_VitaFlushVboBatchIfNeeded(drawSurf->surface);
+#endif
 		rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
 	}
 
