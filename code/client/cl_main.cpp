@@ -31,6 +31,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../sys/sys_local.h"
 #include "../sys/sys_update_checker.h"
 #include "../uilib/uimessage.h"
+#ifdef __vita__
+#    include <psp2/power.h>
+#endif
 
 extern "C" {
 	#include "../sys/sys_loadlib.h"
@@ -2888,6 +2891,16 @@ void CL_Frame ( int msec ) {
 			_vita_t5 - _vita_t4,    /* S_Update */
 			_vita_t6 - _vita_t5,    /* SCR_RunCinematic */
 			_vita_t6 - _vita_t0);   /* total */
+		/* Actual clocks every ~10 prints (s), to confirm an overclock (PSVshell etc.)
+		 * is really in effect while playing. MHz. */
+		{
+			static int s_clockPrints = 0;
+			if ((s_clockPrints++ % 10) == 0) {
+				Com_Printf("VITA-CLOCK: arm=%d gpu=%d bus=%d xbar=%d MHz\n",
+					scePowerGetArmClockFrequency(), scePowerGetGpuClockFrequency(),
+					scePowerGetBusClockFrequency(), scePowerGetGpuXbarClockFrequency());
+			}
+		}
 	}
 #endif
 

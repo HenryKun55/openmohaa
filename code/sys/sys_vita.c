@@ -84,6 +84,24 @@ SceSize sceUserMainThreadStackSize = 8 * 1024 * 1024;
 void Sys_VitaDumpMemSnapshot(const char *who);
 void Sys_VitaDumpMemAndAbort(const char *who, int size, int tag);
 
+#define VITA_CLOCK_PROBE_ITERS 50000000
+
+/* Time a chain of dependent adds (one ALU op per cycle on the Cortex-A9, the loop
+ * branch dual-issues), unrolled 10x. Returns microseconds. */
+static int Sys_VitaClockProbe(void)
+{
+    unsigned int x = 1;
+    int          i;
+    const SceUInt64 t0 = sceKernelGetProcessTimeWide();
+    for (i = 0; i < VITA_CLOCK_PROBE_ITERS / 10; i++) {
+        __asm__ volatile(
+            "add %0, %0, #1\n\tadd %0, %0, #1\n\tadd %0, %0, #1\n\tadd %0, %0, #1\n\tadd %0, %0, #1\n\t"
+            "add %0, %0, #1\n\tadd %0, %0, #1\n\tadd %0, %0, #1\n\tadd %0, %0, #1\n\tadd %0, %0, #1\n\t"
+            : "+r"(x));
+    }
+    return (int)(sceKernelGetProcessTimeWide() - t0);
+}
+
 void Sys_PlatformInit(void)
 {
     sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
@@ -110,6 +128,32 @@ void Sys_PlatformInit(void)
     stderr = stdout;
 
     fprintf(stdout, "=== OpenMoHAA Vita boot.log ===\n");
+
+    /* Ask for the max clocks an app may request (444/222/222/166). Games start at
+     * 333 CPU / 111 GPU, and a PSVshell overclock turned out not to be applied to this
+     * title (VITA-CLOCK logged arm=333 gpu=111 while the user had 500/222/166 set).
+     * Only raise: a higher PSVshell clock (e.g. ARM 500) is left alone. */
+    /* scePowerGet* reports the clock the app is configured for; an overclock plugin
+     * (PSVshell) can run the core at a different real speed. Time a fixed dependent
+     * integer loop before and after our request to see what actually changed. */
+    fprintf(stdout, "[clock] loop before: %d us\n", Sys_VitaClockProbe());
+    fprintf(stdout, "[clock] before: arm=%d gpu=%d bus=%d xbar=%d MHz\n",
+        scePowerGetArmClockFrequency(), scePowerGetGpuClockFrequency(),
+        scePowerGetBusClockFrequency(), scePowerGetGpuXbarClockFrequency());
+    if (scePowerGetArmClockFrequency() < 444)     scePowerSetArmClockFrequency(444);
+    if (scePowerGetBusClockFrequency() < 222)     scePowerSetBusClockFrequency(222);
+    if (scePowerGetGpuClockFrequency() < 222)     scePowerSetGpuClockFrequency(222);
+    if (scePowerGetGpuXbarClockFrequency() < 166) scePowerSetGpuXbarClockFrequency(166);
+    fprintf(stdout, "[clock] after:  arm=%d gpu=%d bus=%d xbar=%d MHz\n",
+        scePowerGetArmClockFrequency(), scePowerGetGpuClockFrequency(),
+        scePowerGetBusClockFrequency(), scePowerGetGpuXbarClockFrequency());
+    {
+        const int us = Sys_VitaClockProbe();
+        /* The loop is VITA_CLOCK_PROBE_ITERS dependent single-cycle ALU ops, so
+         * iterations per microsecond ~= effective MHz of the core running it. */
+        fprintf(stdout, "[clock] loop after:  %d us (~%d MHz effective)\n", us,
+            us > 0 ? (int)(VITA_CLOCK_PROBE_ITERS / us) : 0);
+    }
     fflush(stdout);
 
     /* Snapshot memory state at three critical points so we can see how
