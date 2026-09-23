@@ -4586,7 +4586,13 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
         return true;
     }
 
+#ifdef __vita__
+    const int vitaT0 = Sys_Milliseconds();
+#endif
     streamHandle = S_CodecLoad(pSfx->name, NULL);
+#ifdef __vita__
+    const int vitaT1 = Sys_Milliseconds();
+#endif
     if (!streamHandle) {
         Com_DPrintf("OpenAL: Failed to load sound file.\n");
 #if defined(__SWITCH__) || defined(__vita__)
@@ -4628,6 +4634,17 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     bytesToRead      = Q_min(MAX_BUFFER_SAMPLES * stream->info.width * stream->info.channels, sizeof(rawData));
     bytesRead        = S_CodecReadStream(stream, bytesToRead, rawData);
     streamNextOffset = bytesRead;
+#ifdef __vita__
+    {
+        // Starting a streamed sound runs on the main thread: log the slow ones
+        // (hardware showed 185-869 ms "snd" hitches).
+        const int vitaT2 = Sys_Milliseconds();
+        if (vitaT2 - vitaT0 > 20) {
+            Com_Printf("SND-SLOW: '%s' open=%d ms first-read=%d ms (%u bytes)\n",
+                pSfx->name, vitaT1 - vitaT0, vitaT2 - vitaT1, bytesRead);
+        }
+    }
+#endif
     if (!bytesRead) {
         // Valid stream but no data?
         S_CodecCloseStream(stream);

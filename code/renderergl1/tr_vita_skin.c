@@ -322,8 +322,12 @@ void R_VitaGpuSkin_Init(void)
 {
     r_vita_gpu_skinning = ri.Cvar_Get("r_vita_gpu_skinning", "0", CVAR_ARCHIVE);
 
-    /* Always compile (cheap, once): the cvar only gates drawing, so the perf menu
-     * can flip GPU skinning on/off live for A/B comparisons. */
+    /* Only compile when enabled at boot: linking this program crashes on real
+     * hardware (2026-09-23, right after "skin.frag compile OK"; fine in Vita3K),
+     * so with the cvar off at init nothing here may run. */
+    if (!r_vita_gpu_skinning->integer) {
+        return;
+    }
     if (s_skin_ready) {
         return;
     }
