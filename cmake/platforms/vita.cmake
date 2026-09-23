@@ -241,6 +241,14 @@ function(package_vita_vpk)
         COMMAND ${VITA_MKSFOEX} -s TITLE_ID=${VITA_TITLEID}
                                 -d ATTRIBUTE2=12
                                 "${VITA_APP_NAME}" ${SFO_FILE}
+        COMMENT "Creating ${EBOOT_FILE}"
+        VERBATIM
+    )
+
+    # Packaging is its own target so the VPK is rebuilt when only game/cgame change
+    # (as a POST_BUILD step of the client it only ran when the eboot relinked, and a
+    # cgame-only fix silently shipped the old cgame.suprx).
+    add_custom_command(OUTPUT ${VPK_FILE}
         COMMAND ${VITASDK}/bin/vita-pack-vpk
                     -s ${SFO_FILE}
                     -b ${EBOOT_FILE}
@@ -255,7 +263,13 @@ function(package_vita_vpk)
                     --add ${CMAKE_BINARY_DIR}/game_suprx=game.suprx
                     --add ${CMAKE_BINARY_DIR}/cgame_suprx=cgame.suprx
                     ${VPK_FILE}
+        DEPENDS ${EBOOT_FILE}
+                ${CMAKE_BINARY_DIR}/game_suprx
+                ${CMAKE_BINARY_DIR}/cgame_suprx
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg
         COMMENT "Packaging ${VPK_FILE}"
         VERBATIM
     )
+    add_custom_target(vita_vpk ALL DEPENDS ${VPK_FILE})
+    add_dependencies(vita_vpk ${CLIENT_BINARY})
 endfunction()
