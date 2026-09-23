@@ -1385,6 +1385,14 @@ void CM_TraceThroughPatchCollide( traceWork_t *tw, const struct patchCollide_s *
 	static cvar_t *cv;
 #endif //BSPC
 
+#ifdef __vita__
+	// Skip patches whose (epsilon-expanded) box can't touch the swept trace box, like
+	// ioquake3; the facet loops below showed up as ~4% of the Vita frame.
+	if ( !CM_BoundsIntersectFast( tw->bounds[0], tw->bounds[1], pc->bounds[0], pc->bounds[1] ) ) {
+		return;
+	}
+#endif
+
 	if (tw->isPoint) {
 		CM_TracePointThroughPatchCollide( tw, pc );
 		return;

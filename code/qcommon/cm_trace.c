@@ -793,6 +793,14 @@ void CM_TraceToLeaf( traceWork_t *tw, cLeaf_t *leaf ) {
 			continue;
 		}
 
+#ifdef __vita__
+		// Skip brushes whose box can't touch the swept trace box (ioquake3 does the same).
+		// Same results, but CM_TraceThroughBrush's plane loop was ~12% of the Vita frame.
+		if( !CM_BoundsIntersectFast( tw->bounds[0], tw->bounds[1], b->bounds[0], b->bounds[1] ) ) {
+			continue;
+		}
+#endif
+
 		CM_TraceThroughBrush( tw, b );
 		if( !tw->trace.fraction ) {
 			return;
