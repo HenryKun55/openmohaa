@@ -145,6 +145,9 @@ private:
     unsigned int sampleLooped;
     unsigned int streamNextOffset;
     bool         streaming;
+#ifdef __vita__
+    struct stream_decode_job_t *decodeJob; // async decode of the next chunk (see snd_openal_new.cpp)
+#endif
 
 public:
     openal_channel_two_d_stream();

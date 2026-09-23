@@ -558,6 +558,14 @@ snd_stream_t* S_MP3_CodecOpenStream(const char* filename)
 
     stream->ptr = mp3info;
 
+#ifdef __vita__
+    // Pre-size the leftover pcm buffer to one full MP3 frame (1152 samples, max 2 channels) so
+    // S_MP3_Decode never grows it: streams are decoded on a worker thread and Z_Malloc isn't
+    // thread-safe (see S_StreamWorker in snd_openal_new.cpp).
+    mp3info->pcmbufsize = 1152 * 2 * stream->info.width;
+    mp3info->pcmbuf     = Z_Malloc(mp3info->pcmbufsize);
+#endif
+
     // initialize the libmad control structures.
     mad_stream_init(&mp3info->madstream);
     mad_frame_init(&mp3info->madframe);

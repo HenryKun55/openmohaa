@@ -26,6 +26,98 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../server/server.h"
 #include "snd_codec.h"
 
+#ifdef __vita__
+#    include <pthread.h>
+#    include <atomic>
+#    include <deque>
+
+/*
+ * Async stream decoding (Vita).
+ *
+ * update_stream() used to decode a whole MAX_BUFFER_SAMPLES chunk of MP3 on the main
+ * thread whenever a streamed channel (music, amb_stereo) needed a refill: ~29 ms per chunk
+ * on the Cortex-A9, i.e. the 0/29/58 ms "snd" spikes in CL-PROF. The main thread is the
+ * only busy core, so hand the decode to a worker and just queue the finished PCM.
+ *
+ * Only S_CodecReadStream runs on the worker. The owning channel never touches the stream
+ * while its job is pending (see S_StreamJob_Wait), and the MP3 codec's pcm buffer is
+ * pre-sized at open so the read path doesn't Z_Malloc.
+ */
+enum {
+    STREAM_JOB_IDLE,
+    STREAM_JOB_PENDING,
+    STREAM_JOB_DONE
+};
+
+struct stream_decode_job_t {
+    std::atomic<int> state;
+    snd_stream_t    *stream;
+    int              bytesToRead;
+    int              bytesRead;
+    char             data[MAX_BUFFER_SAMPLES * 2 * 2];
+};
+
+static pthread_mutex_t                   s_streamJobMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t                    s_streamJobCond  = PTHREAD_COND_INITIALIZER;
+static std::deque<stream_decode_job_t *> s_streamJobs;
+static bool                              s_streamWorkerStarted;
+
+static void *S_StreamWorker(void *)
+{
+    for (;;) {
+        stream_decode_job_t *job;
+
+        pthread_mutex_lock(&s_streamJobMutex);
+        while (s_streamJobs.empty()) {
+            pthread_cond_wait(&s_streamJobCond, &s_streamJobMutex);
+        }
+        job = s_streamJobs.front();
+        s_streamJobs.pop_front();
+        pthread_mutex_unlock(&s_streamJobMutex);
+
+        job->bytesRead = S_CodecReadStream(job->stream, job->bytesToRead, job->data);
+        job->state.store(STREAM_JOB_DONE, std::memory_order_release);
+    }
+    return NULL;
+}
+
+static void S_StreamJob_Submit(stream_decode_job_t *job, snd_stream_t *stream, int bytesToRead)
+{
+    if (!s_streamWorkerStarted) {
+        pthread_t      thread;
+        pthread_attr_t attr;
+
+        pthread_attr_init(&attr);
+        pthread_attr_setstacksize(&attr, 256 * 1024);
+        pthread_create(&thread, &attr, S_StreamWorker, NULL);
+        pthread_attr_destroy(&attr);
+        s_streamWorkerStarted = true;
+    }
+
+    job->stream      = stream;
+    job->bytesToRead = bytesToRead;
+    job->bytesRead   = 0;
+    job->state.store(STREAM_JOB_PENDING, std::memory_order_relaxed);
+
+    pthread_mutex_lock(&s_streamJobMutex);
+    s_streamJobs.push_back(job);
+    pthread_cond_signal(&s_streamJobCond);
+    pthread_mutex_unlock(&s_streamJobMutex);
+}
+
+// Block until the job's stream is no longer in use by the worker, then drop any result.
+static void S_StreamJob_Wait(stream_decode_job_t *job)
+{
+    if (!job) {
+        return;
+    }
+    while (job->state.load(std::memory_order_acquire) == STREAM_JOB_PENDING) {
+        sched_yield();
+    }
+    job->state.store(STREAM_JOB_IDLE, std::memory_order_relaxed);
+}
+#endif
+
 typedef struct {
     const char *funcname;
     void      **funcptr;
@@ -4614,6 +4706,9 @@ openal_channel_two_d_stream::openal_channel_two_d_stream()
     sampleLooped     = 0;
     streamNextOffset = 0;
     streaming        = false;
+#ifdef __vita__
+    decodeJob = NULL;
+#endif
 }
 
 /*
@@ -4624,6 +4719,11 @@ openal_channel_two_d_stream::openal_channel_two_d_stream
 openal_channel_two_d_stream::~openal_channel_two_d_stream()
 {
     clear_stream();
+#ifdef __vita__
+    S_StreamJob_Wait(decodeJob);
+    delete decodeJob;
+    decodeJob = NULL;
+#endif
 }
 
 /*
@@ -4675,7 +4775,29 @@ void openal_channel_two_d_stream::update()
 
     format = S_OPENAL_Format(stream->info.width, stream->info.channels);
 
+#ifdef __vita__
+    const char *pcm = rawData;
+
+    if (!decodeJob) {
+        decodeJob = new stream_decode_job_t();
+        decodeJob->state.store(STREAM_JOB_IDLE, std::memory_order_relaxed);
+    }
+
+    switch (decodeJob->state.load(std::memory_order_acquire)) {
+    case STREAM_JOB_IDLE:
+        S_StreamJob_Submit(decodeJob, stream, bytesToRead);
+        return;
+    case STREAM_JOB_PENDING:
+        return;
+    default:
+        decodeJob->state.store(STREAM_JOB_IDLE, std::memory_order_relaxed);
+        bytesRead = decodeJob->bytesRead;
+        pcm       = decodeJob->data;
+        break;
+    }
+#else
     bytesRead = S_CodecReadStream(stream, bytesToRead, rawData);
+#endif
     streamNextOffset += bytesRead;
     if (!bytesRead) {
         S_CodecCloseStream(stream);
@@ -4704,6 +4826,9 @@ void openal_channel_two_d_stream::update()
 
         bytesRead        = S_CodecReadStream(stream, bytesToRead, rawData);
         streamNextOffset = bytesRead;
+#ifdef __vita__
+        pcm = rawData;
+#endif
         if (!bytesRead) {
             S_CodecCloseStream(stream);
             streamHandle = NULL;
@@ -4718,7 +4843,11 @@ void openal_channel_two_d_stream::update()
     }
 #endif
 
+#ifdef __vita__
+    qalBufferData(buffers[currentBuf], format, pcm, bytesRead, stream->info.rate);
+#else
     qalBufferData(buffers[currentBuf], format, rawData, bytesRead, stream->info.rate);
+#endif
     alDieIfError();
 
     qalSourceQueueBuffers(source, 1, &buffers[currentBuf]);
@@ -4732,6 +4861,13 @@ void openal_channel_two_d_stream::update()
     }
 
     currentBuf = (currentBuf + 1) % MAX_STREAM_BUFFERS;
+
+#ifdef __vita__
+    // Prefetch the next chunk right away so it's ready before the queue drains.
+    if (numQueuedBuffers + 1 < MAX_STREAM_BUFFERS) {
+        S_StreamJob_Submit(decodeJob, stream, bytesToRead);
+    }
+#endif
 }
 
 /*
@@ -4828,6 +4964,11 @@ void openal_channel_two_d_stream::set_sample_offset(U32 offset)
     if (!streaming) {
         return;
     }
+
+#ifdef __vita__
+    // Any prefetched chunk is for the old position; drop it.
+    S_StreamJob_Wait(decodeJob);
+#endif
 
     stream         = (snd_stream_t *)streamHandle;
     streamPosition = getCurrentStreamPosition();
@@ -5012,6 +5153,10 @@ void openal_channel_two_d_stream::clear_stream()
     if (!streaming) {
         return;
     }
+
+#ifdef __vita__
+    S_StreamJob_Wait(decodeJob);
+#endif
 
     qalSourceStop(source);
     qalSourcei(source, AL_BUFFER, 0);
