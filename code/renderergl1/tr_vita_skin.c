@@ -62,6 +62,7 @@ extern void         glUniformMatrix4fv( int location, int count, unsigned char t
 extern void         glUniform4fv( int location, int count, const float *value );
 extern void         glUniform1i( int location, int v );
 extern void         glGetFloatv( unsigned int pname, float *params );
+extern void         glGetIntegerv( unsigned int pname, int *params );
 extern void         glActiveTexture( unsigned int texture );
 extern void         glBindTexture( unsigned int target, unsigned int texture );
 extern unsigned int glGetError( void );
@@ -88,6 +89,9 @@ extern void vglVertexAttribPointer( unsigned int index, int size, unsigned int t
 extern void vglIndexPointer( unsigned int type, int stride, unsigned int count, const void *pointer );
 extern void vglIndexPointerDefault( void );
 extern void vglDrawObjects( unsigned int mode, int count, unsigned char implicit_wvp );
+extern void vglSetSemanticBindingMode( unsigned int mode );
+#define VGL_MODE_SHADER_PAIR_ENUM 0   /* vglSemanticMode: SHADER_PAIR, GLOBAL, POSTPONED */
+#define VGL_MODE_POSTPONED_ENUM   2
 extern void vglVertexAttribPointerMapped( unsigned int index, const void *pointer );
 extern void vglIndexPointerMapped( const void *pointer );
 extern void *vglAlloc( unsigned int size, int type );
@@ -140,7 +144,7 @@ extern void vglFree( void *addr );
  *
  * The bone matrix is uploaded TRANSPOSED and pre-scaled (see DrawSurf): CPU
  * skin math is out[c] = dot(column_c, offset) + off[c]; uploading the columns
- * as the uniform's rows lets the shader use plain dot(row, p).
+ * as the uniform's rows, with off[c] in .w, lets the shader use dot(row, (p, 1)).
  *
  * Lighting mirrors RB_Light_Real (tr_sphere_shade.cpp) in model space: ambient
  * + up to VITA_SKIN_MAX_LIGHTS directional/spot/spot-fast/point lights, against
@@ -157,67 +161,73 @@ static const char *s_skin_vert_src =
     "attribute vec4 a_idx;\n"       /* 4 bone-slot indices (as floats) */
     "attribute vec2 a_texcoord;\n"
     "attribute vec3 a_normal;\n"    /* bind-pose normal (bone-0 frame) */
+    /* Must fit the Vita's vertex uniform budget (GL_MAX_VERTEX_UNIFORM_VECTORS, logged
+     * at init; the 424-vector version crashed at link on hardware): 4 + 96 + 4 + 12 = 116. */
     "uniform   mat4 u_mvp;\n"
-    "uniform   vec4 u_boneMat[300];\n"   /* 100 slots * 3 rows */
-    "uniform   vec4 u_boneOff[100];\n"
+    "uniform   vec4 u_boneMat[96];\n"    /* 32 slots * 3 rows; w = translation */
     "uniform   vec4 u_mvZ;\n"            /* modelview row producing eye-space z */
     "uniform   vec4 u_fog;\n"            /* x = start, y = end, z = enabled */
     "uniform   vec4 u_ambient;\n"        /* rgb 0..255, a = alpha 0..1 */
     "uniform   vec4 u_lightInfo;\n"      /* x = numLights, y = fullbright */
-    "uniform   vec4 u_lDir[8];\n"        /* xyz = direction, w = lighttype_t */
-    "uniform   vec4 u_lOrg[8];\n"        /* xyz = origin, w = fSpotConst */
-    "uniform   vec4 u_lCol[8];\n"        /* xyz = colour, w = fSpotScale */
-    /* Two plain vec4 varyings (uv+fog, lit colour): a lone float / "colour" varying got a
-     * different type across the vertex->fragment boundary after gxp translation, which
-     * MoltenVK rejects at pipeline creation (Vita3K abort). */
+    "uniform   vec4 u_lDir[4];\n"        /* xyz = direction, w = lighttype_t */
+    "uniform   vec4 u_lOrg[4];\n"        /* xyz = origin, w = fSpotConst */
+    "uniform   vec4 u_lCol[4];\n"        /* xyz = colour, w = fSpotScale */
     "varying   vec4 v_tc;\n"             /* xy = uv, z = fog factor */
     "varying   vec4 v_lit;\n"
-    "vec3 rotOne(int s, vec3 p) {\n"
+    "vec3 skinOne(int s, vec3 p) {\n"
     "    int o = s * 3;\n"
-    "    return vec3(dot(u_boneMat[o].xyz, p), dot(u_boneMat[o + 1].xyz, p), dot(u_boneMat[o + 2].xyz, p));\n"
+    "    vec4 q = vec4(p, 1.0);\n"
+    "    return vec3(dot(u_boneMat[o], q), dot(u_boneMat[o + 1], q), dot(u_boneMat[o + 2], q));\n"
+    "}\n"
+    "vec3 rotOne(int s, vec3 n) {\n"
+    "    int o = s * 3;\n"
+    "    return vec3(dot(u_boneMat[o].xyz, n), dot(u_boneMat[o + 1].xyz, n), dot(u_boneMat[o + 2].xyz, n));\n"
+    "}\n"
+    /* One RB_Light_Real light. Called with constant indices (no loop/break or dynamic
+     * light indexing, which the on-device shader compiler is fragile with). */
+    "vec3 lightOne(vec4 dirT, vec4 org, vec4 col, vec3 n, vec3 sk) {\n"
+    "    float t = dirT.w;\n"
+    "    if (t > 0.5 && t < 1.5) {\n"                 /* LIGHT_DIRECTIONAL */
+    "        return max(dot(dirT.xyz, n), 0.0) * col.xyz;\n"
+    "    }\n"
+    "    if (t > 1.5 && t < 2.5) {\n"                 /* LIGHT_SPOT */
+    "        float d = dot(dirT.xyz, n);\n"
+    "        if (d <= 0.0) return vec3(0.0);\n"
+    "        vec3 v = org.xyz - sk;\n"
+    "        float pr = dot(v, dirT.xyz); pr *= pr;\n"
+    "        float d2 = dot(v, v);\n"
+    "        float mi = (org.w - d2 / pr) * col.w;\n"
+    "        return mi > 0.0 ? (d / d2) * min(mi, 1.0) * col.xyz : vec3(0.0);\n"
+    "    }\n"
+    "    if (t > 2.5) {\n"                            /* LIGHT_SPOT_FAST */
+    "        float d = dot(dirT.xyz, n);\n"
+    "        vec3 v = org.xyz - sk;\n"
+    "        return d > 0.0 ? (d / dot(v, v)) * col.xyz : vec3(0.0);\n"
+    "    }\n"
+    "    vec3 v = org.xyz - sk;\n"                    /* LIGHT_POINT */
+    "    float d = dot(v, n);\n"
+    "    return d > 0.0 ? (d / dot(v, v)) * col.xyz : vec3(0.0);\n"
     "}\n"
     "void main(void) {\n"
     "    int s0 = int(a_idx.x); int s1 = int(a_idx.y); int s2 = int(a_idx.z); int s3 = int(a_idx.w);\n"
-    "    vec3 sk = a_w0.w * (rotOne(s0, a_w0.xyz) + u_boneOff[s0].xyz)\n"
-    "            + a_w1.w * (rotOne(s1, a_w1.xyz) + u_boneOff[s1].xyz)\n"
-    "            + a_w2.w * (rotOne(s2, a_w2.xyz) + u_boneOff[s2].xyz)\n"
-    "            + a_w3.w * (rotOne(s3, a_w3.xyz) + u_boneOff[s3].xyz);\n"
+    "    vec3 sk = a_w0.w * skinOne(s0, a_w0.xyz)\n"
+    "            + a_w1.w * skinOne(s1, a_w1.xyz)\n"
+    "            + a_w2.w * skinOne(s2, a_w2.xyz)\n"
+    "            + a_w3.w * skinOne(s3, a_w3.xyz);\n"
     "    gl_Position = u_mvp * vec4(sk, 1.0);\n"
     "    v_tc.xy = a_texcoord;\n"
     "    vec3 n = normalize(rotOne(s0, a_normal));\n"
-    "    vec3 c = vec3(0.0);\n"
+    "    vec3 c;\n"
     "    float a = 1.0;\n"
     "    if (u_lightInfo.y > 0.5) {\n"
     "        c = vec3(255.0);\n"
     "    } else if (u_lightInfo.x < 0.5) {\n"
     "        c = u_ambient.rgb; a = u_ambient.a;\n"
     "    } else {\n"
-    "        for (int i = 0; i < 8; i++) {\n"
-    "            if (float(i) >= u_lightInfo.x) break;\n"
-    "            float t = u_lDir[i].w;\n"
-    "            vec3  L = u_lDir[i].xyz;\n"
-    "            if (t > 0.5 && t < 1.5) {\n"                /* LIGHT_DIRECTIONAL */
-    "                float d = dot(L, n);\n"
-    "                if (d > 0.0) c += d * u_lCol[i].xyz;\n"
-    "            } else if (t > 1.5 && t < 2.5) {\n"         /* LIGHT_SPOT */
-    "                float d = dot(L, n);\n"
-    "                if (d > 0.0) {\n"
-    "                    vec3 v = u_lOrg[i].xyz - sk;\n"
-    "                    float pr = dot(v, L); pr *= pr;\n"
-    "                    float d2 = dot(v, v);\n"
-    "                    float mi = (u_lOrg[i].w - d2 / pr) * u_lCol[i].w;\n"
-    "                    if (mi > 0.0) c += (d / d2) * min(mi, 1.0) * u_lCol[i].xyz;\n"
-    "                }\n"
-    "            } else if (t > 2.5) {\n"                    /* LIGHT_SPOT_FAST */
-    "                float d = dot(L, n);\n"
-    "                if (d > 0.0) { vec3 v = u_lOrg[i].xyz - sk; c += (d / dot(v, v)) * u_lCol[i].xyz; }\n"
-    "            } else {\n"                                  /* LIGHT_POINT */
-    "                vec3 v = u_lOrg[i].xyz - sk;\n"
-    "                float d = dot(v, n);\n"
-    "                if (d > 0.0) c += (d / dot(v, v)) * u_lCol[i].xyz;\n"
-    "            }\n"
-    "        }\n"
-    "        c += u_ambient.rgb;\n"
+    "        c = u_ambient.rgb + lightOne(u_lDir[0], u_lOrg[0], u_lCol[0], n, sk);\n"
+    "        if (u_lightInfo.x > 1.5) c += lightOne(u_lDir[1], u_lOrg[1], u_lCol[1], n, sk);\n"
+    "        if (u_lightInfo.x > 2.5) c += lightOne(u_lDir[2], u_lOrg[2], u_lCol[2], n, sk);\n"
+    "        if (u_lightInfo.x > 3.5) c += lightOne(u_lDir[3], u_lOrg[3], u_lCol[3], n, sk);\n"
     "    }\n"
     "    v_lit = vec4(clamp(c, 0.0, 255.0) * (1.0 / 255.0), a);\n"
     "    float ez = -dot(u_mvZ, vec4(sk, 1.0));\n"
@@ -227,7 +237,7 @@ static const char *s_skin_vert_src =
 
 static const char *s_skin_frag_src =
     "#version 100\n"
-    "precision highp float;\n"
+    "precision mediump float;\n"
     "uniform sampler2D u_diffuse;\n"
     "uniform vec4     u_fogColor;\n"
     "uniform vec4     u_alphaTest;\n"    /* x: 0 off, 1 GT_0, 2 LT_80, 3 GE_80; y = entity alpha */
@@ -256,8 +266,8 @@ static const char *s_skin_frag_src =
 #define ATTR_COUNT    7
 
 #define VITA_SKIN_MAX_WEIGHTS      4
-#define VITA_SKIN_MAX_BONESLOTS    100
-#define VITA_SKIN_MAX_LIGHTS       8
+#define VITA_SKIN_MAX_BONESLOTS    32   /* u_boneMat[96]; more → CPU path */
+#define VITA_SKIN_MAX_LIGHTS       4    /* u_lDir/u_lOrg/u_lCol[4]; more → CPU path */
 
 #define VITA_SKIN_CACHE_CAP   1024
 #define VITA_SKIN_HASH_SIZE   2048   /* power of two */
@@ -288,7 +298,7 @@ static int                s_hash_slot[VITA_SKIN_HASH_SIZE];
 
 static unsigned int        s_skin_program = 0;
 static qboolean            s_skin_ready   = qfalse;
-static int                 s_loc_mvp = -1, s_loc_boneMatrix = -1, s_loc_boneOffset = -1, s_loc_diffuse = -1;
+static int                 s_loc_mvp = -1, s_loc_boneMatrix = -1, s_loc_diffuse = -1;
 static int                 s_loc_mvZ = -1, s_loc_fog = -1, s_loc_fogColor = -1, s_loc_alphaTest = -1;
 static int                 s_loc_ambient = -1, s_loc_lightInfo = -1, s_loc_lDir = -1, s_loc_lOrg = -1, s_loc_lCol = -1;
 
@@ -332,10 +342,23 @@ void R_VitaGpuSkin_Init(void)
         return;
     }
 
+    {
+        int maxVec = 0;
+        glGetIntegerv(0x8DFB /* GL_MAX_VERTEX_UNIFORM_VECTORS */, &maxVec);
+        glGetError();
+        ri.Printf(PRINT_ALL, "[VITA-SKIN] GL_MAX_VERTEX_UNIFORM_VECTORS=%d (shader uses 116)\n", maxVec);
+    }
+    /* vitaGL's default VGL_MODE_POSTPONED makes glCompileShader only store the source
+     * and compiles in glLinkProgram. But vglBindAttribLocation must run BEFORE the link
+     * and looks the names up in the compiled program: with nothing compiled yet it called
+     * sceGxmProgramFindParameterByName(NULL) (data abort on hardware; in Vita3K it
+     * silently failed, leaving the vertex program NULL). Compile this pair immediately
+     * (SHADER_PAIR: vertex then fragment, as done here), then restore the default. */
+    vglSetSemanticBindingMode(VGL_MODE_SHADER_PAIR_ENUM);
     unsigned int vs = VitaSkin_CompileStage(GL_VERTEX_SHADER,   s_skin_vert_src, "skin.vert");
-    if (!vs) return;
+    if (!vs) { vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
     unsigned int fs = VitaSkin_CompileStage(GL_FRAGMENT_SHADER, s_skin_frag_src, "skin.frag");
-    if (!fs) { glDeleteShader(vs); return; }
+    if (!fs) { glDeleteShader(vs); vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
 
     unsigned int prog = glCreateProgram();
     glAttachShader(prog, vs);
@@ -351,6 +374,7 @@ void R_VitaGpuSkin_Init(void)
     vglBindAttribLocation(prog, ATTR_NORMAL,   "a_normal",   3, GL_FLOAT);
 
     glLinkProgram(prog);
+    vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM);
 
     int linked = 0;
     glGetProgramiv(prog, GL_LINK_STATUS, &linked);
@@ -371,7 +395,6 @@ void R_VitaGpuSkin_Init(void)
     s_skin_program   = prog;
     s_loc_mvp        = glGetUniformLocation(prog, "u_mvp");
     s_loc_boneMatrix = glGetUniformLocation(prog, "u_boneMat");
-    s_loc_boneOffset = glGetUniformLocation(prog, "u_boneOff");
     s_loc_diffuse    = glGetUniformLocation(prog, "u_diffuse");
     s_loc_mvZ        = glGetUniformLocation(prog, "u_mvZ");
     s_loc_fog        = glGetUniformLocation(prog, "u_fog");
@@ -386,8 +409,8 @@ void R_VitaGpuSkin_Init(void)
 
     ri.Printf(PRINT_ALL,
         "[VITA-SKIN] program LINK OK, prog=%u (vgl* pipeline) "
-        "mvp=%d boneMat=%d boneOff=%d diffuse=%d\n",
-        prog, s_loc_mvp, s_loc_boneMatrix, s_loc_boneOffset, s_loc_diffuse);
+        "mvp=%d boneMat=%d diffuse=%d\n",
+        prog, s_loc_mvp, s_loc_boneMatrix, s_loc_diffuse);
 }
 
 void R_VitaGpuSkin_Shutdown(void)
@@ -645,7 +668,6 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     float entityAlpha   = 1.0f;
     float mvp[16], mvZ[4], fog[4], fogColor[4], alphaTest[4], ambient[4], lightInfo[4];
     static float boneMatrixData[VITA_SKIN_MAX_BONESLOTS * 3 * 4];
-    static float boneOffsetData[VITA_SKIN_MAX_BONESLOTS * 4];
     static float lDir[VITA_SKIN_MAX_LIGHTS * 4], lOrg[VITA_SKIN_MAX_LIGHTS * 4], lCol[VITA_SKIN_MAX_LIGHTS * 4];
 
     if (!s_skin_ready || !r_vita_gpu_skinning || !r_vita_gpu_skinning->integer) return qfalse;
@@ -678,19 +700,15 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         boneMatrixData[base + 0] = b->matrix[0][0] * scale;
         boneMatrixData[base + 1] = b->matrix[1][0] * scale;
         boneMatrixData[base + 2] = b->matrix[2][0] * scale;
-        boneMatrixData[base + 3] = 0.0f;
+        boneMatrixData[base + 3] = b->offset[0] * scale;
         boneMatrixData[base + 4] = b->matrix[0][1] * scale;
         boneMatrixData[base + 5] = b->matrix[1][1] * scale;
         boneMatrixData[base + 6] = b->matrix[2][1] * scale;
-        boneMatrixData[base + 7] = 0.0f;
+        boneMatrixData[base + 7] = b->offset[1] * scale;
         boneMatrixData[base + 8] = b->matrix[0][2] * scale;
         boneMatrixData[base + 9] = b->matrix[1][2] * scale;
         boneMatrixData[base +10] = b->matrix[2][2] * scale;
-        boneMatrixData[base +11] = 0.0f;
-        boneOffsetData[i * 4 + 0] = b->offset[0] * scale;
-        boneOffsetData[i * 4 + 1] = b->offset[1] * scale;
-        boneOffsetData[i * 4 + 2] = b->offset[2] * scale;
-        boneOffsetData[i * 4 + 3] = b->offset[3];
+        boneMatrixData[base +11] = b->offset[2] * scale;
     }
 
     /* MVP from the engine's own matrices. (Do NOT use glGetFloatv with
@@ -775,7 +793,6 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     glUseProgram(s_skin_program);                                    SKIN_GLCHK("glUseProgram");
     glUniformMatrix4fv(s_loc_mvp, 1, 0, mvp);                        SKIN_GLCHK("uniform mvp");
     glUniform4fv(s_loc_boneMatrix, e->numBoneSlots * 3, boneMatrixData); SKIN_GLCHK("uniform boneMat");
-    glUniform4fv(s_loc_boneOffset, e->numBoneSlots,     boneOffsetData); SKIN_GLCHK("uniform boneOff");
     glUniform4fv(s_loc_mvZ, 1, mvZ);
     glUniform4fv(s_loc_fog, 1, fog);
     glUniform4fv(s_loc_fogColor, 1, fogColor);
