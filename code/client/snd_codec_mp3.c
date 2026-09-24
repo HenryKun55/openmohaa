@@ -185,6 +185,20 @@ int S_MP3_Scanfile(snd_stream_t* stream)
                 stream->info.samples = 0;
                 stream->info.size = 0;				// same here.
                 stream->info.dataofs = 0;
+#ifdef __vita__
+                /* Vita: don't read the whole file just to count samples. Every music
+                 * start and every music loop re-opens the stream, and walking all
+                 * frame headers of a multi-MB MP3 from the memory card took ~870 ms
+                 * on the main thread (the "snd" hitch). Estimate the length from the
+                 * first frame's bitrate and the file size instead; it only feeds the
+                 * music position saved in savegames, and playback stops at EOF. */
+                if (madheader.bitrate > 0 && stream->length > 0) {
+                    stream->info.samples = (int)((double)stream->length * 8.0 / (double)madheader.bitrate
+                                                 * (double)madheader.samplerate);
+                    stream->info.size = stream->info.samples * stream->info.channels * stream->info.width;
+                    goto vita_scan_done;
+                }
+#endif
             }
             else
             {
@@ -202,6 +216,9 @@ int S_MP3_Scanfile(snd_stream_t* stream)
         }
     }
 
+#ifdef __vita__
+vita_scan_done:
+#endif
     // Reset the file pointer so we can do the real decoding.
     FS_Seek(stream->file, 0, FS_SEEK_SET);
 
@@ -700,14 +717,29 @@ void* S_MP3_CodecLoad(const char* filename, snd_info_t* info)
     info->dataofs = stream->info.dataofs;
 
     // allocate enough buffer for all pcm data
+#ifdef __vita__
+    // The Vita scan estimates the length from the bitrate (see S_MP3_Scanfile): leave
+    // headroom so an under-estimate doesn't truncate the sound; the real size is
+    // whatever the decoder returns.
+    const int vitaAlloc = stream->info.size + stream->info.size / 8 + 64 * 1024;
+    pcmbuffer = Z_Malloc(vitaAlloc);
+#else
     pcmbuffer = Z_Malloc(stream->info.size);
+#endif
     if (!pcmbuffer)
     {
         S_MP3_CodecCloseStream(stream);
         return NULL;
     }
 
+#ifdef __vita__
+    info->size = S_MP3_CodecReadStream(stream, vitaAlloc, pcmbuffer);
+    if (info->size > 0 && info->width > 0 && info->channels > 0) {
+        info->samples = info->size / (info->width * info->channels);
+    }
+#else
     info->size = S_MP3_CodecReadStream(stream, stream->info.size, pcmbuffer);
+#endif
 
     if (info->size <= 0)
     {

@@ -429,7 +429,26 @@ int DownSampleWav_MILES(wavinfo_t *info, byte *wav, int wavlength, int newkhz, b
 S_LoadSound
 ==============
 */
+#ifdef __vita__
+static qboolean S_LoadSound_Real(const char *fileName, sfx_t *sfx, int streamed, qboolean force_load);
+
+/* Vita: log sound loads that stall the main thread (hardware showed 183 ms "snd" hitches
+ * while walking, outside the streamed-sound start path). */
 qboolean S_LoadSound(const char *fileName, sfx_t *sfx, int streamed, qboolean force_load)
+{
+    const int t0 = Sys_Milliseconds();
+    const qboolean ret = S_LoadSound_Real(fileName, sfx, streamed, force_load);
+    const int dt = Sys_Milliseconds() - t0;
+    if (dt > 20) {
+        Com_Printf("SND-LOAD: '%s' %d ms (streamed=%d)\n", fileName, dt, streamed);
+    }
+    return ret;
+}
+
+static qboolean S_LoadSound_Real(const char *fileName, sfx_t *sfx, int streamed, qboolean force_load)
+#else
+qboolean S_LoadSound(const char *fileName, sfx_t *sfx, int streamed, qboolean force_load)
+#endif
 {
     int          size;
     fileHandle_t file_handle;

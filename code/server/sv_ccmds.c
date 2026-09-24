@@ -2437,9 +2437,14 @@ qboolean SV_ArchiveServerFile(qboolean loading, qboolean autosave)
 		CM_WritePortalState(f);
 		FS_FCloseFile(f);
 
+#ifndef __vita__
+		/* Vita: skipped. The save thumbnail reads the framebuffer back (a full GPU
+		 * sync), resamples and writes a TGA to the memory card: ~870 ms on hardware,
+		 * the hitch at every scripted checkpoint save. Saves work without it. */
 		name = Com_GetArchiveFileName(svs.gameName, "tga");
 		Com_sprintf(cmdString, sizeof(cmdString), "saveshot %s 256 256\n", name);
 		Cbuf_ExecuteText(svs.autosave ? EXEC_INSERT : EXEC_NOW, cmdString);
+#endif
 	} else {
 		FS_FOpenFileRead(name, &f, qfalse, qtrue);
 		if (!f) {
@@ -2688,6 +2693,9 @@ void SV_SaveGame(const char *gamename, qboolean autosave)
 
 	Q_strncpyz(svs.gameName, name, sizeof(svs.gameName));
 
+#ifdef __vita__
+	const int vitaSaveT0 = Sys_Milliseconds();
+#endif
 	if (!SV_ArchiveLevelFile(qfalse, autosave)) {
 		if (cls.savedCgameState) {
 			Z_Free(cls.savedCgameState);
@@ -2695,7 +2703,15 @@ void SV_SaveGame(const char *gamename, qboolean autosave)
 		}
 	}
 
+#ifdef __vita__
+	const int vitaSaveT1 = Sys_Milliseconds();
+#endif
 	SV_ArchiveServerFile(qfalse, autosave);
+#ifdef __vita__
+	/* Checkpoint saves run on the main thread mid-game (hardware hitch): split the cost. */
+	Com_Printf("SAVE-PROF: level archive=%d ms, server archive + saveshot=%d ms\n",
+		vitaSaveT1 - vitaSaveT0, Sys_Milliseconds() - vitaSaveT1);
+#endif
 
 	Com_Printf("Done.\n");
 
@@ -2749,7 +2765,13 @@ void SV_CheckSaveGame(void)
 	if (cl.serverTime >= svs.time) {
 		bSavegame = qfalse;
 		SV_SaveGame(savegame_name[0] ? savegame_name : NULL, qfalse);
+#ifdef __vita__
+		const int vitaUiT0 = Sys_Milliseconds();
+#endif
 		UI_SetupFiles();
+#ifdef __vita__
+		Com_Printf("SAVE-PROF: UI_SetupFiles=%d ms\n", Sys_Milliseconds() - vitaUiT0);
+#endif
 	}
 #endif
 }

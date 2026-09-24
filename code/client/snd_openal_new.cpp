@@ -5112,7 +5112,15 @@ bool openal_channel_two_d_stream::queue_stream(const char *fileName)
     //
     // Load the file
     //
+#ifdef __vita__
+    const int vitaQT0 = Sys_Milliseconds();
+#endif
     streamHandle = S_CodecLoad(this->fileName, NULL);
+#ifdef __vita__
+    if (Sys_Milliseconds() - vitaQT0 > 20) {
+        Com_Printf("SND-SLOW: queue_stream '%s' open=%d ms\n", this->fileName, Sys_Milliseconds() - vitaQT0);
+    }
+#endif
     if (!streamHandle) {
         return false;
     }
