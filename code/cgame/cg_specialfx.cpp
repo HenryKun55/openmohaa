@@ -426,9 +426,51 @@ void ClientSpecialEffectsManager::LoadEffects()
     m_bEffectsLoaded = qtrue;
 }
 
+/*
+Frees every effect command (their Events, emitters) so the next LoadEffects rebuilds
+them. Must run while the event system is alive: L_ShutdownEvents ->
+L_ClearEventList -> Event_allocator.FreeAll() releases EVERY cgame Event, including
+the ones held here. On desktop the cgame module is unloaded right after, so that never
+mattered; on consoles it stays loaded across level changes, m_bEffectsLoaded stayed
+true, and the next level's first bullet impact ran an Event whose memory the game
+module had since reused (m1l1 -> m1l2a crash in Listener::ProcessEvent).
+*/
+void ClientSpecialEffectsManager::UnloadEffects()
+{
+    int i, j;
+
+    for (i = 0; i < SFX_COUNT; i++) {
+        specialeffect_t *pEffect = &m_effects[i];
+
+        for (j = 0; j < pEffect->m_iCommandCount; j++) {
+            specialeffectcommand_t *pCommand = pEffect->m_commands[j];
+
+            if (pCommand->pEvent) {
+                delete pCommand->pEvent;
+            }
+            if (pCommand->emitter) {
+                delete pCommand->emitter;
+            }
+            delete pCommand;
+            pEffect->m_commands[j] = NULL;
+        }
+        pEffect->m_iCommandCount = 0;
+    }
+
+    m_iNumPendingEvents = 0;
+    m_bEffectsLoaded    = qfalse;
+}
+
 void CG_InitializeSpecialEffectsManager()
 {
     sfxManager.LoadEffects();
+}
+
+void CG_ShutdownSpecialEffectsManager()
+{
+    // Its delayed-effect events are in the queue L_ShutdownEvents is about to clear.
+    sfxManager.CancelPendingEvents();
+    sfxManager.UnloadEffects();
 }
 
 void CG_AddPendingEffects()

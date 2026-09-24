@@ -5136,6 +5136,31 @@ void ClientGameCommandManager::RestartAllEmitters(void)
 //===============
 // CG_RestartCommandManager
 //===============
+/*
+Deletes every emitter (spawnthing) and temp model. On desktop the cgame module is
+reloaded per level, which does this implicitly; on consoles it stays loaded, so the
+emitters kept the previous level's model names/tiki pointers. Archiving them (the
+level save, CG_SaveStateToBuffer) data-aborted in str::operator= on a freed model name,
+which is why level saves were disabled on the Vita.
+*/
+void ClientGameCommandManager::FreeAllEmitters()
+{
+    int i;
+
+    FreeAllTempModels();
+
+    for (i = m_emitters.NumObjects(); i > 0; i--) {
+        delete m_emitters.ObjectAt(i);
+    }
+    m_emitters.ClearObjectList();
+    m_spawnthing = NULL;
+}
+
+void CG_ShutdownCommandManager()
+{
+    commandManager.FreeAllEmitters();
+}
+
 void CG_RestartCommandManager()
 {
     commandManager.FreeAllTempModels();

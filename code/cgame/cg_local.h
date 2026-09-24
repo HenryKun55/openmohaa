@@ -554,6 +554,7 @@ extern "C" {
     void     CG_EndTiki(dtiki_t *tiki);
     qboolean CG_Command_ProcessFile(const char *filename, qboolean quiet, dtiki_t *curTiki);
     void     CG_RestartCommandManager();
+    void     CG_ShutdownCommandManager();
     void     CG_CleanUpTempModels();
     qboolean CG_ProcessEntityCommands(int frame, int anim, int entnum, refEntity_t *ent, centity_t *cent);
     void     CG_ClientCommands(refEntity_t *ent, centity_t *cent, int slot);
@@ -916,6 +917,7 @@ qboolean CG_LightStyleColor(int style, int realtime, vec4_t color, qboolean clam
     void CG_LandingSound(centity_t *ent, refEntity_t *pREnt, float volume, int iEquipment);
     void CG_BodyFallSound(centity_t *ent, refEntity_t *pREnt, float volume);
     void CG_InitializeSpecialEffectsManager();
+    void CG_ShutdownSpecialEffectsManager();
     void CG_AddPendingEffects();
 
     //

@@ -187,6 +187,7 @@ public:
     ClientSpecialEffectsManager();
 
     void             LoadEffects();
+    void             UnloadEffects();
     qboolean         EffectsPending();
     void             MakeEffect_Normal(int iEffect, Vector vPos, Vector vNormal);
     void             MakeEffect_Angles(int iEffect, Vector vPos, Vector vAngles);

@@ -971,6 +971,7 @@ public:
     qboolean SelectProcessEvent(Event *ev);
     // Added in OPM
     void ResetPendingEvents();
+    void FreeAllEmitters();
     void RemovePendingEventsForEntity(int number);
 
     void TestEffectEndFunc();

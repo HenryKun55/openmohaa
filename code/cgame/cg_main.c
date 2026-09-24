@@ -785,6 +785,10 @@ void CG_Shutdown(void)
     // frees, and the next CG_Init's CG_RestartCommandManager deletes them again
     // (m1l1 -> m1l2a door crash).
     CG_RestartCommandManager();
+    // Same for the special effects' Events (bullet impacts...): see UnloadEffects.
+    CG_ShutdownSpecialEffectsManager();
+    // And the emitters, which reference this level's models (see FreeAllEmitters).
+    CG_ShutdownCommandManager();
 
     L_ShutdownEvents();
     // Shutdown radar
