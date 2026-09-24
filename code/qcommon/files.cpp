@@ -434,7 +434,16 @@ static long FS_HashFileName( const char *fname, int hashSize ) {
 static fileHandle_t	FS_HandleForFile(void) {
 	int		i;
 
+#ifdef __vita__
+	/* A handle is only marked used once its fopen/unzOpen returns, so the I/O worker
+	 * and the main thread could pick the same free slot. Give them disjoint ranges. */
+	const qboolean onIo = Com_VitaOnIoThread();
+	const int      first = onIo ? MAX_FILE_HANDLES - VITA_IO_FILE_HANDLES : 1;
+	const int      last  = onIo ? MAX_FILE_HANDLES : MAX_FILE_HANDLES - VITA_IO_FILE_HANDLES;
+	for ( i = first ; i < last ; i++ ) {
+#else
 	for ( i = 1 ; i < MAX_FILE_HANDLES ; i++ ) {
+#endif
 		if ( fsh[i].handleFiles.file.o == NULL ) {
 			return i;
 		}
@@ -591,6 +600,13 @@ void FS_CorrectCase( char *path ) {
 	int		getOut;
 	char	*ptr;
 
+#ifdef __vita__
+	// The Vita's filesystems are case-insensitive, and every access() below is a
+	// memory card stat (one for the file plus one per missing folder, on every
+	// FS_BuildOSPath). Nothing to correct.
+	return;
+#endif
+
 	if( !access( path, 0 ) ) {
 		return;
 	}
@@ -636,7 +652,20 @@ char *FS_BuildOSPath( const char *base, const char *game, const char *qpath ) {
 	static char ospath[2][MAX_OSPATH];
 	static int toggle;
 
-	toggle ^= 1;		// flip-flop to allow two returns without clash
+	char	*out;
+#ifdef __vita__
+	// The Vita I/O worker opens files too: give it its own buffer so it never
+	// flips or overwrites the main thread's pair.
+	static char ioOspath[MAX_OSPATH];
+
+	if ( Com_VitaOnIoThread() ) {
+		out = ioOspath;
+	} else
+#endif
+	{
+		toggle ^= 1;		// flip-flop to allow two returns without clash
+		out = ospath[toggle];
+	}
 
 	if( !game || !game[ 0 ] ) {
 		game = fs_gamedir;
@@ -644,10 +673,10 @@ char *FS_BuildOSPath( const char *base, const char *game, const char *qpath ) {
 
 	Com_sprintf( temp, sizeof( temp ), "/%s/%s", game, qpath );
 	FS_ReplaceSeparators( temp );
-	Com_sprintf( ospath[toggle], sizeof( ospath[0] ), "%s%s", base, temp );
-	FS_CorrectCase( ospath[ toggle ] );
+	Com_sprintf( out, sizeof( ospath[0] ), "%s%s", base, temp );
+	FS_CorrectCase( out );
 
-	return ospath[ toggle ];
+	return out;
 }
 
 /*
@@ -672,6 +701,10 @@ FS_CreatePath
 Creates any directories needed to store the given filename
 ============
 */
+#ifdef __vita__
+static void FS_VitaDirCache_NoteCreated(const char *ospath);
+#endif
+
 qboolean FS_CreatePath (const char *OSPath) {
 	char	*ofs;
 	char	path[MAX_OSPATH];
@@ -708,6 +741,9 @@ qboolean FS_CreatePath (const char *OSPath) {
 		}
 	}
 
+#ifdef __vita__
+	FS_VitaDirCache_NoteCreated(path);
+#endif
 	return qfalse;
 }
 
@@ -1292,6 +1328,156 @@ qboolean FS_IsDemoExt(const char *filename, int namelen)
 	return qfalse;
 }
 
+#ifdef __vita__
+/*
+=================
+Vita loose-file top-level directory cache
+
+Almost every asset lives in a pk3, but FS_FOpenFileReadDir still probes each loose
+search directory first, and on the Vita a probe is a stat + stat + stat + open on the
+memory card (Sys_FOpen / newlib), repeated per directory and per extension (.jpg then
+.tga): ~12 failed card calls for every texture, also mid-game (decals, faces). Most
+misses are for top-level folders that don't exist at all there (textures/, gfx/,
+models/...), so each loose directory's top-level entries are listed once and paths
+under a missing folder are rejected without touching the card.
+=================
+*/
+#include <psp2/io/dirent.h>
+#include <pthread.h>
+
+#define VITA_DIRCACHE_ROOTS   8
+#define VITA_DIRCACHE_ENTRIES 128
+
+typedef struct {
+	char         root[MAX_OSPATH];
+	char         names[VITA_DIRCACHE_ENTRIES][MAX_QPATH];
+	volatile int count;
+	qboolean     overflow;		// too many entries to trust: never reject
+} vitaDirCache_t;
+
+static vitaDirCache_t  fs_vitaDirCache[VITA_DIRCACHE_ROOTS];
+static volatile int    fs_vitaDirCacheCount;
+static pthread_mutex_t fs_vitaDirCacheLock = PTHREAD_MUTEX_INITIALIZER;
+
+static void FS_VitaDirCache_Add(vitaDirCache_t *c, const char *name, int len)
+{
+	int i;
+
+	if (len <= 0 || len >= MAX_QPATH) {
+		return;
+	}
+	for (i = 0; i < c->count; i++) {
+		if (!Q_stricmpn(c->names[i], name, len) && !c->names[i][len]) {
+			return;
+		}
+	}
+	if (c->count >= VITA_DIRCACHE_ENTRIES) {
+		c->overflow = qtrue;
+		return;
+	}
+	Q_strncpyz(c->names[c->count], name, len + 1);
+	__sync_synchronize();	// readers on the other thread only look below count
+	c->count++;
+}
+
+// Returns the cache for a loose search directory, listing it on first use.
+static vitaDirCache_t *FS_VitaDirCache_Get(const directory_t *dir)
+{
+	char            root[MAX_OSPATH];
+	vitaDirCache_t *c;
+	SceUID          d;
+	SceIoDirent     ent;
+	int             i;
+
+	Com_sprintf(root, sizeof(root), "%s/%s", dir->path, dir->gamedir);
+
+	for (i = 0; i < fs_vitaDirCacheCount; i++) {
+		if (!Q_stricmp(fs_vitaDirCache[i].root, root)) {
+			return &fs_vitaDirCache[i];
+		}
+	}
+
+	pthread_mutex_lock(&fs_vitaDirCacheLock);
+	for (i = 0; i < fs_vitaDirCacheCount; i++) {
+		if (!Q_stricmp(fs_vitaDirCache[i].root, root)) {
+			pthread_mutex_unlock(&fs_vitaDirCacheLock);
+			return &fs_vitaDirCache[i];
+		}
+	}
+	if (fs_vitaDirCacheCount >= VITA_DIRCACHE_ROOTS) {
+		pthread_mutex_unlock(&fs_vitaDirCacheLock);
+		return NULL;
+	}
+
+	c = &fs_vitaDirCache[fs_vitaDirCacheCount];
+	memset(c, 0, sizeof(*c));
+	Q_strncpyz(c->root, root, sizeof(c->root));
+
+	d = sceIoDopen(root);
+	if (d >= 0) {
+		memset(&ent, 0, sizeof(ent));
+		while (sceIoDread(d, &ent) > 0) {
+			if (SCE_S_ISDIR(ent.d_stat.st_mode) && ent.d_name[0] != '.') {
+				FS_VitaDirCache_Add(c, ent.d_name, strlen(ent.d_name));
+			}
+			memset(&ent, 0, sizeof(ent));
+		}
+		sceIoDclose(d);
+	}
+	// A root that can't be listed (missing) simply has no folders.
+
+	__sync_synchronize();
+	fs_vitaDirCacheCount++;
+	pthread_mutex_unlock(&fs_vitaDirCacheLock);
+	return c;
+}
+
+// qfalse only when the file's top-level folder is known not to exist in this directory.
+static qboolean FS_VitaDirMayHave(const directory_t *dir, const char *filename)
+{
+	vitaDirCache_t *c;
+	const char     *sep;
+	int             len, i;
+
+	sep = strpbrk(filename, "/\\");
+	if (!sep) {
+		return qtrue;	// file at the root of the game dir: not cached
+	}
+	len = sep - filename;
+
+	c = FS_VitaDirCache_Get(dir);
+	if (!c || c->overflow) {
+		return qtrue;
+	}
+	for (i = 0; i < c->count; i++) {
+		if (!Q_stricmpn(c->names[i], filename, len) && !c->names[i][len]) {
+			return qtrue;
+		}
+	}
+	return qfalse;
+}
+
+// FS_CreatePath made a directory: record a new top-level folder in the matching cache.
+static void FS_VitaDirCache_NoteCreated(const char *ospath)
+{
+	int i, rootLen, len;
+	const char *rest, *sep;
+
+	pthread_mutex_lock(&fs_vitaDirCacheLock);
+	for (i = 0; i < fs_vitaDirCacheCount; i++) {
+		rootLen = strlen(fs_vitaDirCache[i].root);
+		if (Q_stricmpn(fs_vitaDirCache[i].root, ospath, rootLen) || (ospath[rootLen] != '/' && ospath[rootLen] != '\\')) {
+			continue;
+		}
+		rest = ospath + rootLen + 1;
+		sep  = strpbrk(rest, "/\\");
+		len  = sep ? (int)(sep - rest) : (int)strlen(rest);
+		FS_VitaDirCache_Add(&fs_vitaDirCache[i], rest, len);
+	}
+	pthread_mutex_unlock(&fs_vitaDirCacheLock);
+}
+#endif
+
 /*
 ===========
 FS_FOpenFileReadDir
@@ -1382,6 +1568,11 @@ long FS_FOpenFileReadDir(const char *filename, searchpath_t *search, fileHandle_
 		{
 			dir = search->dir;
 
+#ifdef __vita__
+			if (!FS_VitaDirMayHave(dir, filename)) {
+				return 0;
+			}
+#endif
 			netpath = FS_BuildOSPath(dir->path, dir->gamedir, filename);
 			filep = Sys_FOpen(netpath, "rb");
 
@@ -1521,6 +1712,12 @@ long FS_FOpenFileReadDir(const char *filename, searchpath_t *search, fileHandle_
 
 		dir = search->dir;
 
+#ifdef __vita__
+		if (!FS_VitaDirMayHave(dir, filename)) {
+			*file = 0;
+			return -1;
+		}
+#endif
 		netpath = FS_BuildOSPath(dir->path, dir->gamedir, filename);
 		filep = Sys_FOpen(netpath, "rb");
 
