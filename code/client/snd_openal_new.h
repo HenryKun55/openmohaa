@@ -91,6 +91,9 @@ struct openal_channel {
     // openal_channel_two_d_stream only: opening on the I/O worker, finished in update().
     // Lives here so the non-virtual sample_status() can see it.
     bool pendingOpen;
+    // play()/pause() requested while pendingOpen; applied once the open finishes.
+    bool pendingPlay;
+    bool pendingPaused;
 #endif
 
 public:
@@ -152,6 +155,10 @@ private:
     bool         streaming;
 #ifdef __vita__
     struct stream_decode_job_t *decodeJob; // async open / next-chunk decode (see snd_openal_new.cpp)
+    bool                        pendingQueue;     // pendingOpen came from queue_stream (music), not set_sfx
+    bool                        pendingHasOffset; // set_sample_offset() while pendingOpen
+    U32                         pendingOffset;    // ...in samples at the placeholder 22050 Hz rate
+    bool                        loopReopenPending; // looping stream re-opening on the worker
 #endif
 
 public:
@@ -165,7 +172,8 @@ public:
     U32  sample_offset() override;
     void set_sample_offset(U32 offset) override;
 
-    bool queue_stream(const char *fileName);
+    // async (Vita): open on the I/O worker; play/pause/offset calls are deferred until done.
+    bool queue_stream(const char *fileName, bool async = false);
 
 protected:
     U32 buffer_frequency() const override;
@@ -173,6 +181,7 @@ protected:
 private:
     void clear_stream();
     bool finish_open(struct snd_stream_s *stream, const char *pcm, unsigned int bytesRead, unsigned int bytesToRead);
+    bool finish_queue(struct snd_stream_s *stream, const char *pcm, unsigned int bytesRead);
 
     unsigned int getQueueLength() const;
     unsigned int getCurrentStreamPosition() const;
