@@ -31,11 +31,20 @@
 #include <png.h>
 #include <vitaGL.h>
 
-/* bg.png is the LiveArea background art (840x500) with the OpenMoHAA
- * branding. startup.png is just the small launch-icon (the "star"
- * effect Sony uses during the LiveArea-to-app zoom transition); we
- * don't want that. */
-#define SPLASH_PATH "app0:/sce_sys/livearea/contents/bg.png"
+/* Full-screen (960x544) loading art. Falls back to the LiveArea background
+ * (840x500, stretched) when a VPK was built without it. */
+#define SPLASH_PATH          "app0:/splash.png"
+#define SPLASH_FALLBACK_PATH "app0:/sce_sys/livearea/contents/bg.png"
+
+/* vitaGL's own boot splashscreen (its animated logo, shown from vglInit until the
+ * first swap) lives in splashscreen.o inside libvitaGL.a, which the linker only pulls
+ * in to resolve these four symbols (referenced by vgl.o and gxm.o). Defining them here
+ * as "no splashscreen" keeps it out of the eboot, so our own art is the first thing on
+ * screen -- without rebuilding vitaGL (the exact flags of the build in use are lost). */
+GLboolean is_splashscreen_active = GL_FALSE;
+int       splash_mutex[2];
+void      invoke_splashscreen(void) {}
+void      clear_splashscreen(void) {}
 
 static GLuint s_splash_tex   = 0;
 static int    s_splash_w     = 0;
@@ -115,7 +124,8 @@ static void splash_upload_texture(void)
 {
     unsigned char *pixels = NULL;
     int w = 0, h = 0;
-    if (!load_png_rgba(SPLASH_PATH, &pixels, &w, &h)) return;
+    if (!load_png_rgba(SPLASH_PATH, &pixels, &w, &h) &&
+        !load_png_rgba(SPLASH_FALLBACK_PATH, &pixels, &w, &h)) return;
 
     glGenTextures(1, &s_splash_tex);
     glBindTexture(GL_TEXTURE_2D, s_splash_tex);

@@ -228,6 +228,28 @@ function(package_vita_vpk)
 
     set(VITA_SCE_DIR ${CMAKE_SOURCE_DIR}/misc/vita/sce_sys)
 
+    # Bubble / LiveArea / loading-screen art. misc/vita/make_art.py builds it from the
+    # user's own game data into misc/vita/art_local (git-ignored: it is EA's art);
+    # without it the generic OpenMoHAA art in misc/vita/sce_sys is packed.
+    set(VITA_ART_DIR ${CMAKE_SOURCE_DIR}/misc/vita/art_local)
+    set(VITA_BUBBLE_TITLE "${VITA_APP_NAME}")
+    set(VITA_ICON_DIR ${VITA_SCE_DIR})
+    set(VITA_SPLASH_ADD "")
+    set(VITA_ART_DEPENDS "")
+    if(EXISTS ${VITA_ART_DIR}/sce_sys/icon0.png)
+        set(VITA_ICON_DIR ${VITA_ART_DIR}/sce_sys)
+        set(VITA_BUBBLE_TITLE "Medal of Honor: Allied Assault")
+        list(APPEND VITA_ART_DEPENDS
+            ${VITA_ART_DIR}/sce_sys/icon0.png
+            ${VITA_ART_DIR}/sce_sys/livearea/contents/bg.png
+            ${VITA_ART_DIR}/sce_sys/livearea/contents/startup.png)
+    endif()
+    if(EXISTS ${VITA_ART_DIR}/splash.png)
+        # Shown by sdl/vita_boot_splash.c during boot and level loads.
+        set(VITA_SPLASH_ADD --add ${VITA_ART_DIR}/splash.png=splash.png)
+        list(APPEND VITA_ART_DEPENDS ${VITA_ART_DIR}/splash.png)
+    endif()
+
     # vita-elf-create chokes on R_ARM_BASE_PREL (reloc 25) emitted by the
     # C++ unwind tables (.ARM.exidx / .ARM.extab) — fgame and cgame both
     # use try/catch for ScriptException, which is enough to generate
@@ -240,7 +262,7 @@ function(package_vita_vpk)
         COMMAND ${VITA_MAKE_FSELF} -s ${VELF_FILE} ${EBOOT_FILE}
         COMMAND ${VITA_MKSFOEX} -s TITLE_ID=${VITA_TITLEID}
                                 -d ATTRIBUTE2=12
-                                "${VITA_APP_NAME}" ${SFO_FILE}
+                                "${VITA_BUBBLE_TITLE}" ${SFO_FILE}
         COMMENT "Creating ${EBOOT_FILE}"
         VERBATIM
     )
@@ -252,9 +274,10 @@ function(package_vita_vpk)
         COMMAND ${VITASDK}/bin/vita-pack-vpk
                     -s ${SFO_FILE}
                     -b ${EBOOT_FILE}
-                    --add ${VITA_SCE_DIR}/icon0.png=sce_sys/icon0.png
-                    --add ${VITA_SCE_DIR}/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png
-                    --add ${VITA_SCE_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
+                    --add ${VITA_ICON_DIR}/icon0.png=sce_sys/icon0.png
+                    --add ${VITA_ICON_DIR}/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png
+                    --add ${VITA_ICON_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
+                    ${VITA_SPLASH_ADD}
                     --add ${VITA_SCE_DIR}/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg=main/autoexec.cfg
                     # Game / cgame PRX modules at the VPK root so they
@@ -267,6 +290,7 @@ function(package_vita_vpk)
                 ${CMAKE_BINARY_DIR}/game_suprx
                 ${CMAKE_BINARY_DIR}/cgame_suprx
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg
+                ${VITA_ART_DEPENDS}
         COMMENT "Packaging ${VPK_FILE}"
         VERBATIM
     )

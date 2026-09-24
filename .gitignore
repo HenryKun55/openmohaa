@@ -47,3 +47,6 @@ out
 # Flex and Bison
 ####################
 /code/parser/generated
+
+# Vita bubble/loading art generated from the user's own game data (EA art)
+misc/vita/art_local/
