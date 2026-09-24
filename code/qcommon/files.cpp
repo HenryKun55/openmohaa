@@ -296,6 +296,15 @@ typedef struct {
 	int			zipFileLen;
 	qboolean	zipFile;
 	char		name[MAX_ZPATH];
+#ifdef __vita__
+	// FS_VitaFOpenFileWriteDeferred: FS_Write appends here, FS_FCloseFile hands the
+	// buffer to the I/O worker thread, which writes it to vitaDeferPath.
+	qboolean	vitaDeferred;
+	byte		*vitaDeferBuf;
+	int			vitaDeferLen;
+	int			vitaDeferCap;
+	char		vitaDeferPath[MAX_OSPATH];
+#endif
 } fileHandleData_t;
 
 static fileHandleData_t	fsh[MAX_FILE_HANDLES];
@@ -723,6 +732,32 @@ qboolean FS_CreatePath (const char *OSPath) {
 	Q_strncpyz( path, OSPath, sizeof( path ) );
 	FS_ReplaceSeparators( path );
 
+#ifdef __vita__
+	{
+		// Every file write lands here, and the loop below mkdir()s each component of the
+		// path (ux0:, data, openmohaa, main, save, ...): one failing card call each, on
+		// every checkpoint save. Remember the directories already ensured.
+		static char ensured[8][MAX_OSPATH];
+		static int  ensuredNext;
+		char        dirOnly[MAX_OSPATH];
+		char       *lastSep;
+		int         i;
+
+		Q_strncpyz( dirOnly, path, sizeof( dirOnly ) );
+		lastSep = strrchr( dirOnly, PATH_SEP );
+		if ( lastSep ) {
+			lastSep[1] = 0;
+			for ( i = 0; i < 8; i++ ) {
+				if ( !Q_stricmp( ensured[i], dirOnly ) ) {
+					return qfalse;
+				}
+			}
+			Q_strncpyz( ensured[ensuredNext], dirOnly, sizeof( ensured[0] ) );
+			ensuredNext = ( ensuredNext + 1 ) % 8;
+		}
+	}
+#endif
+
 	// Skip creation of the root directory as it will always be there
 	ofs = strchr( path, PATH_SEP );
 	if ( ofs != NULL ) {
@@ -1024,10 +1059,88 @@ For some reason, other dll's can't just cal fclose()
 on files returned by FS_FOpenFile...
 ==============
 */
+#ifdef __vita__
+#include <psp2/io/fcntl.h>
+
+typedef struct {
+	char	path[MAX_OSPATH];
+	byte	*buf;
+	int		len;
+} vitaDeferredWrite_t;
+
+// Runs on the I/O worker thread: plain sceIo calls only, no engine code.
+static void FS_VitaDeferredWriteJob( void *arg ) {
+	vitaDeferredWrite_t *job = (vitaDeferredWrite_t *)arg;
+	SceUID fd = sceIoOpen( job->path, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777 );
+
+	if ( fd >= 0 ) {
+		sceIoWrite( fd, job->buf, job->len );
+		sceIoClose( fd );
+	}
+	free( job->buf );
+	free( job );
+}
+
+/*
+===========
+FS_VitaFOpenFileWriteDeferred_HomeData
+
+Like FS_FOpenFileWrite_HomeData, but nothing touches the memory card until the handle
+is closed, and then the write happens on the I/O worker thread. Creating a file on the
+Vita's card costs ~120 ms (SAVE-PROF on hardware) -- a hitch at every checkpoint save.
+Only FS_Write and FS_FCloseFile are supported on the handle.
+===========
+*/
+fileHandle_t FS_VitaFOpenFileWriteDeferred_HomeData( const char *filename ) {
+	const char		*ospath;
+	fileHandle_t	f;
+
+	if ( !fs_searchpaths ) {
+		Com_Error( ERR_FATAL, "Filesystem call made without initialization" );
+	}
+
+	ospath = FS_BuildOSPath( fs_homedatapath->string, fs_gamedir, filename );
+	FS_CheckFilenameIsMutable( ospath, __func__ );
+	if ( FS_CreatePath( ospath ) ) {
+		return 0;
+	}
+
+	f = FS_HandleForFile();
+	fsh[f].zipFile = qfalse;
+	// Marks the slot as used (FS_HandleForFile looks for file.o == NULL); never a real FILE.
+	fsh[f].handleFiles.file.o = (FILE *)&fsh[f];
+	fsh[f].handleSync = qfalse;
+	Q_strncpyz( fsh[f].name, filename, sizeof( fsh[f].name ) );
+	fsh[f].vitaDeferred = qtrue;
+	fsh[f].vitaDeferBuf = NULL;
+	fsh[f].vitaDeferLen = 0;
+	fsh[f].vitaDeferCap = 0;
+	Q_strncpyz( fsh[f].vitaDeferPath, ospath, sizeof( fsh[f].vitaDeferPath ) );
+	return f;
+}
+#endif
+
 void FS_FCloseFile( fileHandle_t f ) {
 	if ( !fs_searchpaths ) {
 		Com_Error( ERR_FATAL, "Filesystem call made without initialization" );
 	}
+
+#ifdef __vita__
+	if ( fsh[f].vitaDeferred ) {
+		vitaDeferredWrite_t *job = (vitaDeferredWrite_t *)malloc( sizeof( *job ) );
+
+		if ( job ) {
+			Q_strncpyz( job->path, fsh[f].vitaDeferPath, sizeof( job->path ) );
+			job->buf = fsh[f].vitaDeferBuf;
+			job->len = fsh[f].vitaDeferLen;
+			S_VitaIoSubmit( FS_VitaDeferredWriteJob, job );
+		} else {
+			free( fsh[f].vitaDeferBuf );
+		}
+		Com_Memset( &fsh[f], 0, sizeof( fsh[f] ) );
+		return;
+	}
+#endif
 
 	if (fsh[f].zipFile == qtrue) {
 		unzCloseCurrentFile( fsh[f].handleFiles.file.z );
@@ -1875,6 +1988,28 @@ size_t FS_Write( const void *buffer, size_t len, fileHandle_t h ) {
 		return 0;
 	}
 
+#ifdef __vita__
+	if ( fsh[h].vitaDeferred ) {
+		if ( fsh[h].vitaDeferLen + (int)len > fsh[h].vitaDeferCap ) {
+			int		newCap = fsh[h].vitaDeferCap ? fsh[h].vitaDeferCap : 16384;
+			byte	*newBuf;
+
+			while ( newCap < fsh[h].vitaDeferLen + (int)len ) {
+				newCap *= 2;
+			}
+			newBuf = (byte *)realloc( fsh[h].vitaDeferBuf, newCap );
+			if ( !newBuf ) {
+				return 0;
+			}
+			fsh[h].vitaDeferBuf = newBuf;
+			fsh[h].vitaDeferCap = newCap;
+		}
+		memcpy( fsh[h].vitaDeferBuf + fsh[h].vitaDeferLen, buffer, len );
+		fsh[h].vitaDeferLen += (int)len;
+		return len;
+	}
+#endif
+
 	f = FS_FileForHandle(h);
 	buf = (byte *)buffer;
 
@@ -2287,6 +2422,13 @@ int FS_WriteFile( const char *qpath, const void *buffer, int size ) {
 		Com_Error( ERR_FATAL, "FS_WriteFile: NULL parameter" );
 	}
 
+#ifdef __vita__
+	// Save files (the level .sav built in memory by the game's Archiver): write them on
+	// the I/O worker thread, creating a file on the memory card costs ~120 ms.
+	if ( !Q_stricmpn( qpath, "save/", 5 ) ) {
+		f = FS_VitaFOpenFileWriteDeferred_HomeData( qpath );
+	} else
+#endif
 	f = FS_FOpenFileWrite_HomeData( qpath );
 	if ( !f ) {
 		Com_Printf( "Failed to open %s\n", qpath );
@@ -3641,6 +3783,11 @@ Frees all resources.
 void FS_Shutdown( qboolean closemfp ) {
 	searchpath_t	*p, *next;
 	int	i;
+
+#ifdef __vita__
+	// Let deferred writes (checkpoint saves) reach the memory card first.
+	S_VitaIoWaitIdle();
+#endif
 
 	for(i = 0; i < MAX_FILE_HANDLES; i++) {
 		if (fsh[i].fileSize) {

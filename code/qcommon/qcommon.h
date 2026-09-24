@@ -740,6 +740,11 @@ issues.
 #define	VITA_IO_FILE_HANDLES	8
 void     Com_VitaSetIoThread(void);
 qboolean Com_VitaOnIoThread(void);
+// Runs fn(arg) on the Vita I/O worker thread (snd_openal_new.cpp), in submit order.
+void     S_VitaIoSubmit(void (*fn)(void *), void *arg);
+// Blocks until every submitted job has run (shutdown: don't lose a pending save).
+void     S_VitaIoWaitIdle(void);
+fileHandle_t FS_VitaFOpenFileWriteDeferred_HomeData(const char *filename);
 #endif
 
 #ifdef DEDICATED

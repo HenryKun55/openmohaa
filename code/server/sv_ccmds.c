@@ -2265,6 +2265,10 @@ qboolean SV_ArchiveLevelFile(qboolean loading, qboolean autosave)
 	Com_DPrintf("SV_ArchiveLevelFile()\n");
 	name = Com_GetArchiveFileName(svs.gameName, "sav");
 	if (loading) {
+#ifdef __vita__
+		// A save may still be on its way to the memory card (deferred write).
+		S_VitaIoWaitIdle();
+#endif
 		if (!ge->ReadLevel(name, (byte **)&cls.savedCgameState, &cls.savedCgameStateSize)) {
 			return qfalse;
 		}
@@ -2284,8 +2288,12 @@ qboolean SV_ArchiveLevelFile(qboolean loading, qboolean autosave)
 			FS_FCloseFile(f);
 		}
 	} else {
-#if defined(__SWITCH__) || defined(__vita__)
-		/* CONSOLES: skip ALL level saves. The cross-level cached-module statics
+#if defined(__SWITCH__)
+		/* (Vita: re-enabled 2026-09-24. The stale state described below is now reset
+		 * at CG_Shutdown -- CG_ShutdownCommandManager frees the previous level's
+		 * emitters/temp models, CG_ShutdownSpecialEffectsManager its effect Events.)
+		 *
+		 * CONSOLES: skip ALL level saves. The cross-level cached-module statics
 		 * make the save path unstable: the cgame-state archive
 		 * (CG_SaveStateToBuffer -> ClientGameCommandManager::ArchiveToMemory) walks
 		 * the persistent m_emitters/tempmodel lists, which now retain stale
@@ -2381,7 +2389,16 @@ qboolean SV_ArchiveServerFile(qboolean loading, qboolean autosave)
 	name = Com_GetArchiveFileName(svs.gameName, "ssv");
 
 	if (!loading) {
+#ifdef __vita__
+		const int vitaSsT0 = Sys_Milliseconds();
+#endif
+#ifdef __vita__
+		// Built in memory; the I/O worker writes it to the card (FS_FCloseFile below).
+		f = FS_VitaFOpenFileWriteDeferred_HomeData(name);
+		Com_Printf("SAVE-PROF: ssv fopen=%d ms\n", Sys_Milliseconds() - vitaSsT0);
+#else
 		f = FS_FOpenFileWrite_HomeData(name);
+#endif
 		if (!f) {
 			Com_Printf("Couldn't write %s\n", name);
 			return qfalse;
@@ -2432,10 +2449,23 @@ qboolean SV_ArchiveServerFile(qboolean loading, qboolean autosave)
 		}
 
 		Com_SwapSaveStruct(&save);
+#ifdef __vita__
+		const int vitaSsT1 = Sys_Milliseconds();
+#endif
 		FS_Write(&save, sizeof(savegamestruct_t), f);
 		S_Save(f);
+#ifdef __vita__
+		const int vitaSsT2 = Sys_Milliseconds();
+#endif
 		CM_WritePortalState(f);
+#ifdef __vita__
+		const int vitaSsT3 = Sys_Milliseconds();
+#endif
 		FS_FCloseFile(f);
+#ifdef __vita__
+		Com_Printf("SAVE-PROF: ssv open+header=%d ms, sound=%d ms, portals=%d ms, close=%d ms\n",
+			vitaSsT1 - vitaSsT0, vitaSsT2 - vitaSsT1, vitaSsT3 - vitaSsT2, Sys_Milliseconds() - vitaSsT3);
+#endif
 
 #ifndef __vita__
 		/* Vita: skipped. The save thumbnail reads the framebuffer back (a full GPU
@@ -2488,6 +2518,11 @@ void SV_Loadgame_f(void)
 	const char *name;
 	const char *archive_name;
 	qboolean    bStartedGame;
+
+#ifdef __vita__
+	// A save may still be on its way to the memory card (deferred write).
+	S_VitaIoWaitIdle();
+#endif
 
 	if (com_cl_running && com_cl_running->integer && clc.state != CA_DISCONNECTED && cg_gametype->integer
 		|| com_sv_running && com_sv_running->integer && g_gametype->integer != GT_SINGLE_PLAYER) {
@@ -2555,6 +2590,11 @@ void SV_Loadgame_f(void)
 SV_SavegameFilename
 ==================
 */
+#ifdef __vita__
+static char sv_vitaSaveKey[MAX_QPATH + 256];
+static int  sv_vitaSaveNext = -1;
+#endif
+
 void SV_SavegameFilename(const char *name, char *fileName, int length)
 {
 #ifndef DEDICATED
@@ -2566,7 +2606,43 @@ void SV_SavegameFilename(const char *name, char *fileName, int length)
 	int         b;
 	int         c;
 
-	for (num = 0; num < 10000; num++) {
+	num = 0;
+#ifdef __vita__
+	{
+		/* Every checkpoint takes the first free "<map>NNNN" number, and finding it opened
+		 * every existing save from 0000 upward: hundreds of memory card opens per checkpoint
+		 * once saves pile up (287 on the test device), growing with each save. List the
+		 * save folder once per map instead and remember the next number. */
+		char        key[MAX_QPATH + 256];
+		char      **files;
+		int         numFiles, i, nameLen, n;
+
+		Com_sprintf(key, sizeof(key), "%s|%s", Com_GetArchiveFolder(), name);
+		if (sv_vitaSaveNext >= 0 && !strcmp(key, sv_vitaSaveKey) && sv_vitaSaveNext < 10000) {
+			// Known next number: no card probe at all (even one miss costs ~60 ms).
+			num = sv_vitaSaveNext;
+			Com_sprintf(fileName, length, "%s%i%i%i%i", name, num / 1000, num % 1000 / 100, num % 100 / 10, num % 10);
+			sv_vitaSaveNext = num + 1;
+			return;
+		} else {
+			nameLen = strlen(name);
+			files   = FS_ListFiles(Com_GetArchiveFolder(), "ssv", qfalse, &numFiles);
+			for (i = 0; i < numFiles; i++) {
+				const char *f = files[i];
+				if (Q_stricmpn(f, name, nameLen) || strlen(f) != nameLen + 8 || Q_stricmp(f + nameLen + 4, ".ssv")) {
+					continue;
+				}
+				n = atoi(f + nameLen);
+				if (n + 1 > num) {
+					num = n + 1;
+				}
+			}
+			FS_FreeFileList(files);
+			Q_strncpyz(sv_vitaSaveKey, key, sizeof(sv_vitaSaveKey));
+		}
+	}
+#endif
+	for (; num < 10000; num++) {
 		a          = num / 1000;
 		b          = num % 1000 / 100;
 		c          = num % 1000 % 100 / 10;
@@ -2578,6 +2654,10 @@ void SV_SavegameFilename(const char *name, char *fileName, int length)
 			break;
 		}
 	}
+#ifdef __vita__
+	// This number is being taken now; the next checkpoint starts after it.
+	sv_vitaSaveNext = num + 1;
+#endif
 #endif
 }
 
@@ -2676,7 +2756,13 @@ void SV_SaveGame(const char *gamename, qboolean autosave)
 		for (ptr = strchr(mname, '/'); ptr != NULL; ptr = strchr(mname, '/')) {
 			*ptr = '_';
 		}
+#ifdef __vita__
+		const int vitaNameT0 = Sys_Milliseconds();
+#endif
 		SV_SavegameFilename(mname, name, sizeof(name));
+#ifdef __vita__
+		Com_Printf("SAVE-PROF: pick name=%d ms\n", Sys_Milliseconds() - vitaNameT0);
+#endif
 	}
 
 	if (strstr(name, "..") || strchr(name, '/') || strchr(name, '\\')) {
