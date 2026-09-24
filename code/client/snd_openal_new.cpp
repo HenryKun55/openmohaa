@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "snd_codec.h"
 
 #ifdef __vita__
+#    include <psp2/kernel/threadmgr.h>
 #    include <pthread.h>
 #    include <atomic>
 #    include <deque>
@@ -49,8 +50,15 @@ enum {
     STREAM_JOB_DONE
 };
 
+enum {
+    STREAM_JOB_DECODE,  // decode the next chunk of an open stream
+    STREAM_JOB_OPEN     // open a stream (S_CodecLoad) and decode its first chunk
+};
+
 struct stream_decode_job_t {
     std::atomic<int> state;
+    int              kind;
+    char             name[MAX_QPATH];
     snd_stream_t    *stream;
     int              bytesToRead;
     int              bytesRead;
@@ -64,6 +72,10 @@ static bool                              s_streamWorkerStarted;
 
 static void *S_StreamWorker(void *)
 {
+    // Engine code run here (S_CodecLoad -> FS/Z_Malloc/Com_Printf) checks this to use
+    // its I/O-thread paths (own file handle range, locked zone lists, boot.log prints).
+    Com_VitaSetIoThread();
+
     for (;;) {
         stream_decode_job_t *job;
 
@@ -75,13 +87,46 @@ static void *S_StreamWorker(void *)
         s_streamJobs.pop_front();
         pthread_mutex_unlock(&s_streamJobMutex);
 
-        job->bytesRead = S_CodecReadStream(job->stream, job->bytesToRead, job->data);
+        if (job->kind == STREAM_JOB_OPEN) {
+            // Opening a file costs 10-30 ms per sound on the memory card (hardware
+            // SND-SLOW), and several dialogue lines often start in the same frame.
+            job->stream    = (snd_stream_t *)S_CodecLoad(job->name, NULL);
+            job->bytesRead = 0;
+            if (job->stream) {
+                job->bytesToRead = Q_min(MAX_BUFFER_SAMPLES * job->stream->info.width * job->stream->info.channels,
+                                         (int)sizeof(job->data));
+                job->bytesRead   = S_CodecReadStream(job->stream, job->bytesToRead, job->data);
+            }
+        } else {
+            job->bytesRead = S_CodecReadStream(job->stream, job->bytesToRead, job->data);
+        }
         job->state.store(STREAM_JOB_DONE, std::memory_order_release);
     }
     return NULL;
 }
 
+static void S_StreamJob_Enqueue(stream_decode_job_t *job);
+
 static void S_StreamJob_Submit(stream_decode_job_t *job, snd_stream_t *stream, int bytesToRead)
+{
+    job->kind        = STREAM_JOB_DECODE;
+    job->stream      = stream;
+    job->bytesToRead = bytesToRead;
+    job->bytesRead   = 0;
+    S_StreamJob_Enqueue(job);
+}
+
+static void S_StreamJob_SubmitOpen(stream_decode_job_t *job, const char *name)
+{
+    job->kind = STREAM_JOB_OPEN;
+    Q_strncpyz(job->name, name, sizeof(job->name));
+    job->stream      = NULL;
+    job->bytesToRead = 0;
+    job->bytesRead   = 0;
+    S_StreamJob_Enqueue(job);
+}
+
+static void S_StreamJob_Enqueue(stream_decode_job_t *job)
 {
     if (!s_streamWorkerStarted) {
         pthread_t      thread;
@@ -94,9 +139,6 @@ static void S_StreamJob_Submit(stream_decode_job_t *job, snd_stream_t *stream, i
         s_streamWorkerStarted = true;
     }
 
-    job->stream      = stream;
-    job->bytesToRead = bytesToRead;
-    job->bytesRead   = 0;
     job->state.store(STREAM_JOB_PENDING, std::memory_order_relaxed);
 
     pthread_mutex_lock(&s_streamJobMutex);
@@ -112,7 +154,9 @@ static void S_StreamJob_Wait(stream_decode_job_t *job)
         return;
     }
     while (job->state.load(std::memory_order_acquire) == STREAM_JOB_PENDING) {
-        sched_yield();
+        // A real sleep, not sched_yield(): a higher-priority main thread spinning on
+        // yield may never let the worker run on the Vita's scheduler.
+        sceKernelDelayThread(100);
     }
     job->state.store(STREAM_JOB_IDLE, std::memory_order_relaxed);
 }
@@ -640,6 +684,9 @@ static bool S_OPENAL_InitChannel(int idx, openal_channel *chan)
     chan->fade_time       = 0;
     chan->fade_start_time = 0;
     chan->song_number     = 0;
+#ifdef __vita__
+    chan->pendingOpen     = false;
+#endif
 
     qalGenSources(1, &chan->source);
     alDieIfError();
@@ -3504,6 +3551,14 @@ U32 openal_channel::sample_status()
 {
     ALint retval;
 
+#ifdef __vita__
+    if (pendingOpen) {
+        // A 2D stream still opening on the I/O worker: its AL source is empty, but the
+        // channel must not be treated as finished and recycled (see two_d_stream::set_sfx).
+        return AL_PLAYING;
+    }
+#endif
+
     qalGetSourcei(source, AL_SOURCE_STATE, &retval);
     alDieIfError();
 
@@ -4544,10 +4599,11 @@ openal_channel_two_d_stream::set_sfx
 */
 bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
 {
+#ifndef __vita__
     snd_stream_t *stream;
     unsigned int  bytesToRead, bytesRead;
-    ALint         freq = 0;
     char          rawData[MAX_BUFFER_SAMPLES * 2 * 2];
+#endif
 
     stop();
 
@@ -4587,15 +4643,21 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     }
 
 #ifdef __vita__
-    const int vitaT0 = Sys_Milliseconds();
-#endif
+    /* Open on the I/O worker: the channel reports itself playing (sample_status) until
+     * update() finishes the open on the main thread. The caller's play() on the still
+     * empty source is re-issued then. */
+    if (!decodeJob) {
+        decodeJob = new stream_decode_job_t();
+        decodeJob->state.store(STREAM_JOB_IDLE, std::memory_order_relaxed);
+    }
+    pendingOpen = true;
+    S_StreamJob_SubmitOpen(decodeJob, pSfx->name);
+    return true;
+#else
     streamHandle = S_CodecLoad(pSfx->name, NULL);
-#ifdef __vita__
-    const int vitaT1 = Sys_Milliseconds();
-#endif
     if (!streamHandle) {
         Com_DPrintf("OpenAL: Failed to load sound file.\n");
-#if defined(__SWITCH__) || defined(__vita__)
+#if defined(__SWITCH__)
         /* Mark known-bad so the looping ambient stops retrying the missing
          * file every frame (see negative-cache guard at the top). */
         pSfx->iFlags |= SFX_FLAG_DEFAULT_SOUND;
@@ -4603,7 +4665,24 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
         return false;
     }
 
-    stream              = (snd_stream_t *)streamHandle;
+    stream      = (snd_stream_t *)streamHandle;
+    bytesToRead = Q_min(MAX_BUFFER_SAMPLES * stream->info.width * stream->info.channels, sizeof(rawData));
+    bytesRead   = S_CodecReadStream(stream, bytesToRead, rawData);
+    return finish_open(stream, rawData, bytesRead, bytesToRead);
+#endif
+}
+
+/*
+==============
+openal_channel_two_d_stream::finish_open
+
+Everything set_sfx does once the stream is open and its first chunk decoded
+(synchronously, or on Vita when the I/O worker's open job completes).
+==============
+*/
+bool openal_channel_two_d_stream::finish_open(snd_stream_t *stream, const char *pcm, unsigned int bytesRead, unsigned int bytesToRead)
+{
+    streamHandle        = stream;
     pSfx->info.channels = stream->info.channels;
     pSfx->info.dataofs  = stream->info.dataofs;
     pSfx->info.datasize = stream->info.size;
@@ -4621,6 +4700,7 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
         );
 
         S_CodecCloseStream(stream);
+        streamHandle = NULL;
         return false;
     }
 
@@ -4630,24 +4710,11 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     qalGenBuffers(MAX_STREAM_BUFFERS, buffers);
     alDieIfError();
 
-    // Read a smaller sample
-    bytesToRead      = Q_min(MAX_BUFFER_SAMPLES * stream->info.width * stream->info.channels, sizeof(rawData));
-    bytesRead        = S_CodecReadStream(stream, bytesToRead, rawData);
     streamNextOffset = bytesRead;
-#ifdef __vita__
-    {
-        // Starting a streamed sound runs on the main thread: log the slow ones
-        // (hardware showed 185-869 ms "snd" hitches).
-        const int vitaT2 = Sys_Milliseconds();
-        if (vitaT2 - vitaT0 > 20) {
-            Com_Printf("SND-SLOW: '%s' open=%d ms first-read=%d ms (%u bytes)\n",
-                pSfx->name, vitaT1 - vitaT0, vitaT2 - vitaT1, bytesRead);
-        }
-    }
-#endif
     if (!bytesRead) {
         // Valid stream but no data?
         S_CodecCloseStream(stream);
+        streamHandle = NULL;
         return true;
     }
 
@@ -4658,7 +4725,7 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
     }
 #endif
 
-    qalBufferData(buffers[currentBuf], pSfx->info.format, rawData, bytesRead, stream->info.rate);
+    qalBufferData(buffers[currentBuf], pSfx->info.format, pcm, bytesRead, stream->info.rate);
     alDieIfError();
 
     qalSourceQueueBuffers(source, 1, &buffers[currentBuf]);
@@ -4675,7 +4742,7 @@ bool openal_channel_two_d_stream::set_sfx(sfx_t *pSfx)
         unsigned int newBuf = 0;
         qalGenBuffers(1, &newBuf);
         alDieIfError();
-        qalBufferData(newBuf, pSfx->info.format, rawData, bytesRead, stream->info.rate);
+        qalBufferData(newBuf, pSfx->info.format, pcm, bytesRead, stream->info.rate);
         alDieIfError();
         pSfx->cachedStreamBuffer = newBuf;
         pSfx->cachedStreamRate   = stream->info.rate;
@@ -4724,7 +4791,8 @@ openal_channel_two_d_stream::openal_channel_two_d_stream()
     streamNextOffset = 0;
     streaming        = false;
 #ifdef __vita__
-    decodeJob = NULL;
+    decodeJob   = NULL;
+    pendingOpen = false;
 #endif
 }
 
@@ -4750,6 +4818,28 @@ openal_channel_two_d_stream::update
 */
 void openal_channel_two_d_stream::update()
 {
+#ifdef __vita__
+    if (pendingOpen) {
+        if (!decodeJob || decodeJob->state.load(std::memory_order_acquire) != STREAM_JOB_DONE) {
+            return;
+        }
+        decodeJob->state.store(STREAM_JOB_IDLE, std::memory_order_relaxed);
+        pendingOpen = false;
+
+        snd_stream_t *opened = decodeJob->stream;
+        decodeJob->stream    = NULL;
+        if (!opened) {
+            Com_DPrintf("OpenAL: Failed to load sound file.\n");
+            // Negative cache (see set_sfx): don't retry a missing file every frame.
+            pSfx->iFlags |= SFX_FLAG_DEFAULT_SOUND;
+            return;
+        }
+        if (finish_open(opened, decodeJob->data, decodeJob->bytesRead, decodeJob->bytesToRead)) {
+            play();
+        }
+        return;
+    }
+#endif
     snd_stream_t *stream = (snd_stream_t *)streamHandle;
     unsigned int  bytesToRead, bytesRead;
     ALuint        format;
@@ -4944,6 +5034,7 @@ U32 openal_channel_two_d_stream::sample_offset()
     return offset * 8 / bitsPerSample;
 }
 
+
 /*
 ==============
 openal_channel_two_d_stream::buffer_frequency
@@ -4951,6 +5042,11 @@ openal_channel_two_d_stream::buffer_frequency
 */
 U32 openal_channel_two_d_stream::buffer_frequency() const
 {
+#ifdef __vita__
+    if (pendingOpen) {
+        return 22050; // no AL buffer yet; finish_open sets the real rate
+    }
+#endif
     unsigned int bufferId;
     ALint        freq = 0;
 
@@ -5175,6 +5271,17 @@ openal_channel_two_d_stream::clear_stream
 */
 void openal_channel_two_d_stream::clear_stream()
 {
+#ifdef __vita__
+    if (pendingOpen) {
+        // Stopped before the I/O worker finished opening: wait for it, drop the result.
+        S_StreamJob_Wait(decodeJob);
+        if (decodeJob->stream) {
+            S_CodecCloseStream(decodeJob->stream);
+            decodeJob->stream = NULL;
+        }
+        pendingOpen = false;
+    }
+#endif
     if (!streaming) {
         return;
     }

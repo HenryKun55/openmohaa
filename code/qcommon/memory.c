@@ -25,6 +25,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "q_shared.h"
 #include "qcommon.h"
 
+#ifdef __vita__
+#include <pthread.h>
+/* The zone block lists are shared with the Vita I/O worker thread (it opens/closes
+ * sound streams), so list edits are serialized. Held only for the link/unlink itself,
+ * never across file I/O or another zone call (plain, non-recursive mutex: a recursive
+ * one deadlocked at boot on hardware). */
+static pthread_mutex_t z_vitaLock = PTHREAD_MUTEX_INITIALIZER;
+#define Z_VITA_LOCK()   pthread_mutex_lock(&z_vitaLock)
+#define Z_VITA_UNLOCK() pthread_mutex_unlock(&z_vitaLock)
+#else
+#define Z_VITA_LOCK()
+#define Z_VITA_UNLOCK()
+#endif
+
 #ifndef DEDICATED
 #  include "../client/client.h"
 #endif
@@ -139,10 +153,12 @@ void Z_Free( void *ptr )
 	}
 #endif
 
+	Z_VITA_LOCK();
 	block->next->prev = block->prev;
 	block->prev->next = block->next;
 	block->prev = block;
 	block->next = block;
+	Z_VITA_UNLOCK();
 
 	// free the block
 	free( block );
@@ -158,14 +174,17 @@ void Z_FreeTags( int tag )
 	memblock_t *block;
 	memblock_t *next;
 
+	// Z_Free takes the zone lock itself; don't hold it across the calls.
 	for( block = mem_blocks[ tag ].next; block != &mem_blocks[ tag ]; block = next )
 	{
 		next = block->next;
 		Z_Free( ( ( byte * )block + sizeof( memblock_t ) ) );
 	}
 
+	Z_VITA_LOCK();
 	mem_blocks[ tag ].prev = &mem_blocks[ tag ];
 	mem_blocks[ tag ].next = &mem_blocks[ tag ];
+	Z_VITA_UNLOCK();
 }
 
 /*
@@ -216,10 +235,12 @@ void *Z_TagMalloc( int size, int tag ) {
 #endif
 	block->id = ZONEID;
 	block->size = size;
+	Z_VITA_LOCK();
 	block->next = &mem_blocks[ tag ];
 	block->prev = mem_blocks[ tag ].prev;
 	block->prev->next = block;
 	mem_blocks[ tag ].prev = block;
+	Z_VITA_UNLOCK();
 
 #ifdef ZONE_DEBUG
 	block->d.label = label;

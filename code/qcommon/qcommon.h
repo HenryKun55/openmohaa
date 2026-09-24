@@ -734,6 +734,13 @@ issues.
 #define NUM_ID_PAKS		5
 
 #define	MAX_FILE_HANDLES	64
+#ifdef __vita__
+// The I/O worker thread gets its own file handle range so its opens never race the
+// main thread's FS_HandleForFile (see files.cpp).
+#define	VITA_IO_FILE_HANDLES	8
+void     Com_VitaSetIoThread(void);
+qboolean Com_VitaOnIoThread(void);
+#endif
 
 #ifdef DEDICATED
 #	define Q3CONFIG_CFG CONFIG_PREFIX "_server.cfg"

@@ -87,6 +87,11 @@ struct openal_channel {
     ALuint   source;
     ALuint   buffer;
     ALubyte *bufferdata;
+#ifdef __vita__
+    // openal_channel_two_d_stream only: opening on the I/O worker, finished in update().
+    // Lives here so the non-virtual sample_status() can see it.
+    bool pendingOpen;
+#endif
 
 public:
     void         play();
@@ -146,7 +151,7 @@ private:
     unsigned int streamNextOffset;
     bool         streaming;
 #ifdef __vita__
-    struct stream_decode_job_t *decodeJob; // async decode of the next chunk (see snd_openal_new.cpp)
+    struct stream_decode_job_t *decodeJob; // async open / next-chunk decode (see snd_openal_new.cpp)
 #endif
 
 public:
@@ -167,6 +172,7 @@ protected:
 
 private:
     void clear_stream();
+    bool finish_open(struct snd_stream_s *stream, const char *pcm, unsigned int bytesRead, unsigned int bytesToRead);
 
     unsigned int getQueueLength() const;
     unsigned int getCurrentStreamPosition() const;

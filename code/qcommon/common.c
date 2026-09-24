@@ -227,11 +227,69 @@ to the apropriate place.
 A raw string should NEVER be passed as fmt, because of "%f" type crashers.
 =============
 */
+#ifdef __vita__
+#include <psp2/kernel/threadmgr.h>
+#include <pthread.h>
+
+/* The Vita I/O worker thread (snd_openal_new.cpp) calls engine code that may print
+ * (S_CodecLoad warnings, FS debug). The console/UI path below is single-threaded, and
+ * newlib's stdout/stderr are per-thread (_REENT), so the worker must not touch stdio:
+ * its prints are queued here and emitted by the main thread in Com_Frame. */
+#define COM_VITA_IO_MSGS 8
+static SceUID          com_vitaIoThreadId;
+static pthread_mutex_t com_vitaIoMsgLock = PTHREAD_MUTEX_INITIALIZER;
+static char            com_vitaIoMsgs[COM_VITA_IO_MSGS][256];
+static int             com_vitaIoMsgCount;
+
+static void Com_VitaDrainIoPrints(void)
+{
+	char msgs[COM_VITA_IO_MSGS][256];
+	int  i, count;
+
+	if (!com_vitaIoMsgCount) {
+		return;
+	}
+	pthread_mutex_lock(&com_vitaIoMsgLock);
+	count = com_vitaIoMsgCount;
+	memcpy(msgs, com_vitaIoMsgs, sizeof(msgs[0]) * count);
+	com_vitaIoMsgCount = 0;
+	pthread_mutex_unlock(&com_vitaIoMsgLock);
+
+	for (i = 0; i < count; i++) {
+		Com_Printf("%s", msgs[i]);
+	}
+}
+
+void Com_VitaSetIoThread(void)
+{
+	com_vitaIoThreadId = sceKernelGetThreadId();
+}
+
+qboolean Com_VitaOnIoThread(void)
+{
+	return com_vitaIoThreadId && sceKernelGetThreadId() == com_vitaIoThreadId;
+}
+#endif
+
 void QDECL Com_Printf( const char *fmt, ... ) {
 	va_list		argptr;
 	char		msg[MAXPRINTMSG];
 	static qboolean opening_qconsole = qfalse;
 	static qboolean recursive_count = qfalse;
+
+#ifdef __vita__
+	if (Com_VitaOnIoThread()) {
+		va_start(argptr, fmt);
+		Q_vsnprintf(msg, sizeof(msg), fmt, argptr);
+		va_end(argptr);
+		pthread_mutex_lock(&com_vitaIoMsgLock);
+		if (com_vitaIoMsgCount < COM_VITA_IO_MSGS) {
+			Q_strncpyz(com_vitaIoMsgs[com_vitaIoMsgCount++], msg, sizeof(com_vitaIoMsgs[0]));
+		}
+		pthread_mutex_unlock(&com_vitaIoMsgLock);
+		return;
+	}
+#endif
 
 	if (recursive_count) {
 		return;
@@ -2307,6 +2365,9 @@ void Com_Frame( void ) {
 	}
 
 	SV_SetFrameNumber(com_frameNumber);
+#ifdef __vita__
+	Com_VitaDrainIoPrints();
+#endif
 
 #ifndef DEDICATED
 	if (!com_dedicated || !com_dedicated->integer)
