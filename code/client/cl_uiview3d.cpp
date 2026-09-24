@@ -387,9 +387,40 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
     re.SetColor(NULL);
 }
 
+/*
+Select (bound to +vitaselect): held = objectives/scores as usual, double tap = perf
+menu. The perf menu used to own Select outright, so holding it for the objectives
+opened the menu instead.
+*/
+#define VITA_SELECT_DOUBLE_TAP_MS 350
+
+static int s_vitaSelectLastDown = -100000;
+
+static void CL_VitaSelectDown_f(void)
+{
+    const int now = Sys_Milliseconds();
+
+    if (now - s_vitaSelectLastDown < VITA_SELECT_DOUBLE_TAP_MS) {
+        s_vitaSelectLastDown = -100000;
+        Cbuf_ExecuteText(EXEC_NOW, "-scores\n");
+        g_pmActive = qtrue;
+        Com_Printf("PERF-MENU: OPEN\n");
+        return;
+    }
+    s_vitaSelectLastDown = now;
+    Cbuf_ExecuteText(EXEC_NOW, "+scores\n");
+}
+
+static void CL_VitaSelectUp_f(void)
+{
+    Cbuf_ExecuteText(EXEC_NOW, "-scores\n");
+}
+
 void CL_VitaPerfMenu_Init(void)
 {
     Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
+    Cmd_AddCommand("+vitaselect", CL_VitaSelectDown_f);
+    Cmd_AddCommand("-vitaselect", CL_VitaSelectUp_f);
 }
 #endif
 
