@@ -5154,6 +5154,18 @@ void ClientGameCommandManager::FreeAllEmitters()
     }
     m_emitters.ClearObjectList();
     m_spawnthing = NULL;
+
+    // The level save archives EVERY temp model slot (free ones too) and the local
+    // emitter, dereferencing their tiki pointers for the model name. Free slots keep
+    // the previous level's pointers, whose models are gone by now (the checkpoint
+    // save crash in m1l2b, CG_SaveStateToBuffer -> cg_common_data::ArchiveToMemory).
+    for (i = 0; i < MAX_TEMPMODELS; i++) {
+        m_tempmodels[i].cgd.tiki     = NULL;
+        m_tempmodels[i].ent.tiki     = NULL;
+        m_tempmodels[i].lastEnt.tiki = NULL;
+        m_tempmodels[i].m_spawnthing = NULL;
+    }
+    m_localemitter.cgd.tiki = NULL;
 }
 
 void CG_ShutdownCommandManager()
