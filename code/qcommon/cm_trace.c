@@ -1265,9 +1265,51 @@ void CM_TraceThroughTree( traceWork_t *tw, int num, float p1f, float p2f, vec3_t
 CM_BoxTrace
 ==================
 */
+#ifdef __vita__
+#include <psp2/kernel/threadmgr.h>
+
+static SceKernelLwMutexWork	cm_vitaLock;
+static qboolean				cm_vitaLockReady;
+
+void CM_VitaInitLock( void ) {
+	if ( !cm_vitaLockReady ) {
+		sceKernelCreateLwMutex( &cm_vitaLock, "cm_trace", SCE_KERNEL_MUTEX_ATTR_RECURSIVE, 0, NULL );
+		cm_vitaLockReady = qtrue;
+	}
+}
+
+void CM_VitaLock( void ) {
+	if ( cm_vitaLockReady ) {
+		sceKernelLockLwMutex( &cm_vitaLock, 1, NULL );
+	}
+}
+
+void CM_VitaUnlock( void ) {
+	if ( cm_vitaLockReady ) {
+		sceKernelUnlockLwMutex( &cm_vitaLock, 1 );
+	}
+}
+
+static void CM_BoxTrace_Impl( trace_t *results, const vec3_t start, const vec3_t end,
+						  const vec3_t mins, const vec3_t maxs,
+						  clipHandle_t model, int brushmask, int cylinder );
+
 void CM_BoxTrace( trace_t *results, const vec3_t start, const vec3_t end,
 						  const vec3_t mins, const vec3_t maxs,
 						  clipHandle_t model, int brushmask, int cylinder ) {
+	CM_VitaLock();
+	CM_BoxTrace_Impl( results, start, end, mins, maxs, model, brushmask, cylinder );
+	CM_VitaUnlock();
+}
+
+static void CM_BoxTrace_Impl( trace_t *results, const vec3_t start, const vec3_t end,
+						  const vec3_t mins, const vec3_t maxs,
+						  clipHandle_t model, int brushmask, int cylinder ) {
+#else
+void CM_BoxTrace( trace_t *results, const vec3_t start, const vec3_t end,
+						  const vec3_t mins, const vec3_t maxs,
+						  clipHandle_t model, int brushmask, int cylinder ) {
+#endif
 	int			i;
 	traceWork_t	tw;
 	vec3_t		offset;
@@ -1966,7 +2008,23 @@ qboolean CM_SightTraceThroughTree( traceWork_t *tw, int num, float p1f, float p2
 CM_BoxSightTrace
 ==================
 */
+#ifdef __vita__
+static qboolean CM_BoxSightTrace_Impl( const vec3_t start, const vec3_t end, const vec3_t mins, const vec3_t maxs, clipHandle_t model, int brushmask, qboolean cylinder );
+
 qboolean CM_BoxSightTrace( const vec3_t start, const vec3_t end, const vec3_t mins, const vec3_t maxs, clipHandle_t model, int brushmask, qboolean cylinder )
+{
+	qboolean passed;
+
+	CM_VitaLock();
+	passed = CM_BoxSightTrace_Impl( start, end, mins, maxs, model, brushmask, cylinder );
+	CM_VitaUnlock();
+	return passed;
+}
+
+static qboolean CM_BoxSightTrace_Impl( const vec3_t start, const vec3_t end, const vec3_t mins, const vec3_t maxs, clipHandle_t model, int brushmask, qboolean cylinder )
+#else
+qboolean CM_BoxSightTrace( const vec3_t start, const vec3_t end, const vec3_t mins, const vec3_t maxs, clipHandle_t model, int brushmask, qboolean cylinder )
+#endif
 {
 	int			i;
 	traceWork_t	tw;

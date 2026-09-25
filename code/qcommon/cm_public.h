@@ -108,6 +108,11 @@ const char *CM_GetHitLocationInfoSecondary( int i_iLocation, float *o_fRadius, v
 // cm_trace_obfuscation.cpp
 float CM_VisualObfuscation(const vec3_t start, const vec3_t end);
 
+#ifdef __vita__
+// See cm_local.h: serializes traces between the main and render threads.
+void CM_VitaInitLock( void );
+#endif
+
 #ifdef __cplusplus
 }
 #endif

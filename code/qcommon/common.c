@@ -1796,6 +1796,10 @@ void Com_Init( char *commandLine ) {
 	// do this before anything else decides to push events
 	Com_InitPushEvent();
 
+#ifdef __vita__
+	CM_VitaInitLock();
+#endif
+
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
 	Com_ParseCommandLine( commandLine );

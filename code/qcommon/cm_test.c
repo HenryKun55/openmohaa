@@ -168,7 +168,22 @@ void CM_BoxLeafnums_r( leafList_t *ll, int nodenum ) {
 CM_BoxLeafnums
 ==================
 */
+#ifdef __vita__
+static int CM_BoxLeafnums_Impl( const vec3_t mins, const vec3_t maxs, int *list, int listsize, int *lastLeaf);
+
 int	CM_BoxLeafnums( const vec3_t mins, const vec3_t maxs, int *list, int listsize, int *lastLeaf) {
+	int count;
+
+	CM_VitaLock();
+	count = CM_BoxLeafnums_Impl( mins, maxs, list, listsize, lastLeaf );
+	CM_VitaUnlock();
+	return count;
+}
+
+static int CM_BoxLeafnums_Impl( const vec3_t mins, const vec3_t maxs, int *list, int listsize, int *lastLeaf) {
+#else
+int	CM_BoxLeafnums( const vec3_t mins, const vec3_t maxs, int *list, int listsize, int *lastLeaf) {
+#endif
 	leafList_t	ll;
 
 	cm.checkcount++;
@@ -193,7 +208,22 @@ int	CM_BoxLeafnums( const vec3_t mins, const vec3_t maxs, int *list, int listsiz
 CM_BoxBrushes
 ==================
 */
+#ifdef __vita__
+static int CM_BoxBrushes_Impl( const vec3_t mins, const vec3_t maxs, cbrush_t **list, int listsize );
+
 int CM_BoxBrushes( const vec3_t mins, const vec3_t maxs, cbrush_t **list, int listsize ) {
+	int count;
+
+	CM_VitaLock();
+	count = CM_BoxBrushes_Impl( mins, maxs, list, listsize );
+	CM_VitaUnlock();
+	return count;
+}
+
+static int CM_BoxBrushes_Impl( const vec3_t mins, const vec3_t maxs, cbrush_t **list, int listsize ) {
+#else
+int CM_BoxBrushes( const vec3_t mins, const vec3_t maxs, cbrush_t **list, int listsize ) {
+#endif
 	leafList_t	ll;
 
 	cm.checkcount++;

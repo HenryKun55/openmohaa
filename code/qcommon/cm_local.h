@@ -245,6 +245,17 @@ extern	sphere_t	sphere;
 
 int CM_BoxBrushes( const vec3_t mins, const vec3_t maxs, cbrush_t **list, int listsize );
 
+#ifdef __vita__
+// Traces, sight traces and box->leaf queries bump cm.checkcount and mark brushes and
+// patches with it, so two of them must never run at the same time. The renderer's
+// backend (spherical entity lighting, lens flares) traces from the render thread while
+// the game/cgame trace on the main thread: these four entry points take a recursive
+// lock (a few ns uncontended). CM_VitaInitLock runs in Com_Init.
+void CM_VitaInitLock( void );
+void CM_VitaLock( void );
+void CM_VitaUnlock( void );
+#endif
+
 void CM_StoreLeafs( leafList_t *ll, int nodenum );
 void CM_StoreBrushes( leafList_t *ll, int nodenum );
 
