@@ -622,6 +622,21 @@ static void Upload32(
 	} else {
 		internalFormat = GL_RGB;
 	}
+#ifdef __vita__
+	{
+		// DXT (S3TC) on the Vita: vitaGL compresses at upload (stb_dxt) and the GPU samples
+		// it natively, 4-8x less memory and bandwidth than RGBA8. Only picmip'd world/model
+		// textures: lightmaps and dynamic images are updated with glTexSubImage2D, and UI /
+		// font images would smear.
+		static cvar_t *r_vita_dxt;
+		if (!r_vita_dxt) {
+			r_vita_dxt = ri.Cvar_Get("r_vita_dxt", "0", CVAR_ARCHIVE | CVAR_LATCH);
+		}
+		if (r_vita_dxt->integer && picmip && !dynamicallyUpdated && !force32bit && !bIsLightmap) {
+			internalFormat = (samples == 3) ? GL_COMPRESSED_RGB_S3TC_DXT1_EXT : GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+		}
+	}
+#endif
 	// copy or resample data as appropriate for first MIP level
 	if ( ( scaled_width == width ) && 
 		( scaled_height == height ) ) {
@@ -704,6 +719,13 @@ static void Upload32(
 		}
 	}
 done:
+#ifdef __vita__
+	if (internalFormat == GL_COMPRESSED_RGB_S3TC_DXT1_EXT) {
+		*bytesUsed = (*pUploadWidth * *pUploadHeight) / 2;	// 4 bits/texel
+	} else if (internalFormat == GL_COMPRESSED_RGBA_S3TC_DXT5_EXT) {
+		*bytesUsed = *pUploadWidth * *pUploadHeight;		// 8 bits/texel
+	}
+#endif
 
 	if (numMipmaps)
 	{
