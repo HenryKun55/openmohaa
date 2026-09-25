@@ -570,6 +570,10 @@ const void *RB_Draw2D(const void *data) {
 	case D2_STRING:
 		R_DrawString_sgl_Exec(cmd);
 		break;
+	case D2_RENDERTIME:
+		backEnd.refdef.floatTime = (long double)i[0] / 1000.0;
+		R_UpdateGhostTexturesAt(i[1]);
+		break;
 	}
 
 	return (const byte *)(cmd + 1) + cmd->payload;

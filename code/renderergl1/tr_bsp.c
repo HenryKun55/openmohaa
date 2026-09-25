@@ -2303,6 +2303,9 @@ Called directly from cgame
 =================
 */
 void RE_LoadWorldMap( const char *name ) {
+	// Replaces the world (and its VBO) the render thread may still be drawing.
+	R_SyncRenderThread();
+
     int			i;
     dheader_t	header;
     fileHandle_t	h;

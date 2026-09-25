@@ -132,12 +132,12 @@ void lens_flare::SetVect(const float *vect)
         vec3_t offset;
         vec3_t rot_offset;
 
-        VectorSubtract(vect, tr.refdef.sky_origin, offset);
-        VectorRotate(offset, tr.refdef.sky_axis, rot_offset);
-        VectorAdd(tr.refdef.vieworg, rot_offset, v);
+        VectorSubtract(vect, backEnd.refdef.sky_origin, offset);
+        VectorRotate(offset, backEnd.refdef.sky_axis, rot_offset);
+        VectorAdd(backEnd.refdef.vieworg, rot_offset, v);
 
         VectorNormalize(offset);
-        VectorMA(tr.refdef.vieworg, 16384, offset, trace_v);
+        VectorMA(backEnd.refdef.vieworg, 16384, offset, trace_v);
     } else {
         VectorCopy(vect, v);
         VectorCopy(vect, trace_v);
@@ -193,14 +193,14 @@ bool lens_flare::ScreenCalc()
     VectorClear4(eye);
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            eye[i] += point[j] * tr.ori.modelMatrix[i + j * 4];
+            eye[i] += point[j] * backEnd.viewParms.world.modelMatrix[i + j * 4];
         }
     }
 
     VectorClear4(clip);
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            clip[i] += eye[j] * tr.viewParms.projectionMatrix[i + j * 4];
+            clip[i] += eye[j] * backEnd.viewParms.projectionMatrix[i + j * 4];
         }
     }
 
@@ -525,7 +525,9 @@ void R_DrawLensFlares()
 {
     int i;
 
-    R_RotateForViewer();
+    // Runs in the backend: use the view being drawn (backEnd.viewParms/refdef, whose
+    // world matrix is what R_RotateForViewer computed for it) instead of recomputing
+    // it into the front end's tr.ori from tr.viewParms, which the front end owns.
 
     qglPushMatrix();
     qglLoadIdentity();
@@ -617,7 +619,7 @@ bool sun_flare_class::SunCheckRay()
     mnode_t *pViewLeaf;
     trace_t  trace;
 
-    pViewLeaf = R_PointInLeaf(tr.refdef.vieworg);
+    pViewLeaf = R_PointInLeaf(backEnd.refdef.vieworg);
 
     if (pViewLeaf->area == -1 || !tr.world->vis || tr.sSunLight.leaf != (mnode_s *)-1
         || pViewLeaf->numlights && pViewLeaf->lights[0] == &tr.sSunLight) {
@@ -646,14 +648,14 @@ void sun_flare_class::SunScreenCalc()
     VectorClear4(eye);
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            eye[i] += point[j] * tr.ori.modelMatrix[i + j * 4];
+            eye[i] += point[j] * backEnd.viewParms.world.modelMatrix[i + j * 4];
         }
     }
 
     VectorClear4(clip);
     for (i = 0; i < 4; i++) {
         for (j = 0; j < 4; j++) {
-            clip[i] += eye[j] * tr.viewParms.projectionMatrix[i + j * 4];
+            clip[i] += eye[j] * backEnd.viewParms.projectionMatrix[i + j * 4];
         }
     }
 

@@ -1783,6 +1783,9 @@ void R_Init( void ) {
 	/* Phase 2a: compile the GPU skinning program if the cvar is set.
 	 * No-op when cvar is 0 (default). Logs success/failure inline. */
 	R_VitaGpuSkin_Init();
+
+	// Last: from here on the backend may run on the render thread.
+	R_SmpInit();
 	/* Perf instrumentation — gated by r_vita_perflog. Prints 1×/sec. */
 	VitaPerf_Init();
 #endif
@@ -1798,6 +1801,10 @@ RE_Shutdown
 void RE_Shutdown( qboolean destroyWindow ) {	
 
 	ri.Printf( PRINT_ALL, "RE_Shutdown( %i )\n", destroyWindow );
+
+	// Finish the frame in flight and stop the render thread; the rest of the shutdown
+	// (texture deletion, GLimp) runs on this thread.
+	R_SmpShutdown();
 
 	ri.Cmd_RemoveCommand ("modellist");
 	ri.Cmd_RemoveCommand ("screenshotJPEG");
@@ -1928,8 +1935,17 @@ RE_SetRenderTime
 =============
 */
 void RE_SetRenderTime(int t) {
+#ifdef R_QUEUE_2D
+	// Called by the UI every frame: the ghost textures animate and upload in the
+	// backend, in order with the rest of the frame.
+	draw2DCommand_t *cmd = R_Queue2DCommand(D2_RENDERTIME, 0);
+	if (!cmd) return;
+	cmd->i[0] = t;
+	cmd->i[1] = tr.refdef.time;
+#else
 	backEnd.refdef.floatTime = (long double)t / 1000.0;
 	R_UpdateGhostTextures();
+#endif
 }
 
 /*

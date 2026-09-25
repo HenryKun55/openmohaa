@@ -1571,11 +1571,17 @@ Updates all ghost textures
 */
 void R_UpdateGhostTextures()
 {
+    R_UpdateGhostTexturesAt(tr.refdef.time);
+}
+
+// time: the refdef time the textures animate to (queued from the front end on the Vita).
+void R_UpdateGhostTexturesAt(int time)
+{
     int i;
     int numTextures;
 
-    frameTime = tr.refdef.time - lastTime;
-    lastTime  = tr.refdef.time;
+    frameTime = time - lastTime;
+    lastTime  = time;
 
     numTextures = ghostManager.m_textureList.NumObjects();
     for (i = 1; i <= numTextures; i++) {
@@ -1598,6 +1604,9 @@ Applies an image to the specified named ghost texture
 */
 void R_SetGhostImage(const char *name, image_t *image)
 {
+	// The backend animates and uploads ghost textures.
+	R_SyncRenderThread();
+
     int i;
     int numTextures;
 

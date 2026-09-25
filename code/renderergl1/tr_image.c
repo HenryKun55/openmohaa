@@ -906,6 +906,9 @@ image_t* R_CreateImageOld(
 	int glWrapClampModeX,
 	int glWrapClampModeY
 ) {
+	// GL upload on this thread: the render thread must be idle.
+	R_SyncRenderThread();
+
 	image_t		*image;
 	qboolean	isLightmap = qfalse;
 	qboolean	dynamicallyUpdated = qfalse;
@@ -2661,6 +2664,9 @@ R_RefreshImageFile
 ================
 */
 image_t* R_RefreshImageFileOld(const char* name, qboolean mipmap, qboolean allowPicmip, qboolean force32bit, int glWrapClampModeX, int glWrapClampModeY) {
+	// Re-uploads a texture a queued frame may still use.
+	R_SyncRenderThread();
+
 	char imagename[64];
 	image_t* image;
 	long hash;
@@ -3000,6 +3006,9 @@ R_FreeImage
 ===============
 */
 void R_FreeImage(image_t* image) {
+	// Deletes a GL texture a queued frame may still use.
+	R_SyncRenderThread();
+
 	if (image->texnum) {
 		qglDeleteTextures(1, &image->texnum);
 	}

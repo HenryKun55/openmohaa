@@ -144,6 +144,23 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters ) {
 	// clear it out, in case this is a sync and not a buffer flip
 	cmdList->used = 0;
 
+	if ( runPerformanceCounters && R_SmpActive() ) {
+		// End of frame: the render thread draws it while the front end fills the
+		// other buffer (RE_EndFrame flips). Counters are the previous frame's.
+		if ( !r_skipBackEnd->integer ) {
+			R_SmpHandoff( cmdList->cmds );
+		}
+		R_PerformanceCounters();
+#ifdef __vita__
+		VitaPerf_PrintMaybe();
+#endif
+		return;
+	}
+
+	// Mid-frame flush (registration, cinematics, debug draws...), or single-threaded:
+	// the render thread must be idle before GL runs here.
+	R_SyncRenderThread();
+
 	// actually start the commands going FIRST so the final-frame
 	// flush (RC_DRAW_SURFS for the scene + RC_SWAP_BUFFERS) is
 	// reflected in the counters before we print + reset them.
@@ -171,10 +188,19 @@ Issue any pending commands and wait for them to complete.
 ====================
 */
 void R_IssuePendingRenderCommands( void ) {
+#ifdef __vita__
+	extern void *r_smpSyncCaller;
+#endif
 	if ( !tr.registered ) {
 		return;
 	}
+#ifdef __vita__
+	r_smpSyncCaller = __builtin_return_address(0);
+#endif
 	R_IssueRenderCommands( qfalse );
+#ifdef __vita__
+	r_smpSyncCaller = NULL;
+#endif
 }
 
 /*
@@ -448,8 +474,9 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 		R_SetColorMappings();
 	}
 
-	// check for errors
-	if ( !r_ignoreGLErrors->integer )
+	// check for errors (not with the render thread: it would wait for the frame in
+	// flight every frame, serializing the two threads)
+	if ( !r_ignoreGLErrors->integer && !R_SmpActive() )
 	{
 		int	err;
 

@@ -2952,6 +2952,9 @@ Sets shader->sortedIndex
 ==============
 */
 static void SortNewShader( void ) {
+	// Renumbers sortedIndex, which the backend decodes queued sort keys with.
+	R_SyncRenderThread();
+
 	int		i;
 	float	sort;
 	shader_t	*newShader;

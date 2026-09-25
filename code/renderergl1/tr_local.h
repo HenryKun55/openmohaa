@@ -970,7 +970,22 @@ typedef struct srfTerrain_s {
     byte* lmData;
     float lmapX;
     float lmapY;
+    // Per-frame copy of the tessellated mesh (tr_terrain.c, R_SnapshotTerrainPatch):
+    // the front end re-tessellates the live mesh every frame, so the backend draws
+    // from the copy made for the frame it executes. Indexed by smpFrame.
+    int snapVert[2];
+    int snapNumVerts[2];
+    int snapIdx[2];
+    int snapNumIdx[2];
 } srfTerrain_t;
+
+typedef struct {
+    vec3_t xyz;
+    vec2_t st[2];
+} terrainSnapVert_t;
+
+extern terrainSnapVert_t *g_terrainSnapVerts[2];
+extern unsigned short    *g_terrainSnapIdx[2];
 
 typedef struct cTerraPatchUnpacked_s {
     srfTerrain_t drawinfo;
@@ -2201,6 +2216,7 @@ GHOST
 */
 
 void R_UpdateGhostTextures();
+void R_UpdateGhostTexturesAt(int time);
 void R_SetGhostImage(const char* name, image_t* image);
 void LoadGHOST(const char* name, byte** pic, int* width, int* height);
 
@@ -2571,7 +2587,8 @@ typedef enum {
 	D2_SET2DWINDOW,
 	D2_SCISSOR,
 	D2_SHADERTIME,
-	D2_STRING
+	D2_STRING,
+	D2_RENDERTIME
 } draw2DOp_t;
 
 typedef struct {
@@ -2585,6 +2602,13 @@ typedef struct {
 } draw2DCommand_t;
 
 draw2DCommand_t *R_Queue2DCommand(int op, int payloadBytes);
+
+// tr_vita_smp.c: render thread (no-ops elsewhere).
+qboolean R_SmpActive(void);
+void R_SyncRenderThread(void);	// wait for the frame the render thread is drawing
+void R_SmpHandoff(const void *cmds);
+void R_SmpInit(void);
+void R_SmpShutdown(void);
 const void *RB_Draw2D(const void *data);
 void R_DrawString_sgl_Exec(const draw2DCommand_t *cmd);
 

@@ -76,6 +76,13 @@ terrainVert_t *g_pVert;
 poolInfo_t g_tri;
 poolInfo_t g_vert;
 
+// Per-frame mesh snapshots for the backend (R_SnapshotTerrainPatch).
+terrainSnapVert_t *g_terrainSnapVerts[2];
+unsigned short    *g_terrainSnapIdx[2];
+static int         g_terrainSnapMaxVerts, g_terrainSnapMaxIdx;
+static int         g_terrainSnapNumVerts[2], g_terrainSnapNumIdx[2];
+static int         g_terrainSnapFrame[2];
+
 /*
 ================
 R_ValidateHeightmapForVertex
@@ -699,6 +706,15 @@ static void R_PreTessellateTerrain()
     g_pTris  = ri.Hunk_Alloc(g_nTris * sizeof(terraTri_t), h_dontcare);
     g_pVert  = ri.Hunk_Alloc(g_nVerts * sizeof(terrainVert_t), h_dontcare);
 
+    // One mesh snapshot per frame slot (see R_SnapshotTerrainPatch).
+    g_terrainSnapMaxVerts = (int)g_nVerts;
+    g_terrainSnapMaxIdx   = ter_maxtris->integer * 3;
+    for (int f = 0; f < 2; f++) {
+        g_terrainSnapVerts[f]     = ri.Hunk_Alloc(g_terrainSnapMaxVerts * sizeof(terrainSnapVert_t), h_dontcare);
+        g_terrainSnapIdx[f]       = ri.Hunk_Alloc(g_terrainSnapMaxIdx * sizeof(unsigned short), h_dontcare);
+        g_terrainSnapFrame[f]     = -1;
+    }
+
     // Init triangles & vertices
     R_TerrainHeapInit();
     R_TerrainPatchesInit();
@@ -1311,6 +1327,70 @@ void R_MarkTerrainPatch(cTerraPatchUnpacked_t *pPatch)
 
 /*
 ================
+R_SnapshotTerrainPatch
+
+Copies a patch's current mesh (vertices + the drawable triangles) into this frame's
+snapshot. The front end retessellates the shared mesh every frame; the backend, which
+may be drawing the previous frame on the render thread, only reads the snapshot of
+the frame it executes (RB_DrawTerrainTris).
+================
+*/
+
+static void R_SnapshotTerrainPatch(cTerraPatchUnpacked_t *patch)
+{
+    const int          slot = tr.smpFrame;
+    srfTerrain_t      *p    = &patch->drawinfo;
+    terrainSnapVert_t *out;
+    unsigned short    *idx;
+    int                i, nv, ni;
+
+    if (g_terrainSnapFrame[slot] != tr.frameCount) {
+        // first terrain patch of this frame: the slot's previous contents are two frames old
+        g_terrainSnapFrame[slot]    = tr.frameCount;
+        g_terrainSnapNumVerts[slot] = 0;
+        g_terrainSnapNumIdx[slot]   = 0;
+    }
+
+    p->snapNumVerts[slot] = 0;
+    p->snapNumIdx[slot]   = 0;
+    if (g_terrainSnapNumVerts[slot] + p->nVerts > g_terrainSnapMaxVerts
+        || g_terrainSnapNumIdx[slot] + p->nTris * 3 > g_terrainSnapMaxIdx) {
+        return;
+    }
+
+    out = &g_terrainSnapVerts[slot][g_terrainSnapNumVerts[slot]];
+    nv  = 0;
+    for (i = p->iVertHead; i; i = g_pVert[i].iNext) {
+        VectorCopy(g_pVert[i].xyz, out[nv].xyz);
+        out[nv].st[0][0] = g_pVert[i].texCoords[0][0];
+        out[nv].st[0][1] = g_pVert[i].texCoords[0][1];
+        out[nv].st[1][0] = g_pVert[i].texCoords[1][0];
+        out[nv].st[1][1] = g_pVert[i].texCoords[1][1];
+        g_pVert[i].iVertArray = nv;
+        nv++;
+    }
+
+    idx = &g_terrainSnapIdx[slot][g_terrainSnapNumIdx[slot]];
+    ni  = 0;
+    for (i = p->iTriHead; i; i = g_pTris[i].iNext) {
+        // Make sure these can be drawn
+        if (g_pTris[i].byConstChecks & 4) {
+            idx[ni++] = g_pVert[g_pTris[i].iPt[0]].iVertArray;
+            idx[ni++] = g_pVert[g_pTris[i].iPt[1]].iVertArray;
+            idx[ni++] = g_pVert[g_pTris[i].iPt[2]].iVertArray;
+        }
+    }
+
+    p->snapVert[slot]     = g_terrainSnapNumVerts[slot];
+    p->snapNumVerts[slot] = nv;
+    p->snapIdx[slot]      = g_terrainSnapNumIdx[slot];
+    p->snapNumIdx[slot]   = ni;
+    g_terrainSnapNumVerts[slot] += nv;
+    g_terrainSnapNumIdx[slot] += ni;
+}
+
+/*
+================
 R_AddTerrainSurfaces
 ================
 */
@@ -1336,6 +1416,7 @@ void R_AddTerrainSurfaces()
                 assert(patch->shader);
 
                 dlight = R_CheckDlightTerrain(patch, (1 << (tr.refdef.num_dlights)) - 1);
+                R_SnapshotTerrainPatch(patch);
                 R_AddDrawSurf((surfaceType_t *)&patch->drawinfo, patch->shader, dlight);
             }
 
@@ -1360,6 +1441,7 @@ void R_AddTerrainSurfaces()
             assert(patch->shader);
 
             dlight = R_CheckDlightTerrain(patch, (1 << (tr.refdef.num_dlights)) - 1);
+            R_SnapshotTerrainPatch(patch);
             R_AddDrawSurf((surfaceType_t *)&patch->drawinfo, patch->shader, dlight);
         }
     }
