@@ -1200,6 +1200,17 @@ void CL_KeyEvent(int key, qboolean down, unsigned time)
         key = K_ESCAPE;
     }
 
+#ifdef __vita__
+    // Cross skips videos and scripted cutscenes, like Esc on a keyboard (it is bound
+    // to +use, which would otherwise swallow it during a cutscene).
+    if (down && key == K_PAD0_A && Key_GetCatcher() == 0
+        && (clc.demoplaying || clc.state == CA_CINEMATIC
+            || (clc.state == CA_ACTIVE && (cl.snap.ps.stats[STAT_CINEMATIC] & 1)))) {
+        Cvar_Set("nextdemo", "");
+        key = K_ESCAPE;
+    }
+#endif
+
     // escape is always handled special
     if (key == K_ESCAPE) {
         if (down) {
