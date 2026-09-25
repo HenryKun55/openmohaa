@@ -548,7 +548,7 @@ void R_LoadFontShader(fontheader_sgl_t* font)
     }
 }
 
-void R_DrawString_sgl(fontheader_sgl_t* font, const char* text, float x, float y, int maxlen, const float *pvVirtualScreen) {
+static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, float x, float y, int maxlen, const float *pvVirtualScreen) {
     float charHeight;
     float startx, starty;
     int i;
@@ -571,18 +571,8 @@ void R_DrawString_sgl(fontheader_sgl_t* font, const char* text, float x, float y
         }
     }
 
-    if (!font) {
+    if (!font || !font->shader) {
         return;
-    }
-
-    R_IssuePendingRenderCommands();
-
-    if (font->trhandle != r_sequencenumber) {
-        font->shader = NULL;
-    }
-
-    if (!font->shader) {
-        R_LoadFontShader(font);
     }
 
     charHeight = s_fontHeightScale * font->height * s_fontGeneralScale;
@@ -692,6 +682,80 @@ void R_DrawString_sgl(fontheader_sgl_t* font, const char* text, float x, float y
 
     RB_EndSurface();
 }
+
+// Front end: make sure the font's shader is registered (registration stays out of the
+// backend), then draw -- queued with R_QUEUE_2D, immediately otherwise.
+static void R_DrawString_sgl(fontheader_sgl_t* font, const char* text, float x, float y, int maxlen, const float *pvVirtualScreen) {
+    if (!font) {
+        return;
+    }
+
+#ifndef R_QUEUE_2D
+    R_IssuePendingRenderCommands();
+#endif
+
+    if (font->trhandle != r_sequencenumber) {
+        font->shader = NULL;
+    }
+
+    if (!font->shader) {
+        R_LoadFontShader(font);
+    }
+
+#ifdef R_QUEUE_2D
+    {
+        draw2DCommand_t *cmd;
+        int              len = (int)strlen(text);
+
+        if (maxlen >= 0 && maxlen < len) {
+            len = maxlen;
+        }
+        cmd = R_Queue2DCommand(D2_STRING, len + 1);
+        if (!cmd) {
+            return;
+        }
+        Com_Memcpy(cmd + 1, text, len);
+        ((char *)(cmd + 1))[len] = 0;
+        cmd->ptr  = font;
+        cmd->f[0] = x;
+        cmd->f[1] = y;
+        // The font scale/depth globals as they are now, not when the backend runs.
+        cmd->f[2] = s_fontHeightScale;
+        cmd->f[3] = s_fontGeneralScale;
+        cmd->f[4] = s_fontZ;
+        cmd->i[0] = pvVirtualScreen ? 1 : 0;
+        if (pvVirtualScreen) {
+            cmd->f[5] = pvVirtualScreen[0];
+            cmd->f[6] = pvVirtualScreen[1];
+        }
+    }
+#else
+    R_DrawString_sgl_Impl(font, text, x, y, maxlen, pvVirtualScreen);
+#endif
+}
+
+#ifdef R_QUEUE_2D
+void R_DrawString_sgl_Exec(const draw2DCommand_t *cmd) {
+    const float savedHeight  = s_fontHeightScale;
+    const float savedGeneral = s_fontGeneralScale;
+    const float savedZ       = s_fontZ;
+    float       vs[2];
+
+    s_fontHeightScale  = cmd->f[2];
+    s_fontGeneralScale = cmd->f[3];
+    s_fontZ            = cmd->f[4];
+    vs[0]              = cmd->f[5];
+    vs[1]              = cmd->f[6];
+
+    // The text was already cut to maxlen when queued.
+    R_DrawString_sgl_Impl((fontheader_sgl_t *)cmd->ptr, (const char *)(cmd + 1), cmd->f[0], cmd->f[1], -1,
+                          cmd->i[0] ? vs : NULL);
+
+    s_fontHeightScale  = savedHeight;
+    s_fontGeneralScale = savedGeneral;
+    s_fontZ            = savedZ;
+}
+#endif
 
 void R_DrawString(fontheader_t* font, const char* text, float x, float y, int maxlen, const float *pvVirtualScreen) {
     int i;

@@ -1536,6 +1536,11 @@ void RB_ExecuteRenderCommands( const void *data ) {
 		case RC_CLEARDEPTH:
 			data = RB_ClearDepth(data);
 			break;
+#ifdef R_QUEUE_2D
+		case RC_DRAW_2D:
+			data = RB_Draw2D(data);
+			break;
+#endif
 		case RC_END_OF_LIST:
 		default:
 			// stop rendering

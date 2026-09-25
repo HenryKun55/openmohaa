@@ -2528,8 +2528,47 @@ typedef enum {
 	RC_SCREENSHOT,
 	RC_VIDEOFRAME,
 	RC_COLORMASK,
-	RC_CLEARDEPTH
+	RC_CLEARDEPTH,
+	RC_DRAW_2D
 } renderCommand_t;
+
+#ifdef __vita__
+// 2D drawing (UI, HUD, fonts, boxes) goes through the render command queue instead
+// of issuing GL immediately on the calling thread after flushing the whole queue.
+// Keeps the per-frame order identical while leaving GL calls to the backend only --
+// the prerequisite for running the backend on its own thread.
+#define R_QUEUE_2D 1
+#endif
+
+typedef enum {
+	D2_SETCOLOR,
+	D2_STRETCHPIC,
+	D2_STRETCHPIC2,
+	D2_TILEPIC,
+	D2_TILEPICOFFSET,
+	D2_TRIANGLEPIC,
+	D2_ADDBOX,
+	D2_DRAWBOX,
+	D2_LINELOOP,
+	D2_SET2DWINDOW,
+	D2_SCISSOR,
+	D2_SHADERTIME,
+	D2_STRING
+} draw2DOp_t;
+
+typedef struct {
+	int			commandId;
+	int			op;
+	int			i[4];
+	float		f[12];
+	qhandle_t	hShader;
+	void		*ptr;
+	int			payload;	// bytes of op data following this struct (points, text)
+} draw2DCommand_t;
+
+draw2DCommand_t *R_Queue2DCommand(int op, int payloadBytes);
+const void *RB_Draw2D(const void *data);
+void R_DrawString_sgl_Exec(const draw2DCommand_t *cmd);
 
 
 // these are sort of arbitrary limits.
