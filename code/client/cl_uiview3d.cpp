@@ -60,6 +60,7 @@ struct VitaPerfMenuItem {
     qboolean    inverted; /* "ON" means cvar=0 (e.g. r_fastsky) */
     int         cycleMax; /* if > 0, cycles 0..cycleMax instead of 0/1 toggle */
     const char *cmd;      /* if set, A runs this console command instead of touching a cvar */
+    qboolean    restart;  /* only read at renderer/level load: needs a vid_restart (latched cvars are detected) */
 };
 
 struct VitaPerfMenuCategory {
@@ -88,7 +89,6 @@ static VitaPerfMenuItem g_pmLighting[] = {
      * modes that need a vid_restart; toggled live with the world VBO + collapsed
      * multitexture on, they turned every BSP surface into flat garbage colours. */
     { "Stencil Shadows",  "cg_shadows",           qfalse, 0 },
-    { "Coronas",          "cg_drawCorona",        qfalse, 0 },
     { "Lens Flares",      "r_flares",             qfalse, 0 },
 };
 
@@ -96,7 +96,7 @@ static VitaPerfMenuItem g_pmLighting[] = {
 static VitaPerfMenuItem g_pmEffects[] = {
     { "Decals (Marks)",   "cg_marks_add",         qfalse, 0 },
     { "Blood / Gore",     "com_blood",            qfalse, 0 },
-    { "Weapon Model",     "cg_drawGun",           qfalse, 0 },
+    { "Weapon Model",     "cg_drawviewmodel",     qfalse, 2 }, /* 0 = hidden .. 2 = always (cg_drawGun doesn't exist here) */
     { "Crosshair",        "ui_crosshair",         qfalse, 0 }, /* master on/off; per-state in AIM category */
     { "HUD",              "cg_hud",               qfalse, 0 },
     { "Engine 2D Pass",   "vita_skip_draw2d",     qtrue,  0 }, /* ON = normal, OFF = stripped */
@@ -119,6 +119,7 @@ static VitaPerfMenuItem g_pmAim[] = {
 
 /* ---------- DEBUG / DIAG ---------- */
 static VitaPerfMenuItem g_pmDebug[] = {
+    { "Show FPS",                 "fps",               qfalse, 0 }, /* on-screen fps counter: watch the cost of each setting */
     { "NO REFRESH (perf test)",   "r_norefresh",       qfalse, 0 }, /* skips ALL rendering — measure non-render CPU ceiling */
     /* "Skip Backend" removed 2026-05-19 — r_skipBackEnd freezes the GL
      * backend mid-frame and leaves the client unable to recover, since
@@ -135,8 +136,8 @@ static VitaPerfMenuItem g_pmDebug[] = {
     { "com_speeds Print",         "com_speeds",        qfalse, 0 },
     { "VITA-PERF log (1×/sec)",   "r_vita_perflog",    qfalse, 0 }, /* timing breakdown of render subsystems */
     { "VITA force multitexture",  "r_vita_force_mtex", qfalse, 0 }, /* Phase 3 — diffuse+lightmap single pass */
-    { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0 }, /* Phase 1 — BSP geometry from VRAM VBO */
-    { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0 }, /* Phase 2b — NPC skinning+lighting on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
+    { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0, NULL, qtrue }, /* Phase 1 — BSP geometry from VRAM VBO (built at level load) */
+    { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0, NULL, qtrue }, /* Phase 2b — NPC skinning+lighting on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
 };
 
 /* ---------- FASES (level loader) ----------
@@ -183,6 +184,7 @@ static VitaPerfMenuCategory g_pmCats[] = {
 static const int g_pmCatCount = sizeof(g_pmCats) / sizeof(g_pmCats[0]);
 
 static qboolean g_pmActive   = qfalse;
+static qboolean g_pmNeedRestart = qfalse; /* a restart-only setting changed: vid_restart on close */
 static int      g_pmCatIdx   = 0;
 static int      g_pmItemIdx  = 0;
 static int      g_pmScroll   = 0;       /* first visible item (FASES is long) */
@@ -237,8 +239,14 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
      * across launches. Previously Cvar_Set didn't archive, which is
      * why the "bonitão" config the user set up by hand reverted to
      * autoexec defaults on every restart. */
-    Cvar_Set(it->cvarName, buf);
+    /* Forced: several of these are CVAR_CHEAT (r_drawbrushes, r_nocurves, r_showtris...)
+     * and a plain Cvar_Set is refused with cheats off -- the menu showed the new value
+     * but nothing changed. (Cheat cvars still revert on the next map load.) */
+    Cvar_Set2(it->cvarName, buf, qtrue);
     cvar_t *cv = Cvar_FindVar(it->cvarName);
+    if (it->restart || (cv && (cv->flags & CVAR_LATCH))) {
+        g_pmNeedRestart = qtrue;
+    }
     if (cv) {
         cv->flags |= CVAR_ARCHIVE;
         cvar_modifiedFlags |= CVAR_ARCHIVE;  /* trigger config save */
@@ -246,10 +254,28 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
     Com_Printf("PERF-MENU: %s = %d (archived)\n", it->cvarName, next);
 }
 
+/* Settings that only take effect at renderer/level load (texture LOD, curve detail,
+ * multitexture, world VBO, GPU skinning) are applied with one vid_restart when the
+ * menu closes, instead of silently doing nothing until the next launch. */
+static void VitaPerfMenu_Close(void)
+{
+    g_pmActive = qfalse;
+    Com_Printf("PERF-MENU: CLOSED\n");
+    if (g_pmNeedRestart) {
+        g_pmNeedRestart = qfalse;
+        Com_Printf("PERF-MENU: applying restart-only settings (vid_restart)\n");
+        Cbuf_AddText("vid_restart\n");
+    }
+}
+
 void CL_VitaPerfMenu_Toggle_f(void)
 {
-    g_pmActive = !g_pmActive;
-    Com_Printf("PERF-MENU: %s\n", g_pmActive ? "OPEN" : "CLOSED");
+    if (g_pmActive) {
+        VitaPerfMenu_Close();
+        return;
+    }
+    g_pmActive = qtrue;
+    Com_Printf("PERF-MENU: OPEN\n");
 }
 
 qboolean CL_VitaPerfMenu_IsActive(void)
@@ -283,8 +309,7 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
     }
 
     if (key == k_select || key == k_circle) {
-        g_pmActive = qfalse;
-        Com_Printf("PERF-MENU: CLOSED\n");
+        VitaPerfMenu_Close();
         return qtrue;
     }
     if (key == k_left) {
@@ -316,7 +341,7 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
         if (it->cmd) {
             /* Action item (load a level, cheat, restart…). Close the menu first
              * so input returns to the game, then queue the command. */
-            g_pmActive = qfalse;
+            VitaPerfMenu_Close();
             Cbuf_AddText(va("%s\n", it->cmd));
             Com_Printf("PERF-MENU: run '%s'\n", it->cmd);
         } else {
@@ -368,10 +393,13 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
     if (last > cat->itemCount) last = cat->itemCount;
     for (int i = g_pmScroll; i < last; i++) {
         char line[128];
-        Com_sprintf(line, sizeof(line), "%s %-20s  %s",
+        const cvar_t *icv = cat->items[i].cvarName ? Cvar_FindVar(cat->items[i].cvarName) : NULL;
+        const qboolean needsRestart = cat->items[i].restart || (icv && (icv->flags & CVAR_LATCH));
+        Com_sprintf(line, sizeof(line), "%s %-20s  %s%s",
             i == g_pmItemIdx ? ">" : " ",
             cat->items[i].label,
-            VitaPerfMenu_GetStateStr(&cat->items[i]));
+            VitaPerfMenu_GetStateStr(&cat->items[i]),
+            needsRestart ? " *" : "");
         if (i == g_pmItemIdx) menuFont->setColor(UYellow);
         else                  menuFont->setColor(UWhite);
         menuFont->Print(boxX + 12.0f, y, line, -1, NULL);
@@ -383,6 +411,10 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
         menuFont->setColor(UYellow);
         menuFont->Print(boxX + 12.0f, y, more, -1, NULL);
     }
+    menuFont->setColor(g_pmNeedRestart ? UYellow : UWhite);
+    menuFont->Print(boxX + 12.0f, boxY + boxH - 24.0f,
+        g_pmNeedRestart ? "* changed: applied when the menu closes (video restart)"
+                        : "* = applied when the menu closes (video restart)", -1, NULL);
 
     re.SetColor(NULL);
 }

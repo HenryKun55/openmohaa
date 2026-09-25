@@ -1425,7 +1425,14 @@ void R_Register( void )
 	r_finish = ri.Cvar_Get ("r_finish", "0", CVAR_ARCHIVE);
 	r_textureMode = ri.Cvar_Get( "r_textureMode", "gl_linear_mipmap_linear", CVAR_ARCHIVE );
 	r_swapInterval = ri.Cvar_Get( "r_swapInterval", "0", CVAR_ARCHIVE | CVAR_LATCH );
+#ifdef __vita__
+	// No hardware gamma on the Vita: gamma is baked into textures/lightmaps at load, so
+	// a change only shows after a vid_restart. Latched, so the Options menu's
+	// ui_checkrestart restarts the renderer when brightness changes.
+	r_gamma = ri.Cvar_Get( "r_gamma", "1", CVAR_ARCHIVE | CVAR_LATCH );
+#else
 	r_gamma = ri.Cvar_Get( "r_gamma", "1", CVAR_ARCHIVE );
+#endif
 	r_facePlaneCull = ri.Cvar_Get ("r_facePlaneCull", "1", CVAR_ARCHIVE );
 	//	Added in OPM
 	//	 Make archivable

@@ -1923,6 +1923,23 @@ void Com_Init( char *commandLine ) {
 	// of the config file
 	cvar_modifiedFlags &= ~CVAR_ARCHIVE;
 
+#ifdef __vita__
+	// Initial visual settings (misc/vita/main/vita_defaults.cfg), applied once per
+	// VITA_DEFAULTS_VERSION. Everything the menus change is archived in omconfig.cfg
+	// and autoexec.cfg no longer overrides it, so it has to be seeded exactly once.
+	{
+#define VITA_DEFAULTS_VERSION 1
+		cvar_t *ver = Cvar_Get( "vita_defaults_ver", "0", CVAR_ARCHIVE );
+
+		if ( ver->integer < VITA_DEFAULTS_VERSION ) {
+			Cbuf_AddText( "exec vita_defaults.cfg\n" );
+			Cbuf_Execute( 0 );
+			Cvar_Set( "vita_defaults_ver", va( "%d", VITA_DEFAULTS_VERSION ) );
+			cvar_modifiedFlags |= CVAR_ARCHIVE; // save them to omconfig.cfg
+		}
+	}
+#endif
+
 	if( developer && developer->integer ) {
 		Cmd_AddCommand( "error", Com_Error_f );
 		Cmd_AddCommand( "crash", Com_Crash_f );
