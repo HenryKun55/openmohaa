@@ -1928,7 +1928,7 @@ void Com_Init( char *commandLine ) {
 	// VITA_DEFAULTS_VERSION. Everything the menus change is archived in omconfig.cfg
 	// and autoexec.cfg no longer overrides it, so it has to be seeded exactly once.
 	{
-#define VITA_DEFAULTS_VERSION 1
+#define VITA_DEFAULTS_VERSION 2
 		cvar_t *ver = Cvar_Get( "vita_defaults_ver", "0", CVAR_ARCHIVE );
 
 		if ( ver->integer < VITA_DEFAULTS_VERSION ) {
