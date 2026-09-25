@@ -178,8 +178,8 @@ int R_RealDlightPatch(srfGridMesh_t *srf, int dlightBits)
     dli.srcBase = srf->lmData;
     dli.dstBase = &dli.lightmap_buffer[y * 4 * LIGHTMAP_SIZE + x * 4];
 
-    srf->lightmapOffset[0] = (float)x / LIGHTMAP_SIZE - (float)srf->lmX / LIGHTMAP_SIZE;
-    srf->lightmapOffset[1] = (float)y / LIGHTMAP_SIZE - (float)srf->lmY / LIGHTMAP_SIZE;
+    srf->lightmapOffset[tr.smpFrame][0] = (float)x / LIGHTMAP_SIZE - (float)srf->lmX / LIGHTMAP_SIZE;
+    srf->lightmapOffset[tr.smpFrame][1] = (float)y / LIGHTMAP_SIZE - (float)srf->lmY / LIGHTMAP_SIZE;
 
     tr.pc.c_dlightSurfaces++;
     tr.pc.c_dlightTexels += srf->lmWidth * srf->lmHeight;
@@ -344,8 +344,8 @@ int R_RealDlightFace(srfSurfaceFace_t *srf, int dlightBits)
     src = srf->lmData;
     dst = &dli.lightmap_buffer[y * 4 * LIGHTMAP_SIZE + x * 4];
 
-    srf->lightmapOffset[0] = (float)x / LIGHTMAP_SIZE - (float)srf->lmX / LIGHTMAP_SIZE;
-    srf->lightmapOffset[1] = (float)y / LIGHTMAP_SIZE - (float)srf->lmY / LIGHTMAP_SIZE;
+    srf->lightmapOffset[tr.smpFrame][0] = (float)x / LIGHTMAP_SIZE - (float)srf->lmX / LIGHTMAP_SIZE;
+    srf->lightmapOffset[tr.smpFrame][1] = (float)y / LIGHTMAP_SIZE - (float)srf->lmY / LIGHTMAP_SIZE;
 
     tr.pc.c_dlightSurfaces++;
     tr.pc.c_dlightTexels += srf->lmWidth * srf->lmHeight;
@@ -471,8 +471,8 @@ int R_RealDlightTerrain(cTerraPatchUnpacked_t *srf, int dlightBits)
     src = srf->drawinfo.lmData;
     dst = &dli.lightmap_buffer[y * 4 * LIGHTMAP_SIZE + x * 4];
 
-    srf->drawinfo.lmapX = x / (float)LIGHTMAP_SIZE;
-    srf->drawinfo.lmapY = y / (float)LIGHTMAP_SIZE;
+    srf->drawinfo.lmapX[tr.smpFrame] = x / (float)LIGHTMAP_SIZE;
+    srf->drawinfo.lmapY[tr.smpFrame] = y / (float)LIGHTMAP_SIZE;
 
     tr.pc.c_dlightSurfaces++;
     tr.pc.c_dlightTexels += srf->drawinfo.lmapSize * srf->drawinfo.lmapSize;
@@ -648,8 +648,8 @@ int R_RealDlightTerrain(cTerraPatchUnpacked_t *srf, int dlightBits)
     }
 
     lmScale = (1.0 / LIGHTMAP_SIZE) / srf->drawinfo.lmapStep;
-    srf->drawinfo.lmapX -= (srf->x0 * lmScale - (0.5 / LIGHTMAP_SIZE));
-    srf->drawinfo.lmapY -= (srf->y0 * lmScale - (0.5 / LIGHTMAP_SIZE));
+    srf->drawinfo.lmapX[tr.smpFrame] -= (srf->x0 * lmScale - (0.5 / LIGHTMAP_SIZE));
+    srf->drawinfo.lmapY[tr.smpFrame] -= (srf->y0 * lmScale - (0.5 / LIGHTMAP_SIZE));
 
     srf->drawinfo.dlightMap[tr.smpFrame] = dli.dlightMap + 1;
     return srf->drawinfo.dlightMap[tr.smpFrame];

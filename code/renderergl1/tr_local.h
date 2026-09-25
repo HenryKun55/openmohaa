@@ -763,6 +763,10 @@ typedef struct {
 	float		farplane_color[3];
     int			farplane_cull;
     qboolean	renderTerrain; // added in 2.0
+	// Front-end per-scene state the backend needs to clear the view, captured when the
+	// view is queued (R_AddDrawSurfCmd): the front end resets tr.* for the next frame
+	// while the render thread still executes this one.
+	qboolean	clearToFog;
 } viewParms_t;
 
 
@@ -827,7 +831,7 @@ typedef struct srfGridMesh_s {
 	float			meshRadius;
 
 	// lightmap data
-    float			lightmapOffset[2];
+    float			lightmapOffset[SMP_FRAMES][2];	// dlight block offset, per frame (render thread)
     int				lmX;
     int				lmY;
     int				lmWidth;
@@ -859,7 +863,7 @@ typedef struct {
 	// dynamic lighting information
     int			dlightBits[SMP_FRAMES];
     int			dlightMap[SMP_FRAMES];
-    float		lightmapOffset[2];
+    float		lightmapOffset[SMP_FRAMES][2];	// dlight block offset, per frame (render thread)
     int			lmWidth;
     int			lmHeight;
     int			lmX;
@@ -968,8 +972,8 @@ typedef struct srfTerrain_s {
     float lmapStep;
     int dlightMap[2];
     byte* lmData;
-    float lmapX;
-    float lmapY;
+    float lmapX[SMP_FRAMES];	// dlight block offset, per frame (render thread)
+    float lmapY[SMP_FRAMES];
     // Per-frame copy of the tessellated mesh (tr_terrain.c, R_SnapshotTerrainPatch):
     // the front end re-tessellates the live mesh every frame, so the backend draws
     // from the copy made for the frame it executes. Indexed by smpFrame.

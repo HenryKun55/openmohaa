@@ -267,6 +267,7 @@ void	R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 
 	cmd->refdef = tr.refdef;
 	cmd->viewParms = tr.viewParms;
+	cmd->viewParms.clearToFog = (tr.viewParms.farplane_distance && !tr.skyRendered && !tr.portalRendered) || tr.farclip;
 }
 
 

@@ -535,8 +535,8 @@ void RB_SurfaceFace( srfSurfaceFace_t *surf ) {
 #endif
 			tess.texCoords[ndx][0][0] = v[3];
 			tess.texCoords[ndx][0][1] = v[4];
-			tess.texCoords[ndx][1][0] = v[5] + surf->lightmapOffset[0];
-			tess.texCoords[ndx][1][1] = v[6] + surf->lightmapOffset[1];
+			tess.texCoords[ndx][1][0] = v[5] + surf->lightmapOffset[backEnd.smpFrame][0];
+			tess.texCoords[ndx][1][1] = v[6] + surf->lightmapOffset[backEnd.smpFrame][1];
 			*(unsigned int*)&tess.vertexColors[ndx] = *(unsigned int*)&v[7];
 			tess.vertexDlightBits[ndx] = dlightBits;
 		}
@@ -703,8 +703,8 @@ void RB_SurfaceGrid( srfGridMesh_t *cv ) {
 					xyz[2] = dv->xyz[2];
 					texCoords[0] = dv->st[0];
 					texCoords[1] = dv->st[1];
-					texCoords[2] = dv->lightmap[0] + cv->lightmapOffset[0];
-					texCoords[3] = dv->lightmap[1] + cv->lightmapOffset[1];
+					texCoords[2] = dv->lightmap[0] + cv->lightmapOffset[backEnd.smpFrame][0];
+					texCoords[3] = dv->lightmap[1] + cv->lightmapOffset[backEnd.smpFrame][1];
 					if ( needsNormal ) {
 						normal[0] = dv->normal[0];
 						normal[1] = dv->normal[1];
@@ -953,8 +953,8 @@ void RB_DrawTerrainTris(srfTerrain_t* p) {
 			VectorCopy(v[i].xyz, tess.xyz[tess.numVertexes]);
 			tess.texCoords[tess.numVertexes][0][0] = v[i].st[0][0];
 			tess.texCoords[tess.numVertexes][0][1] = v[i].st[0][1];
-			tess.texCoords[tess.numVertexes][1][0] = v[i].xyz[0] * lmScale + p->lmapX;
-			tess.texCoords[tess.numVertexes][1][1] = v[i].xyz[1] * lmScale + p->lmapY;
+			tess.texCoords[tess.numVertexes][1][0] = v[i].xyz[0] * lmScale + p->lmapX[backEnd.smpFrame];
+			tess.texCoords[tess.numVertexes][1][1] = v[i].xyz[1] * lmScale + p->lmapY[backEnd.smpFrame];
 			tess.normal[tess.numVertexes][0] = 0;
 			tess.normal[tess.numVertexes][1] = 0;
 			tess.normal[tess.numVertexes][2] = 1.0;
