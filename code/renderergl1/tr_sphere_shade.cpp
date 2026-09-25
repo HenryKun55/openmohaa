@@ -795,7 +795,7 @@ static bool RB_Sphere_ResetPointColors()
     light_offset[0] = ambientlight[0] + light_offset[0] * 0.18;
     light_offset[1] = ambientlight[1] + light_offset[1] * 0.18;
     light_offset[2] = ambientlight[2] + light_offset[2] * 0.18;
-    if (tr.refdef.rdflags & RDF_FULLBRIGHT) {
+    if (backEnd.refdef.rdflags & RDF_FULLBRIGHT) {
         float fMin = tr.identityLight * 20.0;
 
         if (fMin <= light_offset[0] || fMin <= light_offset[1] || fMin <= light_offset[2]) {
@@ -1153,7 +1153,7 @@ void RB_Grid_SetupEntity()
 
 void RB_Grid_SetupStaticModel()
 {
-    RB_SetupStaticModelGridLighting(&tr.refdef, backEnd.currentStaticModel, backEnd.currentStaticModel->origin);
+    RB_SetupStaticModelGridLighting(&backEnd.refdef, backEnd.currentStaticModel, backEnd.currentStaticModel->origin);
 }
 
 void RB_Light_Fullbright(unsigned char *colors)

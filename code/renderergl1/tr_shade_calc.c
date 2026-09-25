@@ -1474,8 +1474,8 @@ void RB_CalcParallaxTexCoords( const float *rate, float *st )
 	int i;
 	float offsetS, offsetT;
 
-    offsetS = tr.refdef.vieworg[0] * rate[0];
-    offsetT = tr.refdef.vieworg[1] * rate[1];
+    offsetS = backEnd.refdef.vieworg[0] * rate[0];
+    offsetT = backEnd.refdef.vieworg[1] * rate[1];
     for (i = 0; i < tess.numVertexes; i++, st += 2) {
 		st[0] += offsetS;
 		st[1] += offsetT;
@@ -1750,7 +1750,7 @@ void RB_CalcAlphaFromDotView(unsigned char* colors, float alphaMin, float alphaM
             int i;
         } u;
 
-		VectorCopy(tr.refdef.viewaxis[0], viewInModel);
+		VectorCopy(backEnd.refdef.viewaxis[0], viewInModel);
 		VectorNormalizeFast(viewInModel);
 
         u.f = DotProduct(viewInModel, tess.normal[i]);
@@ -1776,7 +1776,7 @@ void RB_CalcAlphaFromOneMinusDotView(unsigned char* colors, float alphaMin, floa
             int i;
         } u;
 
-		VectorCopy(tr.refdef.viewaxis[0], viewInModel);
+		VectorCopy(backEnd.refdef.viewaxis[0], viewInModel);
 		VectorNormalizeFast(viewInModel);
 
         u.f = DotProduct(viewInModel, tess.normal[i]);
