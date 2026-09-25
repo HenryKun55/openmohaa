@@ -129,6 +129,13 @@ static const VitaPerfChoice g_pcShadows[] = {
     { "Blob",    "1", "seta cg_shadows 1" },
     { "Precise", "2", "seta cg_shadows 2" },
 };
+/* r_vita_smp_serial: where the main thread waits for the render thread (diagnostic). */
+static const VitaPerfChoice g_pcSmpSerial[] = {
+    { "Off",      "0", "set r_vita_smp_serial 0" },  /* full overlap (normal) */
+    { "Full",     "1", "set r_vita_smp_serial 1" },  /* no overlap at all */
+    { "Game",     "2", "set r_vita_smp_serial 2" },  /* overlaps only server/game/sound/input */
+    { "Scene",    "3", "set r_vita_smp_serial 3" },  /* + cgame scene building */
+};
 static const VitaPerfChoice g_pcWeapon[] = {
     { "None",     "0", "seta cg_drawviewmodel 0" },
     { "Gun Only", "1", "seta cg_drawviewmodel 1" },
@@ -231,7 +238,7 @@ static VitaPerfMenuItem g_pmDebug[] = {
     { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0, NULL, qtrue }, /* Phase 1 — BSP geometry from VRAM VBO (built at level load) */
     { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0, NULL, qtrue }, /* Phase 2b — NPC skinning+lighting on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
     { "VITA render thread",       "r_vita_smp",        qfalse, 0, NULL, qtrue },
-    { "VITA render thr. serial",  "r_vita_smp_serial", qfalse, 0 }, /* diagnostic: thread on, but no overlap with the game */ /* backend on core 1 (tr_vita_smp.c); off = single-threaded */
+    { "VITA render thr. serial",  "r_vita_smp_serial", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSmpSerial) }, /* diagnostic */ /* backend on core 1 (tr_vita_smp.c); off = single-threaded */
 };
 
 /* ---------- FASES (level loader) ----------

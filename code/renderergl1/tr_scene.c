@@ -442,6 +442,7 @@ to handle mirrors,
 @@@@@@@@@@@@@@@@@@@@@
 */
 void RE_RenderScene( const refdef_t *fd ) {
+	R_SmpSerialPoint(3);
 	viewParms_t		parms;
 	int				startTime;
 

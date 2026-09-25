@@ -934,6 +934,9 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	RB_ShadowFinish();
 	if (!(backEnd.refdef.rdflags & RDF_HUD)) {
 		RB_RenderFlares();
+#ifdef __vita__
+		if (r_flares->integer)	// perf menu "Lens Flares" turns the sun blend off too
+#endif
 		R_DrawLensFlares();
 	}
 

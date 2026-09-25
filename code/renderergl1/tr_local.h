@@ -2623,6 +2623,7 @@ draw2DCommand_t *R_Queue2DCommand(int op, int payloadBytes);
 qboolean R_SmpActive(void);
 void R_SyncRenderThread(void);	// wait for the frame the render thread is drawing
 void R_SmpHandoff(const void *cmds);
+void R_SmpSerialPoint(int level);
 void R_SmpInit(void);
 void R_SmpShutdown(void);
 const void *RB_Draw2D(const void *data);

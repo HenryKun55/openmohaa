@@ -107,6 +107,15 @@ void R_SyncRenderThread(void)
 	R_SyncRenderThread_Wait(r_smpSyncCaller ? r_smpSyncCaller : __builtin_return_address(0));
 }
 
+// r_vita_smp_serial 2/3 (diagnostic): let the render thread overlap only part of
+// the main thread's frame, to find which part races with it.
+void R_SmpSerialPoint(int level)
+{
+	if (s_thread >= 0 && r_vita_smp_serial->integer == level) {
+		R_SyncRenderThread_Wait(NULL);
+	}
+}
+
 void R_SmpHandoff(const void *cmds)
 {
 	R_SyncRenderThread_Wait(NULL);
@@ -133,7 +142,7 @@ void R_SmpHandoff(const void *cmds)
 	s_outstanding = 1;
 	sceKernelSignalSema(s_semWork, 1);
 
-	if (r_vita_smp_serial->integer) {
+	if (r_vita_smp_serial->integer == 1) {
 		// Same buffers and thread, no overlap: tells a race from a buffering bug.
 		R_SyncRenderThread_Wait(NULL);
 	}
@@ -191,6 +200,7 @@ void R_SmpShutdown(void)
 qboolean R_SmpActive(void) { return qfalse; }
 void R_SyncRenderThread(void) {}
 void R_SmpHandoff(const void *cmds) { (void)cmds; }
+void R_SmpSerialPoint(int level) { (void)level; }
 void R_SmpInit(void) {}
 void R_SmpShutdown(void) {}
 
