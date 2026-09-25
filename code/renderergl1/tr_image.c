@@ -2838,7 +2838,7 @@ void R_CreateBuiltinImages(void) {
 	}
 
 	Com_Memset(lightmap_buffer, 0xFFFFFFFF, sizeof(lightmap_buffer));
-	for (i = 0; i < 15; i++) {
+	for (i = 0; i < SMP_FRAMES * DLIGHT_IMAGES; i++) {
 		char filename[64];
 
 		Com_sprintf(filename, sizeof(filename), "*lightmapD%i", i);

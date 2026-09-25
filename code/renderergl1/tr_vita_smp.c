@@ -28,6 +28,7 @@
 #include <psp2/kernel/processmgr.h>
 
 cvar_t *r_vita_smp;
+cvar_t *r_vita_smp_serial;	// diagnostic: wait for each frame right after handing it off
 
 static SceUID		s_thread = -1;
 static SceUID		s_semWork = -1;
@@ -131,11 +132,17 @@ void R_SmpHandoff(const void *cmds)
 	s_smpFrame    = tr.smpFrame;
 	s_outstanding = 1;
 	sceKernelSignalSema(s_semWork, 1);
+
+	if (r_vita_smp_serial->integer) {
+		// Same buffers and thread, no overlap: tells a race from a buffering bug.
+		R_SyncRenderThread_Wait(NULL);
+	}
 }
 
 void R_SmpInit(void)
 {
 	r_vita_smp = ri.Cvar_Get("r_vita_smp", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	r_vita_smp_serial = ri.Cvar_Get("r_vita_smp_serial", "0", 0);
 	if (!r_vita_smp->integer || s_thread >= 0) {
 		return;
 	}

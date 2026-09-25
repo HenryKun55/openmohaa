@@ -74,6 +74,8 @@ long myftol( float f );
 // to be double buffered to allow it to run in
 // parallel on a dual cpu machine
 #define	SMP_FRAMES		2
+#define	DLIGHT_IMAGES	15	// per frame; see tr.dlightImages
+#define	RB_DLIGHT_IMAGE(n)	(tr.dlightImages[backEnd.smpFrame * DLIGHT_IMAGES + (n)])
 
 // 12 bits
 // see QSORT_SHADERNUM_SHIFT
@@ -1367,7 +1369,10 @@ typedef struct {
 	image_t					*flareImage;
 	image_t					*whiteImage;			// full of 0xff
 	image_t					*identityLightImage;	// full of tr.identityLightByte
-	image_t					*dlightImages[15];
+	// One set of dynamic-light lightmaps per SMP frame: the render thread re-uploads
+	// them every frame, and reusing the texture the GPU may still be sampling for the
+	// previous frame shows its lights on the wrong texels (flashes).
+	image_t					*dlightImages[SMP_FRAMES * DLIGHT_IMAGES];
 
 	shader_t				*defaultShader;
 	shader_t				*shadowShader;

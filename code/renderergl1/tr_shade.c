@@ -541,7 +541,7 @@ static void DrawMultitextured( shaderCommands_t *input, int stage ) {
 	if (!input->dlightMap || !pStage->bundle[1].isLightmap) {
 		R_BindAnimatedImage(&pStage->bundle[1]);
 	} else {
-		GL_Bind(tr.dlightImages[input->dlightMap - 1]);
+		GL_Bind(RB_DLIGHT_IMAGE(input->dlightMap - 1));
 	}
 
 	R_DrawElements( input->numIndexes, input->indexes );
@@ -1589,7 +1589,7 @@ static void RB_IterateStagesGeneric( shaderCommands_t *input )
 			}
 			else {
 				if (input->dlightMap && tess.xstages[stage]->bundle[0].isLightmap) {
-					GL_Bind(tr.dlightImages[input->dlightMap - 1]);
+					GL_Bind(RB_DLIGHT_IMAGE(input->dlightMap - 1));
 				}
 				else {
 					R_BindAnimatedImage(&pStage->bundle[0]);
@@ -1884,7 +1884,7 @@ void RB_StageIteratorLightmappedMultitextureUnfogged( void ) {
 		GL_TexEnv( GL_MODULATE );
 	}
 	if (tess.dlightMap && tess.xstages[0]->bundle[1].isLightmap) {
-		GL_Bind(tr.dlightImages[tess.dlightMap - 1]);
+		GL_Bind(RB_DLIGHT_IMAGE(tess.dlightMap - 1));
 	} else {
 		R_BindAnimatedImage(&tess.xstages[0]->bundle[1]);
 	}

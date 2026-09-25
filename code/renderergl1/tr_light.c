@@ -1550,7 +1550,7 @@ void R_UploadDlights()
             ri.Error(ERR_DROP, "R_UploadDlights: bad allocated height");
         }
 
-        GL_Bind(tr.dlightImages[dli.dlightMap]);
+        GL_Bind(tr.dlightImages[tr.smpFrame * DLIGHT_IMAGES + dli.dlightMap]);
         qglTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, h, GL_RGBA, GL_UNSIGNED_BYTE, dli.lightmap_buffer);
 
         tr.pc.c_dlightMaps++;
@@ -1563,7 +1563,7 @@ const void *RB_UploadDlightsCmd(const void *data)
 {
     const uploadDlightsCommand_t *cmd = (const uploadDlightsCommand_t *)data;
 
-    GL_Bind(tr.dlightImages[cmd->image]);
+    GL_Bind(RB_DLIGHT_IMAGE(cmd->image));
     qglTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, cmd->height, GL_RGBA, GL_UNSIGNED_BYTE, cmd + 1);
 
     return (const byte *)(cmd + 1) + cmd->height * LIGHTMAP_SIZE * 4;
@@ -1602,7 +1602,7 @@ qboolean R_AllocLMBlock(int w, int h, int *x, int *y)
             break;
         }
 
-        if (dli.dlightMap == 14) {
+        if (dli.dlightMap == DLIGHT_IMAGES - 1) {
             return qfalse;
         }
 
