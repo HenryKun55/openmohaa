@@ -230,6 +230,7 @@ static VitaPerfMenuItem g_pmDebug[] = {
     { "VITA force multitexture",  "r_vita_force_mtex", qfalse, 0 }, /* Phase 3 — diffuse+lightmap single pass */
     { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0, NULL, qtrue }, /* Phase 1 — BSP geometry from VRAM VBO (built at level load) */
     { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0, NULL, qtrue }, /* Phase 2b — NPC skinning+lighting on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
+    { "VITA render thread",       "r_vita_smp",        qfalse, 0, NULL, qtrue }, /* backend on core 1 (tr_vita_smp.c); off = single-threaded */
 };
 
 /* ---------- FASES (level loader) ----------
