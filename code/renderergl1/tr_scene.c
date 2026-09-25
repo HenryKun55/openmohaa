@@ -53,6 +53,8 @@ R_ToggleSmpFrame
 */
 void R_InitNextFrame( void ) {
 	backEndData->commands.used = 0;
+	backEndData->numSkelBones = 0;
+	backEndData->numMorphs = 0;
 
 	r_firstSceneDrawSurf = 0;
 	r_firstSceneSpriteSurf = 0;
@@ -463,9 +465,12 @@ void RE_RenderScene( const refdef_t *fd ) {
 	}
 
 	R_VisDebug();
-	TIKI_Reset_Caches();
-
-	backEnd.in2D = qfalse;
+	// The skeleton caches are reset per frame (R_InitNextFrame), not per scene: with
+	// queued rendering several scenes share one frame's command list, and a reset here
+	// overwrote the bones of scenes still waiting to be drawn.
+#ifndef R_QUEUE_2D
+	backEnd.in2D = qfalse;	// the backend does this itself in RB_BeginDrawingView
+#endif
 	tr.refdef.x = fd->x;
 	tr.refdef.y = fd->y;
 	tr.refdef.width = fd->width;

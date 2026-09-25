@@ -149,6 +149,8 @@ void R_IssueRenderCommands( qboolean runPerformanceCounters ) {
 	// reflected in the counters before we print + reset them.
 	if ( !r_skipBackEnd->integer ) {
 		// let it start on the new batch
+		backEnd.data = backEndData;
+		backEnd.smpFrame = tr.smpFrame;
 		RB_ExecuteRenderCommands( cmdList->cmds );
 	}
 
@@ -222,6 +224,10 @@ R_AddDrawSurfCmd
 =============
 */
 void	R_AddDrawSurfCmd( drawSurf_t *drawSurfs, int numDrawSurfs ) {
+#ifdef R_QUEUE_2D
+	// This view's dynamic-light lightmap block goes first in the queue.
+	R_UploadDlights();
+#endif
 	drawSurfsCommand_t	*cmd;
 
 	cmd = R_GetCommandBuffer( sizeof( *cmd ) );
@@ -561,6 +567,9 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 
 	R_IssueRenderCommands( qtrue );
 
+	// Flip to the other frame's data for the next front end frame.
+	tr.smpFrame ^= 1;
+	backEndData = backEndDataFrames[tr.smpFrame];
 	R_InitNextFrame();
 
 	if ( frontEndMsec ) {

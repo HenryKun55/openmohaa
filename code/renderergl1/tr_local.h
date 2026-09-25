@@ -1312,6 +1312,7 @@ typedef struct {
 	trRefEntity_t entity2D;	// currentEntity will point at this when doing 2D rendering
     int backEndMsec;
     float shaderStartTime;
+	struct backEndData_s	*data;	// frame being executed (backEndData is the front end's)
 } backEndState_t;
 
 /*
@@ -2425,7 +2426,12 @@ RENDERER BACK END COMMAND QUEUE
 =============================================================
 */
 
+#ifdef __vita__
+// Room for queued 2D and dynamic-light lightmap uploads (up to 64 KB per block).
+#define	MAX_RENDER_COMMANDS	0x80000
+#else
 #define	MAX_RENDER_COMMANDS	0x40000
+#endif
 
 typedef struct suninfo_s {
 	vec3_t color;
@@ -2529,8 +2535,20 @@ typedef enum {
 	RC_VIDEOFRAME,
 	RC_COLORMASK,
 	RC_CLEARDEPTH,
-	RC_DRAW_2D
+	RC_DRAW_2D,
+	RC_UPLOAD_DLIGHTS
 } renderCommand_t;
+
+// A dynamic-light lightmap block computed by the front end (tr_light.c), uploaded by
+// the backend right before the view that uses it. height rows of LIGHTMAP_SIZE RGBA
+// texels follow the struct.
+typedef struct {
+	int	commandId;
+	int	image;
+	int	height;
+} uploadDlightsCommand_t;
+
+const void *RB_UploadDlightsCmd(const void *data);
 
 #ifdef __vita__
 // 2D drawing (UI, HUD, fonts, boxes) goes through the render command queue instead
@@ -2582,7 +2600,7 @@ void R_DrawString_sgl_Exec(const draw2DCommand_t *cmd);
 // contained in a backEndData_t.  This entire structure is
 // duplicated so the front and back end can run in parallel
 // on an SMP machine
-typedef struct {
+typedef struct backEndData_s {
 	drawSurf_t	drawSurfs[MAX_DRAWSURFS];
 	drawSurf_t  spriteSurfs[MAX_SPRITESURFS];
 	dlight_t	dlights[MAX_DLIGHTS];
@@ -2593,6 +2611,12 @@ typedef struct {
 	refSprite_t sprites[2048];
 	cStaticModelUnpacked_t* staticModels;
 	byte* staticModelData;
+	// Skeleton bone/morph caches filled by the front end (R_AddSkelSurfaces) and read
+	// by the backend (RB_SkelMesh): per frame buffer so the two can run in parallel.
+	skelBoneCache_t	*skelBones;
+	int				*morphCache;
+	int				numSkelBones;
+	int				numMorphs;
 	renderCommandList_t	commands;
 } backEndData_t;
 
@@ -2600,7 +2624,8 @@ extern	int		max_polys;
 extern	int		max_polyverts;
 extern	int		max_termarks;
 
-extern	backEndData_t	*backEndData;	// the second one may not be allocated
+extern	backEndData_t	*backEndData;	// the frame the front end is filling
+extern	backEndData_t	*backEndDataFrames[SMP_FRAMES];
 
 extern	volatile renderCommandList_t	*renderCommandList;
 

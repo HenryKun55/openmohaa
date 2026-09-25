@@ -1485,6 +1485,35 @@ void R_UploadDlights()
     if (!tr.pc.c_dlightSurfaces) {
         return;
     }
+#ifdef R_QUEUE_2D
+    // Queued: the block's texels travel in the command list and the backend uploads
+    // them before the view that uses them (RB_UploadDlightsCmd). Uploading from the
+    // backend at view start read dli after later scenes of the same frame had reset
+    // it, and would race the front end once the backend runs on its own thread.
+    h = 0;
+    for (i = 0; i < LIGHTMAP_SIZE; i++) {
+        if (h < dli.allocated[i]) {
+            h = dli.allocated[i];
+        }
+    }
+    if (h) {
+        uploadDlightsCommand_t *cmd;
+
+        if (h > LIGHTMAP_SIZE) {
+            ri.Error(ERR_DROP, "R_UploadDlights: bad allocated height");
+        }
+        cmd = (uploadDlightsCommand_t *)R_GetCommandBuffer(sizeof(*cmd) + h * LIGHTMAP_SIZE * 4);
+        if (cmd) {
+            cmd->commandId = RC_UPLOAD_DLIGHTS;
+            cmd->image     = dli.dlightMap;
+            cmd->height    = h;
+            Com_Memcpy(cmd + 1, dli.lightmap_buffer, h * LIGHTMAP_SIZE * 4);
+        }
+        tr.pc.c_dlightMaps++;
+        memset(dli.allocated, 0, sizeof(dli.allocated));
+    }
+    return;
+#endif
 
     h = 0;
     for (i = 0; i < LIGHTMAP_SIZE; i++) {
@@ -1505,6 +1534,18 @@ void R_UploadDlights()
         memset(dli.allocated, 0, sizeof(dli.allocated));
     }
 }
+
+#ifdef R_QUEUE_2D
+const void *RB_UploadDlightsCmd(const void *data)
+{
+    const uploadDlightsCommand_t *cmd = (const uploadDlightsCommand_t *)data;
+
+    GL_Bind(tr.dlightImages[cmd->image]);
+    qglTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, LIGHTMAP_SIZE, cmd->height, GL_RGBA, GL_UNSIGNED_BYTE, cmd + 1);
+
+    return (const byte *)(cmd + 1) + cmd->height * LIGHTMAP_SIZE * 4;
+}
+#endif
 
 /*
 ===============

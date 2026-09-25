@@ -24,7 +24,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "tr_vita_perflog.h"
 #endif
 
-backEndData_t	*backEndData;
+backEndData_t	*backEndData;	// the frame the front end is filling
+backEndData_t	*backEndDataFrames[SMP_FRAMES];
 backEndState_t	backEnd;
 
 
@@ -635,7 +636,9 @@ void RB_BeginDrawingView (void) {
 	//
 	SetViewportAndScissor();
 
-	R_UploadDlights();
+#ifndef R_QUEUE_2D
+	R_UploadDlights();	// queued by the front end instead (R_AddDrawSurfCmd)
+#endif
 
 	// ensures that depth writes are enabled for the depth clear
 	GL_State( GLS_DEFAULT );
@@ -1539,6 +1542,9 @@ void RB_ExecuteRenderCommands( const void *data ) {
 #ifdef R_QUEUE_2D
 		case RC_DRAW_2D:
 			data = RB_Draw2D(data);
+			break;
+		case RC_UPLOAD_DLIGHTS:
+			data = RB_UploadDlightsCmd(data);
 			break;
 #endif
 		case RC_END_OF_LIST:

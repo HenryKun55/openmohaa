@@ -305,7 +305,6 @@ static int                 s_loc_ambient = -1, s_loc_lightInfo = -1, s_loc_lDir 
 cvar_t *r_vita_gpu_skinning = NULL;
 
 /* TIKI bone cache + channel lookup (from RB_SkelMesh's path). */
-extern skelBoneCache_t TIKI_Skel_Bones[];
 
 /* ---------------------------------------------------------------- */
 static unsigned int VitaSkin_CompileStage(unsigned int type, const char *src, const char *label)

@@ -758,11 +758,11 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
     // don't add third_person objects if in a portal
     personalModel = (ent->e.renderfx & RF_THIRD_PERSON) && !tr.viewParms.isPortal;
 
-    outbones = &TIKI_Skel_Bones[TIKI_Skel_Bones_Index];
+    outbones = &backEndData->skelBones[backEndData->numSkelBones];
 
     num_tags = ri.TIKI_GetNumChannels(tiki);
 
-    if (num_tags + TIKI_Skel_Bones_Index > MAX_SKELBONES) {
+    if (num_tags + backEndData->numSkelBones > MAX_SKELBONES) {
         ri.Printf(PRINT_DEVELOPER, "R_AddSkelSurfaces: too many skeleton models visible on '%s'\n", tiki->a->name);
         return;
     }
@@ -846,8 +846,8 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
 
     ri.Hunk_FreeTempMemory(newFrame);
 
-    ent->e.bonestart = TIKI_Skel_Bones_Index;
-    TIKI_Skel_Bones_Index += num_tags;
+    ent->e.bonestart = backEndData->numSkelBones;
+    backEndData->numSkelBones += num_tags;
 
     ent->e.hasMorph = qfalse;
 
@@ -860,13 +860,13 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
     // add morphs
     //
     added = ri.SKEL_GetMorphWeightFrame(
-        skeletor, ent->e.frameInfo[0].index, ent->e.frameInfo[0].time, &skeletorMorphCache[skeletorMorphCacheIndex]
+        skeletor, ent->e.frameInfo[0].index, ent->e.frameInfo[0].time, &backEndData->morphCache[backEndData->numMorphs]
     );
-    ent->e.morphstart = skeletorMorphCacheIndex;
+    ent->e.morphstart = backEndData->numMorphs;
 
     if (added) {
         // found morphs
-        skeletorMorphCacheIndex += added;
+        backEndData->numMorphs += added;
         ent->e.hasMorph = qtrue;
     }
 
@@ -1139,7 +1139,7 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
      * missing bone channel) return qfalse and fall through to the CPU loop.
      * bones is the same palette the CPU path uses a few lines down. */
     if (r_vita_gpu_skinning && r_vita_gpu_skinning->integer && R_VitaGpuSkin_IsReady()) {
-        skelBoneCache_t *gpuBones = &TIKI_Skel_Bones[backEnd.currentEntity->e.bonestart];
+        skelBoneCache_t *gpuBones = &backEnd.data->skelBones[backEnd.currentEntity->e.bonestart];
         if (R_VitaGpuSkin_DrawSurf(sf, tiki, skelmodel, gpuBones, scale)) {
             return;
         }
@@ -1257,8 +1257,8 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
     //
     // just copy the vertexes
     //
-    bones  = &TIKI_Skel_Bones[backEnd.currentEntity->e.bonestart];
-    morphs = &skeletorMorphCache[backEnd.currentEntity->e.morphstart];
+    bones  = &backEnd.data->skelBones[backEnd.currentEntity->e.bonestart];
+    morphs = &backEnd.data->morphCache[backEnd.currentEntity->e.morphstart];
 
     /* Pre-compute &bones[localChannel] indexed by bone-index. The inner
      * per-weight loops below otherwise call ri.TIKI_GetLocalChannel for
@@ -1671,13 +1671,13 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
         tess.texCoords[baseVertex + j][1][1] = surf->pStaticTexCoords[j][1][1];
     }
 
-    if (backEndData->staticModelData) {
+    if (backEnd.data->staticModelData) {
         const size_t offset =
             backEnd.currentStaticModel->firstVertexData + staticSurf->ofsStaticData * sizeof(color4ub_t);
         assert(offset < tr.world->numStaticModelData * sizeof(color4ub_t));
         assert(offset + render_count * sizeof(color4ub_t) <= tr.world->numStaticModelData * sizeof(color4ub_t));
 
-        const color4ub_t *in = (const color4ub_t *)&backEndData->staticModelData[offset];
+        const color4ub_t *in = (const color4ub_t *)&backEnd.data->staticModelData[offset];
 
         for (i = 0; i < render_count; i++) {
             tess.vertexColors[baseVertex + i][0] = in[i][0];

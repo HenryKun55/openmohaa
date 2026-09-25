@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // tr_init.c -- functions that are not called every frame
 
 #include "tr_local.h"
+#include "../tiki/tiki_mesh.h"	// MAX_SKELBONES / MAX_SKELMORPH (per-frame skeleton caches)
 #ifdef __vita__
 #include "tr_vita_perflog.h"
 #endif
@@ -1735,13 +1736,28 @@ void R_Init( void ) {
 	if (max_termarks < MAX_TERMARKS)
 		max_termarks = MAX_TERMARKS;
 
-	ptr = ri.Malloc(sizeof(*backEndData) + sizeof(srfPoly_t) * max_polys + sizeof(polyVert_t) * max_polyverts + sizeof(srfMarkFragment_t) * max_termarks);
-	backEndData = (backEndData_t*)ptr;
-	backEndData->polys = (srfPoly_t*)((char*)ptr + sizeof(*backEndData));
-	backEndData->polyVerts = (polyVert_t*)((char*)ptr + sizeof(*backEndData) + sizeof(srfPoly_t) * max_polys);
-	backEndData->terMarks = (srfMarkFragment_t*)((char*)ptr + sizeof(*backEndData) + sizeof(srfPoly_t) * max_polys + sizeof(polyVert_t) * max_polyverts);
-	backEndData->staticModels = NULL;
-	backEndData->staticModelData = NULL;
+	// Two frames of back end data: the front end fills one while the backend draws the
+	// other (tr.smpFrame toggles in RE_EndFrame).
+	{
+		int f;
+		for (f = 0; f < SMP_FRAMES; f++) {
+			backEndData_t *bd;
+
+			ptr = ri.Malloc(sizeof(*backEndData) + sizeof(srfPoly_t) * max_polys + sizeof(polyVert_t) * max_polyverts + sizeof(srfMarkFragment_t) * max_termarks
+				+ sizeof(skelBoneCache_t) * MAX_SKELBONES + sizeof(int) * MAX_SKELMORPH);
+			bd = (backEndData_t*)ptr;
+			bd->polys = (srfPoly_t*)((char*)ptr + sizeof(*backEndData));
+			bd->polyVerts = (polyVert_t*)((char*)bd->polys + sizeof(srfPoly_t) * max_polys);
+			bd->terMarks = (srfMarkFragment_t*)((char*)bd->polyVerts + sizeof(polyVert_t) * max_polyverts);
+			bd->skelBones = (skelBoneCache_t*)((char*)bd->terMarks + sizeof(srfMarkFragment_t) * max_termarks);
+			bd->morphCache = (int*)((char*)bd->skelBones + sizeof(skelBoneCache_t) * MAX_SKELBONES);
+			bd->staticModels = NULL;
+			bd->staticModelData = NULL;
+			backEndDataFrames[f] = bd;
+		}
+		tr.smpFrame = 0;
+		backEndData = backEndDataFrames[0];
+	}
 	R_InitNextFrame();
 
 	InitOpenGL();
