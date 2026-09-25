@@ -1109,6 +1109,29 @@ void R_GetLightingForDecal(vec3_t vLight, const vec3_t vFacing, const vec3_t vOr
 
 /*
 ===============
+R_SaveFrontViewLights
+
+The cgame asks for lighting (R_GetLightingForSmoke, R_GatherLightSources) while it
+builds the next scene. Those used to read backEnd.refdef, i.e. the last view the
+backend drew; with the render thread that refdef is being rewritten on the other
+core, so smoke and shadows picked up a torn dlight list / areamask and flashed.
+Keep a front-end copy of the last queued world view instead (R_AddDrawSurfCmd).
+===============
+*/
+frontViewLights_t tr_frontViewLights;
+
+void R_SaveFrontViewLights(void)
+{
+    if (tr.refdef.rdflags & RDF_NOWORLDMODEL) {
+        return;
+    }
+    tr_frontViewLights.num_dlights = tr.refdef.num_dlights;
+    Com_Memcpy(tr_frontViewLights.dlights, tr.refdef.dlights, tr.refdef.num_dlights * sizeof(dlight_t));
+    Com_Memcpy(tr_frontViewLights.areamask, tr.refdef.areamask, sizeof(tr_frontViewLights.areamask));
+}
+
+/*
+===============
 R_GetLightingForSmoke
 ===============
 */
@@ -1126,8 +1149,8 @@ void R_GetLightingForSmoke(vec3_t vLight, const vec3_t vOrigin)
         R_GetLightingGridValueFast(vOrigin, vLight);
     }
 
-    for (i = 0; i < backEnd.refdef.num_dlights; i++) {
-        dl = &backEnd.refdef.dlights[i];
+    for (i = 0; i < tr_frontViewLights.num_dlights; i++) {
+        dl = &tr_frontViewLights.dlights[i];
         VectorSubtract(dl->origin, vOrigin, dir);
         d = VectorLengthSquared(dir);
 

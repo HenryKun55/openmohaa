@@ -1390,7 +1390,7 @@ int R_GatherLightSources(const vec3_t vPos, vec3_t *pvLightPos, vec3_t *pvLightI
             for (i = (leaf->lights[0] == &tr.sSunLight ? 1 : 0); i < leaf->numlights; i++) {
                 pCurrLight = leaf->lights[i];
                 if (pCurrLight->leaf != (mnode_t *)-1) {
-                    byte mask = backEnd.refdef.areamask[pCurrLight->leaf->area >> 3];
+                    byte mask = tr_frontViewLights.areamask[pCurrLight->leaf->area >> 3];
 
                     if (!(mask & (1 << (pCurrLight->leaf->area & 7)))
                         && pCurrLight->reference_count != light_reference_count) {

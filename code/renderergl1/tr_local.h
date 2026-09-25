@@ -2103,6 +2103,13 @@ void R_Sphere_InitLights();
 int R_GatherLightSources(const vec3_t vPos, vec3_t* pvLightPos, vec3_t* pvLightIntensity, int iMaxLights);
 void R_ClearRealDlights();
 void R_UploadDlights();
+typedef struct {
+	int			num_dlights;
+	dlight_t	dlights[MAX_DLIGHTS];
+	byte		areamask[MAX_MAP_AREA_BYTES];
+} frontViewLights_t;
+extern frontViewLights_t tr_frontViewLights;
+void R_SaveFrontViewLights(void);
 
 int R_LightForPoint(vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 
