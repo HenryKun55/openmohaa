@@ -267,7 +267,12 @@ void RB_SurfaceTriangles( srfTriangles_t *srf ) {
      * we trade Q3's batching for zero per-frame vertex copy on the
      * dominant outdoor geometry). RB_EndSurface picks up the
      * useVitaWorldVBO flag and routes through R_VitaWorldVBO_BindAndDraw. */
-    if (srf->vitaVboSurfIdx >= 0 && R_VitaWorldVBO_IsReady()) {
+    /* A surface lit by a dynamic light this frame takes the client-array path:
+     * ProjectDlightTexture builds the light's texture coordinates from tess.xyz,
+     * which the VBO path leaves empty, so dlights never showed on VBO surfaces
+     * (muzzle flashes, explosions, moving lights on floors and walls). Only the few
+     * surfaces near a dlight pay the vertex copy. */
+    if (srf->vitaVboSurfIdx >= 0 && R_VitaWorldVBO_IsReady() && !srf->dlightBits[backEnd.smpFrame]) {
         const vitaWorldVboSurf_t *vboSurf = R_VitaWorldVBO_LookupSurf(srf->vitaVboSurfIdx);
         if (vboSurf) {
             shader_t *shdr = tess.shader;

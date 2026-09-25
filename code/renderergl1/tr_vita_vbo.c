@@ -415,8 +415,10 @@ because we leave it bound throughout.
 */
 qboolean R_VitaWorldVBO_IsVboSurface(const surfaceType_t *surface)
 {
+    // Must match RB_SurfaceTriangles: a dlit surface takes the client-array path.
     return worldVboBuilt && *surface == SF_TRIANGLES
-        && ((const srfTriangles_t *)surface)->vitaVboSurfIdx >= 0;
+        && ((const srfTriangles_t *)surface)->vitaVboSurfIdx >= 0
+        && !((const srfTriangles_t *)surface)->dlightBits[backEnd.smpFrame];
 }
 
 void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes)
