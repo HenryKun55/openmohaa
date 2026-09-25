@@ -54,6 +54,15 @@ char    oldStrings[MAX_SUBTITLES][2048];
  * are swallowed while open so accidental fire/jump don't happen.
  * ============================================================ */
 
+/* A named level: `value` is matched against the item's cvar to show the current level,
+ * `cmd` sets it (and any companion cvars). Values/names follow the original game's
+ * Options menus (ui/video options.urc, ui/advancedoptions.urc) so both menus agree. */
+struct VitaPerfChoice {
+    const char *name;
+    const char *value;
+    const char *cmd;
+};
+
 struct VitaPerfMenuItem {
     const char *label;
     const char *cvarName;
@@ -61,6 +70,97 @@ struct VitaPerfMenuItem {
     int         cycleMax; /* if > 0, cycles 0..cycleMax instead of 0/1 toggle */
     const char *cmd;      /* if set, A runs this console command instead of touching a cvar */
     qboolean    restart;  /* only read at renderer/level load: needs a vid_restart (latched cvars are detected) */
+    const VitaPerfChoice *choices; /* if set, A cycles these named levels */
+    int         numChoices;
+};
+
+#define VPM_CHOICES(arr) arr, (int)(sizeof(arr) / sizeof(arr[0]))
+
+/* ---------- QUALITY (named levels + presets) ---------- */
+/* r_picmip 0 ("High") is not offered: m1l1 needs ~121 MB of textures at 0 against the
+ * Vita's ~112 MB of video memory (41 MB at 1). The renderer also clamps it (r_picmip_cap). */
+static const VitaPerfChoice g_pcTextures[] = {
+    { "Lowest", "3", "seta r_picmip 3" },
+    { "Low",    "2", "seta r_picmip 2" },
+    { "Medium", "1", "seta r_picmip 1" },
+};
+static const VitaPerfChoice g_pcModels[] = {
+    { "Lowest",  "0.25", "seta r_lodscale 0.25; seta r_lodcap 0.25; seta r_lodviewmodelcap 0.25" },
+    { "Low",     "0.35", "seta r_lodscale 0.35; seta r_lodcap 0.35; seta r_lodviewmodelcap 0.25" },
+    { "Medium",  "0.45", "seta r_lodscale 0.45; seta r_lodcap 0.35; seta r_lodviewmodelcap 0.45" },
+    { "High",    "0.55", "seta r_lodscale 0.55; seta r_lodcap 0.5; seta r_lodviewmodelcap 0.55" },
+    { "Higher",  "0.9",  "seta r_lodscale 0.9; seta r_lodcap 0.9; seta r_lodviewmodelcap 0.9" },
+    { "Highest", "1.1",  "seta r_lodscale 1.1; seta r_lodcap 1.0; seta r_lodviewmodelcap 1.0" },
+};
+static const VitaPerfChoice g_pcDistant[] = {
+    { "Lowest",  "4", "seta r_lodbias 4" },
+    { "Low",     "3", "seta r_lodbias 3" },
+    { "Medium",  "2", "seta r_lodbias 2" },
+    { "High",    "1", "seta r_lodbias 1" },
+    { "Highest", "0", "seta r_lodbias 0" },
+};
+static const VitaPerfChoice g_pcCurves[] = {  /* lower r_subdivisions = smoother */
+    { "Lowest",  "20", "seta r_subdivisions 20" },
+    { "Low",     "10", "seta r_subdivisions 10" },
+    { "Medium",  "4",  "seta r_subdivisions 4" },
+    { "High",    "3",  "seta r_subdivisions 3" },
+};
+static const VitaPerfChoice g_pcEffects[] = {
+    { "Minimum", "0.2",  "seta cg_effectdetail 0.2; seta vss_maxcount 25" },
+    { "Lower",   "0.3",  "seta cg_effectdetail 0.3; seta vss_maxcount 23" },
+    { "Low",     "0.5",  "seta cg_effectdetail 0.5; seta vss_maxcount 22" },
+    { "Medium",  "0.7",  "seta cg_effectdetail 0.7; seta vss_maxcount 20" },
+    { "High",    "0.8",  "seta cg_effectdetail 0.8; seta vss_maxcount 18" },
+    { "Higher",  "0.95", "seta cg_effectdetail 0.95; seta vss_maxcount 15" },
+    { "Max",     "1.0",  "seta cg_effectdetail 1.0; seta vss_maxcount 10" },
+};
+static const VitaPerfChoice g_pcTerrain[] = {
+    { "Low",    "10", "seta ter_error 10; seta ter_maxlod 3; seta ter_maxtris 16384" },
+    { "Medium", "9",  "seta ter_error 9; seta ter_maxlod 4; seta ter_maxtris 16384" },
+    { "High",   "7",  "seta ter_error 7; seta ter_maxlod 5; seta ter_maxtris 16384" },
+    { "Max",    "4",  "seta ter_error 4; seta ter_maxlod 6; seta ter_maxtris 24576" },
+};
+static const VitaPerfChoice g_pcFilter[] = {
+    { "Bilinear",  "gl_linear_mipmap_nearest", "seta r_texturemode gl_linear_mipmap_nearest" },
+    { "Trilinear", "gl_linear_mipmap_linear",  "seta r_texturemode gl_linear_mipmap_linear" },
+};
+static const VitaPerfChoice g_pcShadows[] = {
+    { "Off",     "0", "seta cg_shadows 0" },
+    { "Blob",    "1", "seta cg_shadows 1" },
+    { "Precise", "2", "seta cg_shadows 2" },
+};
+static const VitaPerfChoice g_pcWeapon[] = {
+    { "None",     "0", "seta cg_drawviewmodel 0" },
+    { "Gun Only", "1", "seta cg_drawviewmodel 1" },
+    { "Full",     "2", "seta cg_drawviewmodel 2" },
+};
+
+#define VPM_PRESET_PERF \
+    "seta r_picmip 2; seta r_lodscale 0.35; seta r_lodcap 0.35; seta r_lodviewmodelcap 0.25; seta r_lodbias 2; " \
+    "seta r_subdivisions 10; seta cg_effectdetail 0.5; seta vss_maxcount 22; seta ter_error 10; seta ter_maxlod 3; " \
+    "seta r_texturemode gl_linear_mipmap_nearest; seta cg_shadows 0; seta r_dynamiclight 0; seta cg_marks_add 0; seta com_blood 1"
+#define VPM_PRESET_BALANCED \
+    "seta r_picmip 1; seta r_lodscale 0.45; seta r_lodcap 0.35; seta r_lodviewmodelcap 0.45; seta r_lodbias 1; " \
+    "seta r_subdivisions 4; seta cg_effectdetail 0.7; seta vss_maxcount 20; seta ter_error 9; seta ter_maxlod 4; " \
+    "seta r_texturemode gl_linear_mipmap_nearest; seta cg_shadows 1; seta r_dynamiclight 1; seta cg_marks_add 1; seta com_blood 1"
+#define VPM_PRESET_QUALITY \
+    "seta r_picmip 1; seta r_lodscale 0.9; seta r_lodcap 0.9; seta r_lodviewmodelcap 0.9; seta r_lodbias 0; " \
+    "seta r_subdivisions 3; seta cg_effectdetail 0.95; seta vss_maxcount 15; seta ter_error 7; seta ter_maxlod 5; " \
+    "seta r_texturemode gl_linear_mipmap_linear; seta cg_shadows 2; seta r_dynamiclight 1; seta cg_marks_add 1; seta com_blood 1"
+
+static VitaPerfMenuItem g_pmQuality[] = {
+    { "Preset: Performance",  NULL, qfalse, 0, VPM_PRESET_PERF,     qtrue },
+    { "Preset: Balanced",     NULL, qfalse, 0, VPM_PRESET_BALANCED, qtrue },
+    { "Preset: Quality",      NULL, qfalse, 0, VPM_PRESET_QUALITY,  qtrue },
+    { "Texture Quality",  "r_picmip",        qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcTextures) },
+    { "Model Detail",     "r_lodscale",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcModels) },
+    { "Distant Detail",   "r_lodbias",       qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcDistant) },
+    { "Curve Detail",     "r_subdivisions",  qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcCurves) },
+    { "Effect Detail",    "cg_effectdetail", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcEffects) },
+    { "Terrain Detail",   "ter_error",       qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcTerrain) },
+    { "Texture Filter",   "r_texturemode",   qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcFilter) },
+    { "Shadows",          "cg_shadows",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcShadows) },
+    { "Weapon Model",     "cg_drawviewmodel",qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcWeapon) },
 };
 
 struct VitaPerfMenuCategory {
@@ -88,7 +188,6 @@ static VitaPerfMenuItem g_pmLighting[] = {
     /* r_vertexLight / r_lightmap / r_drawSpheres removed (2026-09-23): debug lighting
      * modes that need a vid_restart; toggled live with the world VBO + collapsed
      * multitexture on, they turned every BSP surface into flat garbage colours. */
-    { "Stencil Shadows",  "cg_shadows",           qfalse, 0 },
     { "Lens Flares",      "r_flares",             qfalse, 0 },
 };
 
@@ -96,18 +195,11 @@ static VitaPerfMenuItem g_pmLighting[] = {
 static VitaPerfMenuItem g_pmEffects[] = {
     { "Decals (Marks)",   "cg_marks_add",         qfalse, 0 },
     { "Blood / Gore",     "com_blood",            qfalse, 0 },
-    { "Weapon Model",     "cg_drawviewmodel",     qfalse, 2 }, /* 0 = hidden .. 2 = always (cg_drawGun doesn't exist here) */
     { "Crosshair",        "ui_crosshair",         qfalse, 0 }, /* master on/off; per-state in AIM category */
     { "HUD",              "cg_hud",               qfalse, 0 },
     { "Engine 2D Pass",   "vita_skip_draw2d",     qtrue,  0 }, /* ON = normal, OFF = stripped */
 };
 
-/* ---------- TEXTURES ---------- */
-static VitaPerfMenuItem g_pmTextures[] = {
-    { "Texture LOD",      "r_picmip",             qfalse, 3 }, /* 0=sharp .. 3=tiny */
-    { "Lod Bias",         "r_lodbias",            qfalse, 4 }, /* 0..4 = far cull more */
-    { "Curve Detail",     "r_subdivisions",       qfalse, 24 }, /* 4..24, latched */
-};
 
 /* ---------- AIM / LOOK ---------- */
 static VitaPerfMenuItem g_pmAim[] = {
@@ -172,13 +264,13 @@ static VitaPerfMenuItem g_pmGame[] = {
 };
 
 static VitaPerfMenuCategory g_pmCats[] = {
+    { "QUALITY",   g_pmQuality,  sizeof(g_pmQuality)  / sizeof(VitaPerfMenuItem) },
     { "FASES",     g_pmFases,    sizeof(g_pmFases)    / sizeof(VitaPerfMenuItem) },
     { "GAME",      g_pmGame,     sizeof(g_pmGame)     / sizeof(VitaPerfMenuItem) },
     { "WORLD",     g_pmWorld,    sizeof(g_pmWorld)    / sizeof(VitaPerfMenuItem) },
     { "LIGHTING",  g_pmLighting, sizeof(g_pmLighting) / sizeof(VitaPerfMenuItem) },
     { "EFFECTS",   g_pmEffects,  sizeof(g_pmEffects)  / sizeof(VitaPerfMenuItem) },
     { "AIM",       g_pmAim,      sizeof(g_pmAim)      / sizeof(VitaPerfMenuItem) },
-    { "TEXTURES",  g_pmTextures, sizeof(g_pmTextures) / sizeof(VitaPerfMenuItem) },
     { "DEBUG",     g_pmDebug,    sizeof(g_pmDebug)    / sizeof(VitaPerfMenuItem) },
 };
 static const int g_pmCatCount = sizeof(g_pmCats) / sizeof(g_pmCats[0]);
@@ -209,10 +301,36 @@ static void VitaPerfMenu_ClampScroll(void)
 /* Returns a display string for the item's current state.
  * Toggle (cycleMax==0): "[X]" / "[ ]" depending on inverted flag.
  * Cycle (cycleMax>0): "[N/MAX]". */
+/* The cvar's pending value if it is latched (applied at the next vid_restart). */
+static const char *VitaPerfMenu_CvarString(const char *name)
+{
+    const cvar_t *cv = Cvar_FindVar(name);
+    if (!cv) return "";
+    return cv->latchedString ? cv->latchedString : cv->string;
+}
+
+static int VitaPerfMenu_ChoiceIndex(const VitaPerfMenuItem *it)
+{
+    const char *cur = VitaPerfMenu_CvarString(it->cvarName);
+    for (int i = 0; i < it->numChoices; i++) {
+        const char *v = it->choices[i].value;
+        const qboolean numeric = (v[0] >= '0' && v[0] <= '9') || v[0] == '.';
+        if (numeric ? (fabs(atof(cur) - atof(v)) < 0.001) : !Q_stricmp(cur, v)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static const char *VitaPerfMenu_GetStateStr(const VitaPerfMenuItem *it)
 {
-    static char buf[16];
+    static char buf[32];
     if (it->cmd) return ">>";   /* action item: no checkbox, just "run me" */
+    if (it->choices) {
+        const int idx = VitaPerfMenu_ChoiceIndex(it);
+        Com_sprintf(buf, sizeof(buf), "[%s]", idx >= 0 ? it->choices[idx].name : "Custom");
+        return buf;
+    }
     int cur = VitaPerfMenu_GetValue(it);
     if (it->cycleMax > 0) {
         Com_sprintf(buf, sizeof(buf), "[%d/%d]", cur, it->cycleMax);
@@ -225,6 +343,18 @@ static const char *VitaPerfMenu_GetStateStr(const VitaPerfMenuItem *it)
 static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
 {
     if (it->cmd || !it->cvarName) return;   /* action items have no cvar to toggle */
+    if (it->choices) {
+        const int      next = (VitaPerfMenu_ChoiceIndex(it) + 1) % it->numChoices;
+        const cvar_t *cv;
+
+        Cbuf_ExecuteText(EXEC_NOW, va("%s\n", it->choices[next].cmd));
+        cv = Cvar_FindVar(it->cvarName);
+        if (it->restart || (cv && (cv->flags & CVAR_LATCH))) {
+            g_pmNeedRestart = qtrue;
+        }
+        Com_Printf("PERF-MENU: %s = %s\n", it->label, it->choices[next].name);
+        return;
+    }
     int cur = VitaPerfMenu_GetValue(it);
     int next;
     if (it->cycleMax > 0) {
@@ -341,8 +471,17 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
         if (it->cmd) {
             /* Action item (load a level, cheat, restart…). Close the menu first
              * so input returns to the game, then queue the command. */
-            VitaPerfMenu_Close();
-            Cbuf_AddText(va("%s\n", it->cmd));
+            if (it->restart) {
+                /* Quality preset: plain cvar sets, applied now so the vid_restart
+                 * queued by Close sees them. */
+                Cbuf_ExecuteText(EXEC_NOW, va("%s\n", it->cmd));
+                g_pmNeedRestart = qtrue;
+                VitaPerfMenu_Close();
+            } else {
+                /* Level load / cheat: close first so input returns to the game. */
+                VitaPerfMenu_Close();
+                Cbuf_AddText(va("%s\n", it->cmd));
+            }
             Com_Printf("PERF-MENU: run '%s'\n", it->cmd);
         } else {
             VitaPerfMenu_ToggleItem(it);

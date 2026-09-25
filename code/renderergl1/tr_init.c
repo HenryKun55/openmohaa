@@ -1349,6 +1349,13 @@ void R_Register( void )
 
 	r_picmip = ri.Cvar_Get ("r_picmip", "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_picmip_cap = ri.Cvar_Get ("r_picmip_cap", "0", CVAR_ARCHIVE | CVAR_LATCH );
+#ifdef __vita__
+	// Full-size textures (r_picmip 0) need ~121 MB in m1l1 (TEX-MEM) against ~112 MB of
+	// video memory; 1 takes ~41 MB. Never go below 1, whatever a menu asks for.
+	if (r_picmip_cap->integer < 1) {
+		ri.Cvar_Set("r_picmip_cap", "1");
+	}
+#endif
     if (r_picmip->integer < r_picmip_cap->integer) {
         ri.Cvar_Set("r_picmip", r_picmip_cap->string);
     }
@@ -1879,6 +1886,24 @@ void RE_EndRegistration( void ) {
 	}
 
 	R_FreeUnusedImages();
+
+#ifdef __vita__
+	{
+		// How much the level's textures really take (the zone report's "texture
+		// memory" is a constant), and what vitaGL has left, to size r_picmip.
+		extern size_t vglMemFree(int type);
+		double bytes = 0;
+		int    i;
+
+		for (i = 0; i < tr.numImages; i++) {
+			// bytesUsed = components x top-level size (at upload); + 1/3 for mipmaps.
+			bytes += tr.images[i].bytesUsed * (4.0 / 3.0);
+		}
+		ri.Printf(PRINT_ALL, "TEX-MEM: picmip %d: %d images, %.1f MB | vitaGL free: vram %.1f MB, ram %.1f MB, phycont %.1f MB\n",
+			r_picmip->integer, tr.numImages, bytes / (1024.0 * 1024.0),
+			vglMemFree(0) / (1024.0 * 1024.0), vglMemFree(1) / (1024.0 * 1024.0), vglMemFree(2) / (1024.0 * 1024.0));
+	}
+#endif
 }
 
 /*
