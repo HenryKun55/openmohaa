@@ -2838,13 +2838,17 @@ void R_CreateBuiltinImages(void) {
 	}
 
 	Com_Memset(lightmap_buffer, 0xFFFFFFFF, sizeof(lightmap_buffer));
-	for (i = 0; i < SMP_FRAMES * DLIGHT_IMAGES; i++) {
+	for (i = 0; i < DLIGHT_RING; i++) {
 		char filename[64];
 
 		Com_sprintf(filename, sizeof(filename), "*lightmapD%i", i);
 		tr.dlightImages[i] = R_CreateImageOld(filename, lightmap_buffer, LIGHTMAP_SIZE, LIGHTMAP_SIZE, 0, 1, qfalse, qfalse, qfalse, 0, GL_CLAMP, GL_CLAMP);
 		tr.dlightImages[i]->r_sequence = -1;
 	}
+	for (i = 0; i < DLIGHT_IMAGES; i++) {
+		backEnd.dlightPhys[i] = i;
+	}
+	backEnd.dlightRingNext = 0;
 
 	tr.identityLightImage = R_CreateImageOld("*identityLight", (byte *)data, 8, 8, 0, 1, qfalse, qfalse, qfalse, qfalse, GL_REPEAT, GL_REPEAT);
 	tr.identityLightImage->r_sequence = -1;

@@ -74,8 +74,9 @@ long myftol( float f );
 // to be double buffered to allow it to run in
 // parallel on a dual cpu machine
 #define	SMP_FRAMES		2
-#define	DLIGHT_IMAGES	15	// per frame; see tr.dlightImages
-#define	RB_DLIGHT_IMAGE(n)	(tr.dlightImages[backEnd.smpFrame * DLIGHT_IMAGES + (n)])
+#define	DLIGHT_IMAGES	15	// dlight lightmap blocks a view can use (4 bits of the sort key)
+#define	DLIGHT_RING		32	// textures behind them; see RB_UploadDlightsCmd
+#define	RB_DLIGHT_IMAGE(n)	(tr.dlightImages[backEnd.dlightPhys[(n)]])
 
 // 12 bits
 // see QSORT_SHADERNUM_SHIFT
@@ -1334,6 +1335,8 @@ typedef struct {
     int backEndMsec;
     float shaderStartTime;
 	struct backEndData_s	*data;	// frame being executed (backEndData is the front end's)
+	int		dlightPhys[DLIGHT_IMAGES];	// view's dlight block -> tr.dlightImages ring slot
+	int		dlightRingNext;
 } backEndState_t;
 
 /*
@@ -1369,10 +1372,11 @@ typedef struct {
 	image_t					*flareImage;
 	image_t					*whiteImage;			// full of 0xff
 	image_t					*identityLightImage;	// full of tr.identityLightByte
-	// One set of dynamic-light lightmaps per SMP frame: the render thread re-uploads
-	// them every frame, and reusing the texture the GPU may still be sampling for the
-	// previous frame shows its lights on the wrong texels (flashes).
-	image_t					*dlightImages[SMP_FRAMES * DLIGHT_IMAGES];
+	// Ring of dynamic-light lightmap textures. Every upload takes the next one, so a
+	// texture is only rewritten many frames after its last use: the speedhack vitaGL
+	// writes glTexSubImage2D in place even while the GPU still samples the texture
+	// for an earlier frame, which lit whole walls with another frame's lights.
+	image_t					*dlightImages[DLIGHT_RING];
 
 	shader_t				*defaultShader;
 	shader_t				*shadowShader;
