@@ -480,22 +480,30 @@ void lens_flare::Init(const char *which)
     lasttime = backEnd.refdef.time - fullfade;
 }
 
-static void R_DrawSunFlare()
+/*
+R_InitSunFlare
+
+Loads the level's sun flare (its shaders and images). Called by the front end once
+the world's lights are parsed: it used to happen lazily inside R_DrawSunFlare, i.e.
+on the render thread, creating shaders/images while the main thread registered others.
+*/
+void R_InitSunFlare()
 {
-    if (!s_sun.exists) {
+    sunFlare.initted = false;
+    if (!s_sun.exists || !s_sun.szFlareName[0]) {
         return;
     }
-    if (!sunFlare.initted) {
-        if (!s_sun.szFlareName[0]) {
-            return;
-        }
-        if (Q_stricmp(s_sun.szFlareName, "none")) {
-            sunFlare.Init(s_sun.szFlareName);
-        }
+    if (Q_stricmp(s_sun.szFlareName, "none")) {
+        sunFlare.Init(s_sun.szFlareName);
     }
-
     if (!sunFlare.initted) {
         s_sun.szFlareName[0] = 0;
+    }
+}
+
+static void R_DrawSunFlare()
+{
+    if (!s_sun.exists || !sunFlare.initted) {
         return;
     }
 

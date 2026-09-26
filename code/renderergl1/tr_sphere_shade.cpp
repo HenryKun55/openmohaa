@@ -1344,6 +1344,7 @@ static void R_InsertLightIntoList(spherel_t *pLight, float fIntensity, gatheredL
 
 int R_GatherLightSources(const vec3_t vPos, vec3_t *pvLightPos, vec3_t *pvLightIntensity, int iMaxLights)
 {
+    R_SmpSerialPoint(7);
     int              i, j;
     int              iLightCount;
     vec3_t           vEnd;
@@ -1385,20 +1386,33 @@ int R_GatherLightSources(const vec3_t vPos, vec3_t *pvLightPos, vec3_t *pvLightI
 
     if (leaf) {
         if (leaf->numlights) {
-            light_reference_count++;
+            // The cgame calls this from the main thread while the render thread builds
+            // sphere lighting with light_reference_count / pLight->reference_count, so
+            // don't touch those: skip duplicates with a local list instead.
+            const spherel_t *seen[256];
+            int              numSeen = 0;
 
             for (i = (leaf->lights[0] == &tr.sSunLight ? 1 : 0); i < leaf->numlights; i++) {
                 pCurrLight = leaf->lights[i];
                 if (pCurrLight->leaf != (mnode_t *)-1) {
-                    byte mask = tr_frontViewLights.areamask[pCurrLight->leaf->area >> 3];
+                    byte     mask = tr_frontViewLights.areamask[pCurrLight->leaf->area >> 3];
+                    qboolean dup  = qfalse;
 
-                    if (!(mask & (1 << (pCurrLight->leaf->area & 7)))
-                        && pCurrLight->reference_count != light_reference_count) {
+                    for (j = 0; j < numSeen; j++) {
+                        if (seen[j] == pCurrLight) {
+                            dup = qtrue;
+                            break;
+                        }
+                    }
+
+                    if (!(mask & (1 << (pCurrLight->leaf->area & 7))) && !dup) {
                         if (R_CheckAddLightToList(pCurrLight, vPos, &fFalloff)) {
                             R_InsertLightIntoList(pCurrLight, fFalloff, &pLightsHead);
                         }
 
-                        pCurrLight->reference_count = light_reference_count;
+                        if (numSeen < (int)ARRAY_LEN(seen)) {
+                            seen[numSeen++] = pCurrLight;
+                        }
                     }
                 }
             }

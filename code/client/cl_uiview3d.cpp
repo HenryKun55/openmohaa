@@ -135,6 +135,12 @@ static const VitaPerfChoice g_pcSmpSerial[] = {
     { "Full",     "1", "set r_vita_smp_serial 1" },  /* no overlap at all */
     { "Game",     "2", "set r_vita_smp_serial 2" },  /* overlaps only server/game/sound/input */
     { "Scene",    "3", "set r_vita_smp_serial 3" },  /* + cgame scene building */
+    /* 4+: wait at the first call of a kind inside the cgame window */
+    { "cg:Trace", "4", "set r_vita_smp_serial 4" },
+    { "cg:Add",   "5", "set r_vita_smp_serial 5" },
+    { "cg:Pose",  "6", "set r_vita_smp_serial 6" },
+    { "cg:Light", "7", "set r_vita_smp_serial 7" },
+    { "cg:Marks", "8", "set r_vita_smp_serial 8" },
 };
 static const VitaPerfChoice g_pcWeapon[] = {
     { "None",     "0", "seta cg_drawviewmodel 0" },

@@ -2507,6 +2507,7 @@ void RE_LoadWorldMap( const char *name ) {
 
     ri.UI_LoadResource("*111");
     R_Sphere_InitLights();
+    R_InitSunFlare();
     ri.UI_LoadResource("*112");
     R_InitTerrain();
     ri.UI_LoadResource("*113");

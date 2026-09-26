@@ -548,7 +548,10 @@ void R_LoadFontShader(fontheader_sgl_t* font)
     }
 }
 
-static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, float x, float y, int maxlen, const float *pvVirtualScreen) {
+// heightScale/generalScale/fontZ are passed in: the render thread draws queued strings
+// with the values captured at queue time and must not touch the front end's globals.
+static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, float x, float y, int maxlen, const float *pvVirtualScreen,
+                                  float heightScale, float generalScale, float fontZ) {
     float charHeight;
     float startx, starty;
     int i;
@@ -575,7 +578,7 @@ static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, floa
         return;
     }
 
-    charHeight = s_fontHeightScale * font->height * s_fontGeneralScale;
+    charHeight = heightScale * font->height * generalScale;
     RB_BeginSurface((shader_t*)font->shader);
 
     for (i = 0; text[i]; i++) {
@@ -596,7 +599,7 @@ static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, floa
             if (indirected == -1) {
                 ri.Printf(PRINT_DEVELOPER, "R_DrawString: no space-character in font!\n");
             } else {
-                x = s_fontGeneralScale * font->locations[indirected].size[0] * 256.0 * 3.0 + x;
+                x = generalScale * font->locations[indirected].size[0] * 256.0 * 3.0 + x;
             }
             break;
 
@@ -641,16 +644,16 @@ static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, floa
             // vertices position
             tess.xyz[tess.numVertexes][0] = x;
             tess.xyz[tess.numVertexes][1] = y;
-            tess.xyz[tess.numVertexes][2] = s_fontZ;
-            tess.xyz[tess.numVertexes + 1][0] = x + s_fontGeneralScale * loc->size[0] * 256.0;
+            tess.xyz[tess.numVertexes][2] = fontZ;
+            tess.xyz[tess.numVertexes + 1][0] = x + generalScale * loc->size[0] * 256.0;
             tess.xyz[tess.numVertexes + 1][1] = y;
-            tess.xyz[tess.numVertexes + 1][2] = s_fontZ;
+            tess.xyz[tess.numVertexes + 1][2] = fontZ;
             tess.xyz[tess.numVertexes + 2][0] = x;
             tess.xyz[tess.numVertexes + 2][1] = y + charHeight;
-            tess.xyz[tess.numVertexes + 2][2] = s_fontZ;
-            tess.xyz[tess.numVertexes + 3][0] = x + s_fontGeneralScale * loc->size[0] * 256.0;
+            tess.xyz[tess.numVertexes + 2][2] = fontZ;
+            tess.xyz[tess.numVertexes + 3][0] = x + generalScale * loc->size[0] * 256.0;
             tess.xyz[tess.numVertexes + 3][1] = y + charHeight;
-            tess.xyz[tess.numVertexes + 3][2] = s_fontZ;
+            tess.xyz[tess.numVertexes + 3][2] = fontZ;
 
             // indices
             tess.indexes[tess.numIndexes] = tess.numVertexes;
@@ -673,7 +676,7 @@ static void R_DrawString_sgl_Impl(fontheader_sgl_t* font, const char* text, floa
                 tess.xyz[tess.numVertexes + 3][1] *= fHeightScale;
             }
 
-            x += s_fontGeneralScale * loc->size[0] * 256.0;
+            x += generalScale * loc->size[0] * 256.0;
             tess.numVertexes += 4;
             tess.numIndexes += 6;
             break;
@@ -730,30 +733,20 @@ static void R_DrawString_sgl(fontheader_sgl_t* font, const char* text, float x, 
         }
     }
 #else
-    R_DrawString_sgl_Impl(font, text, x, y, maxlen, pvVirtualScreen);
+    R_DrawString_sgl_Impl(font, text, x, y, maxlen, pvVirtualScreen, s_fontHeightScale, s_fontGeneralScale, s_fontZ);
 #endif
 }
 
 #ifdef R_QUEUE_2D
 void R_DrawString_sgl_Exec(const draw2DCommand_t *cmd) {
-    const float savedHeight  = s_fontHeightScale;
-    const float savedGeneral = s_fontGeneralScale;
-    const float savedZ       = s_fontZ;
-    float       vs[2];
+    float vs[2];
 
-    s_fontHeightScale  = cmd->f[2];
-    s_fontGeneralScale = cmd->f[3];
-    s_fontZ            = cmd->f[4];
-    vs[0]              = cmd->f[5];
-    vs[1]              = cmd->f[6];
+    vs[0] = cmd->f[5];
+    vs[1] = cmd->f[6];
 
     // The text was already cut to maxlen when queued.
     R_DrawString_sgl_Impl((fontheader_sgl_t *)cmd->ptr, (const char *)(cmd + 1), cmd->f[0], cmd->f[1], -1,
-                          cmd->i[0] ? vs : NULL);
-
-    s_fontHeightScale  = savedHeight;
-    s_fontGeneralScale = savedGeneral;
-    s_fontZ            = savedZ;
+                          cmd->i[0] ? vs : NULL, cmd->f[2], cmd->f[3], cmd->f[4]);
 }
 #endif
 

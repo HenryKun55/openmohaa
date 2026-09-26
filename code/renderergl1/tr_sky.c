@@ -301,7 +301,7 @@ CLOUD VERTEX GENERATION
 **
 ** Parms: s, t range from -1 to 1
 */
-static void MakeSkyVec( float s, float t, int axis, float outSt[2], vec3_t outXYZ )
+static void MakeSkyVec( float s, float t, int axis, float outSt[2], vec3_t outXYZ, float zFar )
 {
 	// 1 = s, 2 = t, 3 = 2048
 	static int	st_to_vec[6][3] =
@@ -320,7 +320,7 @@ static void MakeSkyVec( float s, float t, int axis, float outSt[2], vec3_t outXY
 	int			j, k;
 	float	boxSize;
 
-	boxSize = backEnd.viewParms.zFar / 1.75;		// div sqrt(3)
+	boxSize = zFar / 1.75;		// div sqrt(3)
 	b[0] = s*boxSize;
 	b[1] = t*boxSize;
 	b[2] = boxSize;
@@ -455,7 +455,7 @@ static void DrawSkyBox( shader_t *shader )
 							( t - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
 							i, 
 							s_skyTexCoords[t][s], 
-							s_skyPoints[t][s] );
+							s_skyPoints[t][s] , backEnd.viewParms.zFar);
 			}
 		}
 
@@ -599,7 +599,7 @@ static void FillCloudBox( const shader_t *shader, int stage )
 							( t - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
 							i, 
 							NULL,
-							s_skyPoints[t][s] );
+							s_skyPoints[t][s] , backEnd.viewParms.zFar);
 
 				s_skyTexCoords[t][s][0] = s_cloudTexCoords[i][t][s][0];
 				s_skyTexCoords[t][s][1] = s_cloudTexCoords[i][t][s][1];
@@ -656,9 +656,8 @@ void R_InitSkyTexCoords( float heightCloud )
 	vec3_t skyVec;
 	vec3_t v;
 
-	// init zfar so MakeSkyVec works even though
-	// a world hasn't been bounded
-	backEnd.viewParms.zFar = 1024;
+	// MakeSkyVec with a fixed zfar: only the direction matters here, and this runs
+	// on the main thread (shader parsing) where backEnd belongs to the render thread.
 
 	for ( i = 0; i < 6; i++ )
 	{
@@ -671,7 +670,7 @@ void R_InitSkyTexCoords( float heightCloud )
 							( t - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
 							i, 
 							NULL,
-							skyVec );
+							skyVec , 1024);
 
 				// compute parametric value 'p' that intersects with cloud layer
 				p = ( 1.0f / ( 2 * DotProduct( skyVec, skyVec ) ) ) *

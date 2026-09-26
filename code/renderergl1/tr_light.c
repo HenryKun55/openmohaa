@@ -1091,6 +1091,7 @@ R_GetLightingForDecal
 */
 void R_GetLightingForDecal(vec3_t vLight, const vec3_t vFacing, const vec3_t vOrigin)
 {
+    R_SmpSerialPoint(7);
     float fMax;
 
     R_GetLightingGridValue(vOrigin, vLight);
@@ -1137,6 +1138,7 @@ R_GetLightingForSmoke
 */
 void R_GetLightingForSmoke(vec3_t vLight, const vec3_t vOrigin)
 {
+    R_SmpSerialPoint(7);
     int       i;
     dlight_t *dl;
     float     power;

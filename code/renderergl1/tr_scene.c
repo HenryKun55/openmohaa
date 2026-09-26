@@ -167,6 +167,13 @@ void R_AddTerrainMarkSurfaces(void) {
     {
         terMark = &tr.refdef.terMarks[j];
 
+        // Fit the mark to the terrain here, on the front end that owns the terrain's
+        // vertex pools, rather than in RB_SurfaceMarkFragment.
+        if (terMark->iIndex > 0
+            && !R_TerrainHeightForPoly(&tr.world->terraPatches[terMark->iIndex - 1], terMark->verts, terMark->numVerts)) {
+            continue;
+        }
+
         shader = R_GetShaderByHandle(terMark->surfaceType);
         terMark->surfaceType = SF_MARK_FRAG;
         R_AddDrawSurf(&terMark->surfaceType, shader, 0);
@@ -227,6 +234,7 @@ RE_AddRefEntityToScene
 =====================
 */
 void RE_AddRefEntityToScene( const refEntity_t *ent, int parentEntityNumber) {
+	R_SmpSerialPoint(5);
 	if ( !tr.registered ) {
 		return;
 	}
@@ -306,6 +314,8 @@ RE_AddDynamicLightToScene
 */
 void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, float g, float b, int type ) {
 	dlight_t	*dl;
+
+	R_SmpSerialPoint(5);
 
 	if ( !tr.registered ) {
 		return;
@@ -443,6 +453,7 @@ to handle mirrors,
 */
 void RE_RenderScene( const refdef_t *fd ) {
 	R_SmpSerialPoint(3);
+	R_SmpSerialWindow(qfalse);
 	viewParms_t		parms;
 	int				startTime;
 
@@ -548,6 +559,18 @@ void RE_RenderScene( const refdef_t *fd ) {
 	if (r_vertexLight->integer == 1 ) {
 		tr.refdef.num_dlights = 0;
 	}
+#ifdef __vita__
+	{
+		// The perf menu's "Dynamic Lights" (r_dynamiclight) was only read by the UI.
+		static cvar_t *r_dynamiclight_vita;
+		if (!r_dynamiclight_vita) {
+			r_dynamiclight_vita = ri.Cvar_Get("r_dynamiclight", "1", CVAR_ARCHIVE);
+		}
+		if (!r_dynamiclight_vita->integer) {
+			tr.refdef.num_dlights = 0;
+		}
+	}
+#endif
 
 	// a single frame may have multiple scenes draw inside it --
 	// a 3D game view, 3D status bar renderings, 3D menus, etc.

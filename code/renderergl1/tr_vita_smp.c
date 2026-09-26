@@ -109,11 +109,29 @@ void R_SyncRenderThread(void)
 
 // r_vita_smp_serial 2/3 (diagnostic): let the render thread overlap only part of
 // the main thread's frame, to find which part races with it.
+// Levels 4+ only fire inside the cgame window (RE_BeginFrame .. first RE_RenderScene).
+static qboolean s_serialWindow;
+
 void R_SmpSerialPoint(int level)
 {
-	if (s_thread >= 0 && r_vita_smp_serial->integer == level) {
-		R_SyncRenderThread_Wait(NULL);
+	if (s_thread < 0 || r_vita_smp_serial->integer != level) {
+		return;
 	}
+	if (level >= 4 && (!s_serialWindow || sceKernelGetThreadId() == s_thread)) {
+		return;
+	}
+	R_SyncRenderThread_Wait(NULL);
+}
+
+void R_SmpSerialWindow(qboolean open)
+{
+	s_serialWindow = open;
+}
+
+extern void (*cm_vitaLockHook)(void);
+static void R_SmpCmLockHook(void)
+{
+	R_SmpSerialPoint(4);
 }
 
 void R_SmpHandoff(const void *cmds)
@@ -152,6 +170,7 @@ void R_SmpInit(void)
 {
 	r_vita_smp = ri.Cvar_Get("r_vita_smp", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_vita_smp_serial = ri.Cvar_Get("r_vita_smp_serial", "0", 0);
+	cm_vitaLockHook = R_SmpCmLockHook;
 	if (!r_vita_smp->integer || s_thread >= 0) {
 		return;
 	}
@@ -201,6 +220,7 @@ qboolean R_SmpActive(void) { return qfalse; }
 void R_SyncRenderThread(void) {}
 void R_SmpHandoff(const void *cmds) { (void)cmds; }
 void R_SmpSerialPoint(int level) { (void)level; }
+void R_SmpSerialWindow(qboolean open) { (void)open; }
 void R_SmpInit(void) {}
 void R_SmpShutdown(void) {}
 

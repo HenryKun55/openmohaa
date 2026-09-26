@@ -186,6 +186,10 @@ void RB_SurfacePolychain( srfPoly_t *p ) {
 	int		i;
 	int		numv;
 
+#ifdef __vita__
+	if (vita_skip_mask && (vita_skip_mask->integer & 512)) return;
+#endif
+
 	RB_CHECKOVERFLOW( p->numVerts, 3*(p->numVerts - 2) );
 
 	// fan triangles into the tess array
@@ -220,9 +224,14 @@ void RB_SurfaceMarkFragment(srfMarkFragment_t* p) {
 	int i;
 	int numv;
 
+#ifdef __vita__
+	if (vita_skip_mask && (vita_skip_mask->integer & 1024)) return;
+#endif
+
 	RB_CHECKOVERFLOW( p->numVerts, 3*(p->numVerts - 2) );
 
-	if (p->iIndex <= 0 || R_TerrainHeightForPoly(&tr.world->terraPatches[p->iIndex - 1], p->verts, p->numVerts))
+	// Terrain marks were fitted to the terrain's current tessellation by the front end
+	// (R_AddTerrainMarkSurfaces): the vertex pools it reads change under the render thread.
 	{
 		// FIXME: from here on out, it's mostly the same code as in RB_SurfacePolychain,
 		// common part could be extracted into an inline func

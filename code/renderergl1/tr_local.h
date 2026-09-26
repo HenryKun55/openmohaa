@@ -2119,6 +2119,7 @@ typedef struct {
 } frontViewLights_t;
 extern frontViewLights_t tr_frontViewLights;
 void R_SaveFrontViewLights(void);
+void R_InitSunFlare(void);
 
 int R_LightForPoint(vec3_t point, vec3_t ambientLight, vec3_t directedLight, vec3_t lightDir);
 
@@ -2628,6 +2629,7 @@ qboolean R_SmpActive(void);
 void R_SyncRenderThread(void);	// wait for the frame the render thread is drawing
 void R_SmpHandoff(const void *cmds);
 void R_SmpSerialPoint(int level);
+void R_SmpSerialWindow(qboolean open);
 void R_SmpInit(void);
 void R_SmpShutdown(void);
 const void *RB_Draw2D(const void *data);

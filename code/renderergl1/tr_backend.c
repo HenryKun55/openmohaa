@@ -1491,7 +1491,45 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 	GLimp_LogComment( "***************** RB_SwapBuffers *****************\n\n\n" );
 
+#ifdef __vita__
+	{
+		// VGL-POOL: vitaGL's per-frame circular vertex/uniform pool (this build
+		// rotates circular_data_pool[vgl_circular_idx] on every vglSwapBuffers).
+		// Log which slot each frame used, how much it filled and its capacity.
+		extern unsigned char *circular_data_pool[5], *circular_data_pool_ptr[5], *circular_data_pool_limit[5];
+		extern int vgl_circular_idx;
+		static int n, maxUsed, overflows, seq[8], seqN;
+		int idx  = vgl_circular_idx;
+		int used = 0, cap = 0;
+		if (idx >= 0 && idx < 5 && circular_data_pool[idx]) {
+			used = (int)(circular_data_pool_ptr[idx] - circular_data_pool[idx]);
+			cap  = (int)(circular_data_pool_limit[idx] - circular_data_pool[idx]);
+		}
+		if (used > maxUsed) maxUsed = used;
+		if (used > cap) overflows++;
+		if (seqN < 8) seq[seqN++] = idx;
+		if (++n >= 60) {
+			ri.Printf(PRINT_ALL, "VGL-POOL: slots %d%d%d%d%d%d%d%d | max used %d KB / cap %d KB | overflow frames %d/60\n",
+				seq[0], seq[1], seq[2], seq[3], seq[4], seq[5], seq[6], seq[7],
+				maxUsed / 1024, cap / 1024, overflows);
+			n = maxUsed = overflows = seqN = 0;
+		}
+	}
+#endif
 	GLimp_EndFrame();
+#ifdef __vita__
+	{
+		// Diagnostic: wait for the GPU to finish the frame just submitted, so no
+		// vitaGL per-frame pool can be reused while the GPU still reads it.
+		static cvar_t *r_vita_finish;
+		if (!r_vita_finish) {
+			r_vita_finish = ri.Cvar_Get("r_vita_finish", "0", 0);
+		}
+		if (r_vita_finish->integer) {
+			qglFinish();
+		}
+	}
+#endif
 
 	backEnd.in2D = qfalse;
 
