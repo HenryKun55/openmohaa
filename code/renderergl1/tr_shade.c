@@ -1932,6 +1932,75 @@ void RB_StageIteratorLightmappedMultitextureUnfogged( void ) {
 /*
 ** RB_EndSurface
 */
+#ifdef __vita__
+/*
+DRAW-CHECK (diagnostic, r_vita_drawcheck 1): sanity-check what each draw hands the
+GPU -- out-of-range indexes, non-finite or absurd positions, wild texture
+coordinates -- and log per 60 frames how many draws were bad and from which shaders.
+Clean data here while the screen still shows garbage means the corruption is past
+the CPU side (GPU / vitaGL memory reuse).
+*/
+static int  s_dcDraws, s_dcBadIdx, s_dcBadPos, s_dcBadSt, s_dcNumNames;
+static char s_dcNames[4][48];
+
+static void RB_VitaDrawCheck(void)
+{
+	static cvar_t *r_vita_drawcheck;
+	int i, bad = 0;
+
+	if (!r_vita_drawcheck) {
+		r_vita_drawcheck = ri.Cvar_Get("r_vita_drawcheck", "0", 0);
+	}
+	if (!r_vita_drawcheck->integer) {
+		return;
+	}
+	s_dcDraws++;
+	for (i = 0; i < tess.numIndexes; i++) {
+		if (tess.indexes[i] >= (glIndex_t)tess.numVertexes) {
+			s_dcBadIdx++;
+			bad = 1;
+			break;
+		}
+	}
+	for (i = 0; i < tess.numVertexes; i++) {
+		const float *p = tess.xyz[i];
+		if (!(p[0] > -262144.f && p[0] < 262144.f) || !(p[1] > -262144.f && p[1] < 262144.f)
+			|| !(p[2] > -262144.f && p[2] < 262144.f)) {
+			s_dcBadPos++;
+			bad = 1;
+			break;
+		}
+	}
+	for (i = 0; i < tess.numVertexes; i++) {
+		const float *t = tess.texCoords[i][0];
+		if (!(t[0] > -4096.f && t[0] < 4096.f) || !(t[1] > -4096.f && t[1] < 4096.f)) {
+			s_dcBadSt++;
+			bad = 1;
+			break;
+		}
+	}
+	if (bad && s_dcNumNames < 4) {
+		Q_strncpyz(s_dcNames[s_dcNumNames++], tess.shader->name, sizeof(s_dcNames[0]));
+	}
+}
+
+void RB_VitaDrawCheckFrame(void)
+{
+	static int n;
+	if (++n < 60) {
+		return;
+	}
+	n = 0;
+	if (s_dcDraws) {
+		ri.Printf(PRINT_ALL, "DRAW-CHECK: %d draws, bad index %d, bad pos %d, bad st %d | %s %s %s %s\n",
+			s_dcDraws, s_dcBadIdx, s_dcBadPos, s_dcBadSt,
+			s_dcNumNames > 0 ? s_dcNames[0] : "", s_dcNumNames > 1 ? s_dcNames[1] : "",
+			s_dcNumNames > 2 ? s_dcNames[2] : "", s_dcNumNames > 3 ? s_dcNames[3] : "");
+	}
+	s_dcDraws = s_dcBadIdx = s_dcBadPos = s_dcBadSt = s_dcNumNames = 0;
+}
+#endif
+
 void RB_EndSurface( void ) {
 	shaderCommands_t *input;
 #ifdef __vita__
@@ -1958,6 +2027,10 @@ void RB_EndSurface( void ) {
 		RB_ComputeShadowVolume();
 		return;
 	}
+
+#ifdef __vita__
+	RB_VitaDrawCheck();
+#endif
 
 	// for debugging of sort order issues, stop rendering after a given sort value
 	if ( r_debugSort->integer && r_debugSort->integer < tess.shader->sort ) {

@@ -1203,7 +1203,9 @@ void CL_KeyEvent(int key, qboolean down, unsigned time)
 #ifdef __vita__
     // Cross skips videos and scripted cutscenes, like Esc on a keyboard (it is bound
     // to +use, which would otherwise swallow it during a cutscene).
-    if (down && key == K_PAD0_A && Key_GetCatcher() == 0
+    // Not while a menu is up: the mission briefing's CONTINUE shows while the level's
+    // opening cutscene flag is already set, and Cross must click it.
+    if (down && key == K_PAD0_A && Key_GetCatcher() == 0 && !UI_MenuUp()
         && (clc.demoplaying || clc.state == CA_CINEMATIC
             || (clc.state == CA_ACTIVE && (cl.snap.ps.stats[STAT_CINEMATIC] & 1)))) {
         Cvar_Set("nextdemo", "");

@@ -1493,12 +1493,16 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 #ifdef __vita__
 	{
+		extern void RB_VitaDrawCheckFrame(void);
+		RB_VitaDrawCheckFrame();
+	}
+	{
 		// VGL-POOL: vitaGL's per-frame circular vertex/uniform pool (this build
 		// rotates circular_data_pool[vgl_circular_idx] on every vglSwapBuffers).
 		// Log which slot each frame used, how much it filled and its capacity.
 		extern unsigned char *circular_data_pool[5], *circular_data_pool_ptr[5], *circular_data_pool_limit[5];
 		extern int vgl_circular_idx;
-		static int n, maxUsed, overflows, seq[8], seqN;
+		static int n, maxUsed, overflows, seq[8], seqN, maxImm, immCap;
 		int idx  = vgl_circular_idx;
 		int used = 0, cap = 0;
 		if (idx >= 0 && idx < 5 && circular_data_pool[idx]) {
@@ -1506,13 +1510,22 @@ const void	*RB_SwapBuffers( const void *data ) {
 			cap  = (int)(circular_data_pool_limit[idx] - circular_data_pool[idx]);
 		}
 		if (used > maxUsed) maxUsed = used;
+		{
+			// Immediate-mode (glBegin/glEnd) data: glVertex* writes at legacy_pool_ptr with
+			// no bounds check into a legacy_pool_size block reserved per frame.
+			extern unsigned char *legacy_pool, *legacy_pool_ptr;
+			extern unsigned int legacy_pool_size;
+			int imm = (int)(legacy_pool_ptr - legacy_pool);
+			if (imm > maxImm) maxImm = imm;
+			immCap = (int)legacy_pool_size;
+		}
 		if (used > cap) overflows++;
 		if (seqN < 8) seq[seqN++] = idx;
 		if (++n >= 60) {
-			ri.Printf(PRINT_ALL, "VGL-POOL: slots %d%d%d%d%d%d%d%d | max used %d KB / cap %d KB | overflow frames %d/60\n",
+			ri.Printf(PRINT_ALL, "VGL-POOL: slots %d%d%d%d%d%d%d%d | max used %d KB / cap %d KB | overflow frames %d/60 | immediate max %d KB / %d KB\n",
 				seq[0], seq[1], seq[2], seq[3], seq[4], seq[5], seq[6], seq[7],
-				maxUsed / 1024, cap / 1024, overflows);
-			n = maxUsed = overflows = seqN = 0;
+				maxUsed / 1024, cap / 1024, overflows, maxImm / 1024, immCap / 1024);
+			n = maxUsed = overflows = seqN = maxImm = 0;
 		}
 	}
 #endif
