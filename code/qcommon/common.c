@@ -156,6 +156,16 @@ qboolean    com_firstConfig = qfalse;
 
 char	com_errorMessage[MAXPRINTMSG];
 
+#ifdef __vita__
+// Server game thread (sv_main.c): a Com_Error raised on it can't longjmp to the main
+// thread's abortframe. It jumps back into the server thread instead, which hands the
+// error to the main thread to raise once it has joined (SV_VitaGameFrames).
+int		com_vitaSvThreadId = -1;
+jmp_buf	com_vitaSvAbort;
+int		com_vitaSvErrorCode;
+char	com_vitaSvErrorMsg[MAXPRINTMSG];
+#endif
+
 static const char *target_game_names[] =
 {
 	"moh",
@@ -512,6 +522,16 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 	static int	lastErrorTime;
 	static int	errorCount;
 	int			currentTime;
+
+#ifdef __vita__
+	if ( com_vitaSvThreadId >= 0 && sceKernelGetThreadId() == com_vitaSvThreadId ) {
+		va_start( argptr, fmt );
+		Q_vsnprintf( com_vitaSvErrorMsg, sizeof( com_vitaSvErrorMsg ), fmt, argptr );
+		va_end( argptr );
+		com_vitaSvErrorCode = code;
+		longjmp( com_vitaSvAbort, 1 );
+	}
+#endif
 
 #ifdef COM_ERROR_DROP_ASSERT
 	if (code == ERR_DROP)

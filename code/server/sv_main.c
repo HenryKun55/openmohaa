@@ -1041,6 +1041,108 @@ Player movement occurs as a result of packet events, which
 happen before SV_Frame is called
 ==================
 */
+#ifdef __vita__
+/*
+ * Server game thread (Vita). The game simulation (ge->RunFrame: AI, scripts, physics,
+ * 13-18 ms a server frame in m1l1 combat on hardware) runs on its own thread on core 2.
+ * sv_vita_thread 1: the main thread hands the frames over and waits for them (no
+ * overlap yet, validates the thread itself). Errors raised on it come back through
+ * com_vitaSv* (Com_Error) and are raised again on the main thread.
+ */
+#include <psp2/kernel/threadmgr.h>
+#include <setjmp.h>
+
+extern int     com_vitaSvThreadId;
+extern jmp_buf com_vitaSvAbort;
+extern int     com_vitaSvErrorCode;
+extern char    com_vitaSvErrorMsg[];
+
+static cvar_t  *sv_vita_thread;
+static SceUID   s_svThread = -1, s_svWork = -1, s_svDone = -1;
+static int      s_svNumFrames, s_svFrameMsec;
+static qboolean s_svError;
+
+static void SV_VitaRunGameFrames( int numFrames, int frameMsec ) {
+	while ( numFrames-- > 0 ) {
+		svs.time += frameMsec;
+
+		if( sv.state == SS_GAME )
+		{
+			const char *err;
+
+			// let everything in the world think and move
+			ge->RunFrame( svs.time, frameMsec );
+
+			err = ge->errorMessage;
+			if( err )
+			{
+				ge->errorMessage = NULL;
+				Com_Error(ERR_DROP, "%s", err);
+			}
+		}
+	}
+}
+
+static int SV_VitaThread( SceSize args, void *argp ) {
+	(void)args;
+	(void)argp;
+
+	com_vitaSvThreadId = sceKernelGetThreadId();
+	for ( ;; ) {
+		sceKernelWaitSema( s_svWork, 1, NULL );
+		s_svError = qfalse;
+		if ( !setjmp( com_vitaSvAbort ) ) {
+			SV_VitaRunGameFrames( s_svNumFrames, s_svFrameMsec );
+		} else {
+			s_svError = qtrue;
+		}
+		sceKernelSignalSema( s_svDone, 1 );
+	}
+	return 0;
+}
+
+static qboolean SV_VitaStartThread( void ) {
+	if ( s_svThread >= 0 ) {
+		return qtrue;
+	}
+	s_svWork = sceKernelCreateSema( "sv_game_work", 0, 0, 1, NULL );
+	s_svDone = sceKernelCreateSema( "sv_game_done", 0, 0, 1, NULL );
+	// Same stack as the main thread (sceUserMainThreadStackSize): script execution
+	// recurses deeply. Core 2: the main thread is on core 0, the render thread on core 1.
+	s_svThread = sceKernelCreateThread( "OpenMoHAA server", SV_VitaThread, 0x10000100, 8 * 1024 * 1024, 0,
+		SCE_KERNEL_CPU_MASK_USER_2, NULL );
+	if ( s_svThread < 0 || s_svWork < 0 || s_svDone < 0 ) {
+		Com_Printf( "SV_VitaStartThread: failed (0x%08X), game frames stay on the main thread\n", s_svThread );
+		s_svThread = -1;
+		return qfalse;
+	}
+	sceKernelStartThread( s_svThread, 0, NULL );
+	Com_Printf( "SV_VitaStartThread: server game thread started (core 2)\n" );
+	return qtrue;
+}
+
+// Runs numFrames game frames, on the server thread when sv_vita_thread is set.
+static void SV_VitaGameFrames( int numFrames, int frameMsec ) {
+	if ( !numFrames ) {
+		return;
+	}
+	if ( !sv_vita_thread ) {
+		sv_vita_thread = Cvar_Get( "sv_vita_thread", "0", CVAR_ARCHIVE );
+	}
+	if ( !sv_vita_thread->integer || !SV_VitaStartThread() ) {
+		SV_VitaRunGameFrames( numFrames, frameMsec );
+		return;
+	}
+	s_svNumFrames = numFrames;
+	s_svFrameMsec = frameMsec;
+	sceKernelSignalSema( s_svWork, 1 );
+	sceKernelWaitSema( s_svDone, 1, NULL );
+	if ( s_svError ) {
+		Com_Error( com_vitaSvErrorCode, "%s", com_vitaSvErrorMsg );
+	}
+}
+#endif
+
 void SV_Frame( int msec ) {
 	int		frameMsec;
 	int		startTime;
@@ -1127,7 +1229,19 @@ void SV_Frame( int msec ) {
 	SV_CalcPings();
 
 	// run the game simulation in chunks
+#ifdef __vita__
+	{
+		int numFrames = 0;
+		while ( sv.timeResidual >= frameMsec ) {
+			sv.timeResidual -= frameMsec;
+			numFrames++;
+		}
+		SV_VitaGameFrames( numFrames, frameMsec );
+	}
+	while ( 0 ) {
+#else
 	while ( sv.timeResidual >= frameMsec ) {
+#endif
 		sv.timeResidual -= frameMsec;
 		svs.time += frameMsec;
 
