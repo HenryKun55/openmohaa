@@ -17,7 +17,7 @@
  *  - Collision traces are serialized by CM_VitaLock (the backend traces for
  *    spherical lighting and lens flares).
  *
- * r_vita_smp 0 restores the single-threaded path (latched).
+ * r_vita_rthread 1 enables it (latched, off by default: see R_SmpInit).
  */
 
 #include "tr_local.h"
@@ -39,10 +39,15 @@ static const void	*s_cmds;
 static backEndData_t *s_data;
 static int			s_smpFrame;
 
+static volatile uintptr_t s_renderStackTop;	// for R_GLTraceCheck: is the caller on the render thread?
+
 static int R_RenderThread(SceSize args, void *argp)
 {
+	int stackMark;
+
 	(void)args;
 	(void)argp;
+	s_renderStackTop = (uintptr_t)&stackMark;
 
 	for (;;) {
 		sceKernelWaitSema(s_semWork, 1, NULL);
@@ -100,6 +105,40 @@ static void R_SyncRenderThread_Wait(void *caller)
 	}
 }
 
+// r_vita_gltrace (sdl_glimp.c thunks): a GL call from the main thread while a frame
+// is in flight races with the render thread inside vitaGL. Log each call site once.
+#define GLTRACE_SITES 64
+static struct { void *caller; const char *name; int count; } s_glTrace[GLTRACE_SITES];
+static int s_glTraceReported;
+
+void R_GLTraceCheck(void *caller, const char *name)
+{
+	uintptr_t sp = (uintptr_t)&sp;
+	int       i;
+
+	if (s_thread < 0 || !s_outstanding) {
+		return;
+	}
+	if (sp <= s_renderStackTop && sp > s_renderStackTop - 256 * 1024) {
+		return;	// the render thread itself
+	}
+	for (i = 0; i < GLTRACE_SITES && s_glTrace[i].caller; i++) {
+		if (s_glTrace[i].caller == caller && s_glTrace[i].name == name) {
+			s_glTrace[i].count++;
+			return;
+		}
+	}
+	if (i == GLTRACE_SITES) {
+		return;
+	}
+	s_glTrace[i].caller = caller;
+	s_glTrace[i].name   = name;
+	s_glTrace[i].count  = 1;
+	s_glTraceReported++;
+	ri.Printf(PRINT_ALL, "GL-TRACE: main thread gl%s from %p while a frame is in flight (site %d)\n", name, caller,
+		s_glTraceReported);
+}
+
 void *r_smpSyncCaller;	// set by R_IssuePendingRenderCommands: who asked for the flush
 
 void R_SyncRenderThread(void)
@@ -117,7 +156,7 @@ void R_SmpSerialPoint(int level)
 	if (s_thread < 0 || r_vita_smp_serial->integer != level) {
 		return;
 	}
-	if (level >= 4 && (!s_serialWindow || sceKernelGetThreadId() == s_thread)) {
+	if (level >= 4 && level <= 8 && (!s_serialWindow || sceKernelGetThreadId() == s_thread)) {
 		return;
 	}
 	R_SyncRenderThread_Wait(NULL);
@@ -168,7 +207,10 @@ void R_SmpHandoff(const void *cmds)
 
 void R_SmpInit(void)
 {
-	r_vita_smp = ri.Cvar_Get("r_vita_smp", "1", CVAR_ARCHIVE | CVAR_LATCH);
+	// Off by default: with the render thread on, frames still pick up flashes and stray
+	// colors from a front-end/back-end race not found yet (single-threaded is clean).
+	// Renamed from r_vita_smp so configs that archived the old default of 1 start off.
+	r_vita_smp = ri.Cvar_Get("r_vita_rthread", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_vita_smp_serial = ri.Cvar_Get("r_vita_smp_serial", "0", 0);
 	cm_vitaLockHook = R_SmpCmLockHook;
 	if (!r_vita_smp->integer || s_thread >= 0) {

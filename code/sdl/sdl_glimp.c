@@ -115,6 +115,64 @@ QGL_ARB_vertex_array_object_PROCS;
 QGL_EXT_direct_state_access_PROCS;
 #undef GLE
 
+#ifdef __vita__
+/*
+ * r_vita_gltrace 1 (diagnostic): every qgl* pointer goes through a thunk that
+ * reports GL calls made by the main thread while the render thread may still be
+ * executing a frame (vitaGL is not thread-safe). The thunk saves the argument
+ * registers, calls R_GLTraceCheck(return address, name) and tail-jumps to vitaGL.
+ */
+void R_GLTraceCheck( void *caller, const char *name );
+
+#define GLTRACE_THUNK( name ) \
+	__attribute__((used)) static void *gltrace_real_##name; \
+	__attribute__((used)) static const char gltrace_nm_##name[] = #name; \
+	__attribute__((naked, used)) static void gltrace_thunk_##name( void ) { \
+		__asm__ volatile( \
+			"push {r0-r3, r12, lr}\n\t" \
+			"vpush {d0-d7}\n\t" \
+			"mov r0, lr\n\t" \
+			"ldr r1, =gltrace_nm_" #name "\n\t" \
+			"bl R_GLTraceCheck\n\t" \
+			"vpop {d0-d7}\n\t" \
+			"pop {r0-r3, r12, lr}\n\t" \
+			"ldr r12, =gltrace_real_" #name "\n\t" \
+			"ldr r12, [r12]\n\t" \
+			"bx r12\n\t" \
+			".ltorg\n\t" ); \
+	}
+#define GLE( ret, name, ... ) GLTRACE_THUNK( name )
+QGL_1_1_PROCS;
+QGL_1_1_FIXED_FUNCTION_PROCS;
+QGL_DESKTOP_1_1_PROCS;
+QGL_DESKTOP_1_1_FIXED_FUNCTION_PROCS;
+QGL_1_3_PROCS;
+GLTRACE_THUNK( ActiveTextureARB )
+GLTRACE_THUNK( ClientActiveTextureARB )
+GLTRACE_THUNK( MultiTexCoord2fARB )
+#undef GLE
+
+static void GLimp_VitaInstallGLTrace( void ) {
+#define GLTRACE_INSTALL( name ) \
+	if ( qgl##name && (void *)qgl##name != (void *)gltrace_thunk_##name ) { \
+		gltrace_real_##name = (void *)qgl##name; \
+		*(void **)&qgl##name = (void *)gltrace_thunk_##name; \
+	}
+#define GLE( ret, name, ... ) GLTRACE_INSTALL( name )
+	QGL_1_1_PROCS;
+	QGL_1_1_FIXED_FUNCTION_PROCS;
+	QGL_DESKTOP_1_1_PROCS;
+	QGL_DESKTOP_1_1_FIXED_FUNCTION_PROCS;
+	QGL_1_3_PROCS;
+	GLTRACE_INSTALL( ActiveTextureARB )
+	GLTRACE_INSTALL( ClientActiveTextureARB )
+	GLTRACE_INSTALL( MultiTexCoord2fARB )
+#undef GLE
+#undef GLTRACE_INSTALL
+	ri.Printf( PRINT_ALL, "GL-TRACE: installed (R_GLTraceCheck at %p)\n", (void *)R_GLTraceCheck );
+}
+#endif
+
 /*
 ===============
 GLimp_Shutdown
@@ -1405,6 +1463,12 @@ success:
 
 	// initialize extensions
 	GLimp_InitExtensions( fixedFunction );
+
+#ifdef __vita__
+	if ( ri.Cvar_Get( "r_vita_gltrace", "0", CVAR_LATCH )->integer ) {
+		GLimp_VitaInstallGLTrace();
+	}
+#endif
 
 	ri.Cvar_Get( "r_availableModes", "", CVAR_ROM );
 

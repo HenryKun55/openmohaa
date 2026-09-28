@@ -898,11 +898,14 @@ void R_AddWorldSurfaces (void) {
 		tr.refdef.num_dlights = 32;
 	}
 	R_TransformDlights(tr.refdef.num_dlights, tr.refdef.dlights, &tr.viewParms.world);
+	R_SmpSerialPoint(9);
 	R_RecursiveWorldNode(tr.world->nodes, tr.viewParms.fog.extrafrustums ? 31 : 15, (1 << tr.refdef.num_dlights) - 1);
 
+	R_SmpSerialPoint(10);
 	if (r_drawterrain->integer && tr.refdef.render_terrain && !tr.viewParms.isPortalSky) {
 		R_AddTerrainSurfaces();
 	}
+	R_SmpSerialPoint(11);
 	if (r_drawstaticmodels->integer) {
 		R_AddStaticModelSurfaces();
 	}
