@@ -23,25 +23,70 @@ carries the source code of that exact build, as the GPL requires.
 
 ## Install on the Vita
 
-You need a Vita with custom firmware (HENkaku / h-encore / Enso) and VitaShell.
+### What you need
 
-1. Copy `OpenMoHAA.vpk` to the root of the memory card (`ux0:`), by FTP
-   (VitaShell: SELECT) or USB, and install it in VitaShell (Cross -> Install).
-2. Copy the game files from your Medal of Honor: Allied Assault install:
-   ```
-   ux0:data/openmohaa/main/        Pak0.pk3 ... Pak5.pk3 (and music/, sound/, video/ if loose)
-   ```
-3. Optional, faster loading: build a pre-resampled sound pack on a PC and copy it
-   next to the paks (saves several seconds per level load):
-   ```sh
-   tools/snd_pak.py /path/to/main/Pak*.pk3 -o snd_out   # needs ffmpeg
-   (cd snd_out && zip -r ../Pak8_snd.pk3 .)
-   ```
-   then copy `Pak8_snd.pk3` to `ux0:data/openmohaa/main/`.
-4. Launch it from the LiveArea bubble.
+- A PS Vita (or PS TV) with custom firmware (HENkaku, h-encore or Enso) and
+  **VitaShell** installed.
+- A Wi-Fi network shared by the Vita and a computer (or a USB cable).
+- Your own copy of **Medal of Honor: Allied Assault** on a PC: the GOG or Steam
+  "War Chest" edition or the retail discs. You need its `main` folder
+  (for example `C:\GOG Games\Medal of Honor Allied Assault War Chest\main`).
+- About 1.1 GB free on the memory card.
 
-A level load takes about a minute: the game reads ~60 MB of data per level and
-the memory card's throughput is the limit.
+### 1. Send the files to the Vita
+
+The easy way is VitaShell's FTP server:
+
+1. Open **VitaShell** on the Vita and press **SELECT**. It shows an address
+   like `ftp://192.168.1.6:1337`. Keep that screen open while copying.
+2. On the computer, open an FTP client (for example **FileZilla**, free) and
+   connect to that address: host `192.168.1.6`, port `1337`, no user or password.
+   (On Windows you can also type `ftp://192.168.1.6:1337` in the File Explorer
+   address bar.)
+
+Or by USB: in VitaShell press **START** -> **USB device**, connect the cable, and
+the memory card shows up on the computer as a drive (`ux0:` is its root).
+
+### 2. Install the app
+
+1. Copy `OpenMoHAA.vpk` (from the [Releases](https://github.com/HenryKun55/openmohaa/releases)
+   page) to the **root** of the memory card: `ux0:/OpenMoHAA.vpk`.
+2. In VitaShell, go to `ux0:`, select `OpenMoHAA.vpk`, press **Cross** and choose
+   **Install**. If it asks about extended permissions, answer **Yes**.
+3. You can delete `ux0:/OpenMoHAA.vpk` afterwards.
+
+### 3. Copy the game files
+
+Create the folder `ux0:data/openmohaa/main/` and copy into it, from your PC game's
+`main` folder:
+
+```
+ux0:data/openmohaa/main/
+    Pak0.pk3  Pak1.pk3  Pak2.pk3  Pak3.pk3  Pak4.pk3  Pak5.pk3
+    sound/    (only if your install has a loose sound folder)
+    video/    (optional: the intro and cutscene videos)
+```
+
+Copy every `Pak*.pk3` you have: `Pak2.pk3` alone holds most of the world textures.
+Folder and file names are case sensitive for loose files, so keep them as they are.
+
+Optional, faster loading: build a pre-resampled sound pack on a PC and copy it
+next to the paks (saves several seconds per level load):
+```sh
+tools/snd_pak.py /path/to/main/Pak*.pk3 -o snd_out   # needs ffmpeg
+(cd snd_out && zip -r ../Pak8_snd.pk3 .)
+```
+then copy `Pak8_snd.pk3` to `ux0:data/openmohaa/main/`.
+
+### 4. Play
+
+Start **Medal of Honor: Allied Assault** from its LiveArea bubble. A level load takes about a minute: the game reads ~60 MB
+per level and the memory card's speed is the limit.
+
+### Updating
+
+Install the new `.vpk` the same way. Your settings and saves in
+`ux0:data/openmohaa/` are kept.
 
 ## Controls
 

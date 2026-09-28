@@ -1,23 +1,25 @@
 # OpenMoHAA for PlayStation Vita
 
 **Medal of Honor: Allied Assault** single-player, running natively on the PS Vita.
-The same code also builds for **Nintendo Switch** and **macOS**.
 
-> [!NOTE]
-> **In development.** No release right now. The next one will be on the
-> [Releases](https://github.com/HenryKun55/openmohaa/releases) page with builds
-> for Vita (`.vpk`), Switch (`.nro`) and macOS.
+**Download:** [OpenMoHAA.vpk](https://github.com/HenryKun55/openmohaa/releases/latest)
+from the Releases page.
 
 You need your own copy of the original game. No game data is included.
 
-## Install (Vita)
+## Install
 
-1. Install `OpenMoHAA.vpk` with VitaShell.
-2. Copy your game's `Pak0.pk3` ... `Pak5.pk3` to `ux0:data/openmohaa/main/`.
-3. Start it from the LiveArea.
+1. On the Vita, open **VitaShell** and press **SELECT** to start its FTP server.
+2. From a computer, connect to the address it shows (for example with FileZilla)
+   and copy `OpenMoHAA.vpk` to `ux0:/`.
+3. In VitaShell, press **Cross** on `OpenMoHAA.vpk` and choose **Install**.
+4. Copy `Pak0.pk3` ... `Pak5.pk3` from your PC game's `main` folder to
+   `ux0:data/openmohaa/main/`.
+5. Start it from the LiveArea.
 
-Full guide: [docs/PORTING-VITA.md](docs/PORTING-VITA.md). Updating never touches
-your settings or saves.
+Step-by-step guide (USB, optional files, updating):
+[docs/PORTING-VITA.md](docs/PORTING-VITA.md#install-on-the-vita). Updating never
+touches your settings or saves.
 
 ## Controls
 
@@ -44,14 +46,13 @@ be changed in the game's Controls menu.
 and detail, HUD, crosshair, look sensitivity. English or Portuguese, following
 the Vita's language.
 
-## Switch and macOS
+## Not available
 
-- **Switch:** `OpenMoHAA.nro` in `sdmc:/switch/`, game files in
-  `sdmc:/switch/openmohaa/main/`. See [docs/CONSOLE-PORTS.md](docs/CONSOLE-PORTS.md).
-- **macOS:** game files in `~/Library/Application Support/openmohaa/main/`.
+Multiplayer, and the Spearhead and Breakthrough expansions: this version plays the
+Allied Assault campaign.
 
-Multiplayer is not available on Vita or Switch, and the Vita plays only the Allied
-Assault campaign for now (not the Spearhead and Breakthrough expansions).
+This branch also has experimental Switch and macOS code
+([docs/CONSOLE-PORTS.md](docs/CONSOLE-PORTS.md)), without builds.
 
 ## How it is made
 
