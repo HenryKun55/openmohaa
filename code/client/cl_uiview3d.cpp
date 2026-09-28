@@ -24,6 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/localization.h"
 
 #include "../server/server.h"
+#ifdef __vita__
+#include <psp2/apputil.h>
+#include <psp2/system_param.h>
+#endif
 
 CLASS_DECLARATION(UIWidget, View3D, NULL) {
     {&W_Activated,     &View3D::OnActivate  },
@@ -168,7 +172,287 @@ static const VitaPerfChoice g_pcWeapon[] = {
     "seta r_subdivisions 3; seta cg_effectdetail 0.95; seta vss_maxcount 15; seta ter_error 7; seta ter_maxlod 5; " \
     "seta r_texturemode gl_linear_mipmap_linear; seta cg_shadows 2; seta r_dynamiclight 1; seta cg_marks_add 1; seta com_blood 1"
 
-static VitaPerfMenuItem g_pmQuality[] = {
+/* ---------- translations ----------
+ * Every string the menu shows, in English and Brazilian Portuguese, plus a one-line
+ * description for items. Looked up by the English text; the Portuguese one is used
+ * when the Vita's system language is Portuguese. Strings are UTF-8 here and converted
+ * to the game fonts' Latin-1 when drawn. */
+struct VitaMenuText {
+    const char *en;
+    const char *pt;
+    const char *descEn;
+    const char *descPt;
+};
+
+static const VitaMenuText g_vmTexts[] = {
+    /* screens, tabs, hints */
+    { "VITA SETTINGS", "CONFIGURAÇÕES DO VITA" },
+    { "DEBUG", "DEBUG" },
+    { "GRAPHICS", "GRÁFICOS" },
+    { "DISPLAY", "TELA" },
+    { "CONTROLS", "CONTROLES" },
+    { "SYSTEM", "SISTEMA" },
+    { "RENDER", "RENDER" },
+    { "WORLD", "MUNDO" },
+    { "GAME", "JOGO" },
+    { "LEVELS", "FASES" },
+    { "DIAG", "DIAG" },
+    { "L/R: tab   D-pad: select   X: change   O: close",
+      "L/R: aba   D-pad: escolher   X: alterar   O: fechar" },
+    { "* applied when the menu closes (video restart)",
+      "* aplicado ao fechar o menu (reinicia o vídeo)" },
+    { "* changed: applied when the menu closes",
+      "* alterado: aplicado ao fechar o menu" },
+    { "Custom", "Personalizado" },
+    { "On", "Sim" },
+    { "Off", "Não" },
+
+    /* choice names */
+    { "Lowest", "Mínimo" }, { "Low", "Baixo" }, { "Medium", "Médio" }, { "High", "Alto" },
+    { "Higher", "Muito alto" }, { "Highest", "Máximo" }, { "Minimum", "Mínimo" }, { "Lower", "Mais baixo" },
+    { "Max", "Máximo" }, { "Bilinear", "Bilinear" }, { "Trilinear", "Trilinear" }, { "Blob", "Simples" },
+    { "Precise", "Precisa" }, { "None", "Nenhum" }, { "Gun Only", "Só a arma" }, { "Full", "Completo" },
+
+    /* SETTINGS: graphics */
+    { "Preset: Performance", "Predefinição: Desempenho",
+      "Lowest detail for the highest frame rate.",
+      "Menos detalhe para o maior FPS." },
+    { "Preset: Balanced", "Predefinição: Equilibrado",
+      "Recommended: good image with smooth gameplay.",
+      "Recomendado: boa imagem com jogo fluido." },
+    { "Preset: Quality", "Predefinição: Qualidade",
+      "Most detail; lower frame rate in combat.",
+      "Mais detalhe; FPS menor em combate." },
+    { "Texture Quality", "Qualidade das texturas",
+      "Texture resolution. Higher uses more memory and loads slower.",
+      "Resolução das texturas. Mais alto usa mais memória e carrega mais devagar." },
+    { "Model Detail", "Detalhe dos modelos",
+      "Polygon detail of soldiers and objects.",
+      "Detalhe dos polígonos de soldados e objetos." },
+    { "Distant Detail", "Detalhe à distância",
+      "How early far models lose detail.",
+      "Quão cedo os modelos distantes perdem detalhe." },
+    { "Curve Detail", "Detalhe das curvas",
+      "Smoothness of curved walls and arches.",
+      "Suavidade de paredes curvas e arcos." },
+    { "Effect Detail", "Detalhe dos efeitos",
+      "Amount of smoke, debris and particles.",
+      "Quantidade de fumaça, destroços e partículas." },
+    { "Terrain Detail", "Detalhe do terreno",
+      "Detail of outdoor terrain.",
+      "Detalhe do terreno em áreas abertas." },
+    { "Texture Filter", "Filtro de texturas",
+      "Trilinear blends texture detail levels more smoothly.",
+      "Trilinear suaviza a transição entre níveis de detalhe das texturas." },
+    { "Shadows", "Sombras",
+      "Precise: shadows cast by the lights. Blob: a simple shadow. Off is fastest.",
+      "Precisa: sombras projetadas pelas luzes. Simples: uma sombra só. Desligada é mais rápida." },
+    { "Dynamic Lights", "Luzes dinâmicas",
+      "Light from muzzle flashes, explosions and fires.",
+      "Luz de tiros, explosões e fogo." },
+    { "Lens Flares", "Reflexos de luz",
+      "Glare from the sun and bright lights.",
+      "Brilho do sol e de luzes fortes." },
+    { "Decals (Marks)", "Marcas",
+      "Bullet holes, blood and scorch marks on walls.",
+      "Buracos de bala, sangue e marcas de explosão nas paredes." },
+
+    /* SETTINGS: display */
+    { "Show FPS", "Mostrar FPS",
+      "Frame rate counter in the corner of the screen.",
+      "Contador de quadros por segundo no canto da tela." },
+    { "HUD", "HUD",
+      "Health, ammo and compass on screen.",
+      "Vida, munição e bússola na tela." },
+    { "Crosshair", "Mira",
+      "Show the crosshair.",
+      "Mostra a mira." },
+    { "Weapon Model", "Modelo da arma",
+      "Show the weapon (and hands) in first person.",
+      "Mostra a arma (e as mãos) em primeira pessoa." },
+    { "Blood / Gore", "Sangue",
+      "Blood effects.",
+      "Efeitos de sangue." },
+
+    /* SETTINGS: controls */
+    { "Look Sens (hip)", "Sensibilidade (normal)",
+      "Right stick look speed when not aiming.",
+      "Velocidade do analógico direito sem mirar." },
+    { "Look Sens (aim)", "Sensibilidade (mirando)",
+      "Right stick look speed while aiming down the sights.",
+      "Velocidade do analógico direito mirando." },
+    { "Crosshair (hip)", "Mira (normal)",
+      "Show the crosshair when not aiming.",
+      "Mostra a mira sem mirar." },
+    { "Crosshair (aim)", "Mira (mirando)",
+      "Show the crosshair while aiming.",
+      "Mostra a mira mirando." },
+
+    /* SETTINGS: system */
+    { "Restore defaults", "Restaurar padrão",
+      "Back to the port's recommended settings.",
+      "Volta às configurações recomendadas do port." },
+    { "Debug menu", "Menu de debug",
+      "Renderer switches, level select, cheats and diagnostics.",
+      "Opções do renderer, seleção de fases, trapaças e diagnóstico." },
+    { "Close", "Fechar", "", "" },
+
+    /* DEBUG: render */
+    { "Render thread", "Render thread",
+      "Draws on its own CPU core. Off is slower.",
+      "Desenha num núcleo próprio da CPU. Desligado é mais lento." },
+    { "GPU skinning", "GPU skinning",
+      "Animates characters on the GPU. Off is slower.",
+      "Anima os personagens na GPU. Desligado é mais lento." },
+    { "World VBO", "VBO do mapa",
+      "Keeps the map geometry on the GPU.",
+      "Mantém a geometria do mapa na GPU." },
+    { "Force multitexture", "Forçar multitextura",
+      "Draws walls and their lighting in one pass.",
+      "Desenha paredes e iluminação numa passada só." },
+    { "Render thr. serial", "Render thread serial",
+      "Diagnostic: limits the render thread's overlap with the game.",
+      "Diagnóstico: limita a sobreposição da render thread com o jogo." },
+    { "Engine 2D Pass", "Passo 2D",
+      "Diagnostic: turns all 2D drawing off.",
+      "Diagnóstico: desliga todo o desenho 2D." },
+    { "Server thread", "Thread do servidor",
+      "Experimental: game logic on its own CPU core.",
+      "Experimental: lógica do jogo num núcleo próprio." },
+
+    /* DEBUG: world */
+    { "BSP World", "Mapa (BSP)", "", "" },
+    { "Brush Models", "Brush models", "", "" },
+    { "Static Models", "Modelos estáticos", "", "" },
+    { "Static Polys", "Polígonos estáticos", "", "" },
+    { "Entity Polys", "Polígonos de entidades", "", "" },
+    { "Curves", "Curvas", "", "" },
+    { "Fast Sky", "Céu simples", "", "" },
+    { "Sky Box", "Skybox", "", "" },
+    { "DLight Backfaces", "Luzes nas costas", "", "" },
+
+    /* DEBUG: game */
+    { "Main Menu", "Menu principal", "", "" },
+    { "Restart Level", "Reiniciar fase", "", "" },
+    { "Suicide (kill)", "Suicídio", "", "" },
+    { "Cheats ON", "Trapaças ligadas", "", "" },
+    { "Cheats OFF", "Trapaças desligadas", "", "" },
+    { "God Mode", "Modo deus", "", "" },
+    { "Noclip", "Atravessar paredes", "", "" },
+    { "Notarget", "Invisível para a IA", "", "" },
+    { "Give All", "Dar tudo", "", "" },
+    { "Give Ammo", "Dar munição", "", "" },
+    { "Give Health", "Dar vida", "", "" },
+
+    /* DEBUG: diagnostics */
+    { "NO REFRESH (perf test)", "SEM DESENHO (teste)",
+      "Skips all rendering, to measure CPU cost alone.",
+      "Pula todo o desenho, para medir só a CPU." },
+    { "Show Tris", "Mostrar triângulos", "", "" },
+    { "Show Normals", "Mostrar normais", "", "" },
+    { "r_speeds Print", "r_speeds", "", "" },
+    { "com_speeds Print", "com_speeds", "", "" },
+    { "Perf log", "Log de desempenho",
+      "Timing lines in boot.log every second.",
+      "Linhas de tempo no boot.log a cada segundo." },
+    { "Back to settings", "Voltar às configurações", "", "" },
+};
+
+static qboolean VitaMenu_IsPortuguese(void)
+{
+#ifdef __vita__
+    static int s_lang = -1;
+    if (s_lang < 0) {
+        int lang = 0;
+        s_lang = 0;
+        if (sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang) < 0) {
+            /* AppUtil not initialised yet by anyone else: do it and ask again. */
+            SceAppUtilInitParam initParam;
+            SceAppUtilBootParam bootParam;
+            memset(&initParam, 0, sizeof(initParam));
+            memset(&bootParam, 0, sizeof(bootParam));
+            sceAppUtilInit(&initParam, &bootParam);
+            lang = -1;
+            sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang);
+        }
+        if (lang >= 0
+            && (lang == SCE_SYSTEM_PARAM_LANG_PORTUGUESE_PT || lang == SCE_SYSTEM_PARAM_LANG_PORTUGUESE_BR)) {
+            s_lang = 1;
+        }
+    }
+    return s_lang == 1;
+#else
+    return qfalse;
+#endif
+}
+
+static const VitaMenuText *VitaMenu_FindText(const char *en)
+{
+    for (size_t i = 0; i < sizeof(g_vmTexts) / sizeof(g_vmTexts[0]); i++) {
+        if (!strcmp(g_vmTexts[i].en, en)) {
+            return &g_vmTexts[i];
+        }
+    }
+    return NULL;
+}
+
+/* The text in the system language (English when there is no translation). */
+static const char *VT(const char *en)
+{
+    const VitaMenuText *t;
+    if (!en || !VitaMenu_IsPortuguese()) {
+        return en;
+    }
+    t = VitaMenu_FindText(en);
+    return (t && t->pt) ? t->pt : en;
+}
+
+/* The item's description in the system language ("" if none). */
+static const char *VD(const char *en)
+{
+    const VitaMenuText *t = VitaMenu_FindText(en);
+    if (!t) {
+        return "";
+    }
+    if (VitaMenu_IsPortuguese()) {
+        return t->descPt ? t->descPt : "";
+    }
+    return t->descEn ? t->descEn : "";
+}
+
+/* UTF-8 -> Latin-1 for the game fonts (characters beyond Latin-1 become '?'). */
+static const char *VitaMenu_Latin1(const char *s)
+{
+    static char buf[4][256];
+    static int  which;
+    char       *out = buf[which++ & 3];
+    int         n   = 0;
+
+    while (*s && n < 255) {
+        unsigned char c = (unsigned char)*s;
+        if (c < 0x80) {
+            out[n++] = (char)c;
+            s++;
+        } else if ((c & 0xE0) == 0xC0 && s[1]) {
+            unsigned int cp = ((c & 0x1F) << 6) | ((unsigned char)s[1] & 0x3F);
+            out[n++] = cp < 0x100 ? (char)cp : '?';
+            s += 2;
+        } else {
+            out[n++] = '?';
+            s++;
+            while ((*s & 0xC0) == 0x80) {
+                s++;
+            }
+        }
+    }
+    out[n] = 0;
+    return out;
+}
+
+/* ---------- SETTINGS (player-facing) ---------- */
+#define VPM_DEFAULTS "exec vita_defaults.cfg"
+
+static VitaPerfMenuItem g_smGraphics[] = {
     { "Preset: Performance",  NULL, qfalse, 0, VPM_PRESET_PERF,     qtrue },
     { "Preset: Balanced",     NULL, qfalse, 0, VPM_PRESET_BALANCED, qtrue },
     { "Preset: Quality",      NULL, qfalse, 0, VPM_PRESET_QUALITY,  qtrue },
@@ -180,17 +464,50 @@ static VitaPerfMenuItem g_pmQuality[] = {
     { "Terrain Detail",   "ter_error",       qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcTerrain) },
     { "Texture Filter",   "r_texturemode",   qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcFilter) },
     { "Shadows",          "cg_shadows",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcShadows) },
+    { "Dynamic Lights",   "r_dynamiclight",  qfalse, 0 },
+    { "Lens Flares",      "r_flares",        qfalse, 0 },
+    { "Decals (Marks)",   "cg_marks_add",    qfalse, 0 },
+};
+
+static VitaPerfMenuItem g_smDisplay[] = {
+    { "Show FPS",         "fps",             qfalse, 0 },
+    { "HUD",              "cg_hud",          qfalse, 0 },
+    { "Crosshair",        "ui_crosshair",    qfalse, 0 },
     { "Weapon Model",     "cg_drawviewmodel",qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcWeapon) },
+    { "Blood / Gore",     "com_blood",       qfalse, 0 },
 };
 
-struct VitaPerfMenuCategory {
-    const char        *label;
-    VitaPerfMenuItem  *items;
-    int                itemCount;
+static VitaPerfMenuItem g_smControls[] = {
+    { "Look Sens (hip)",  "vita_hip_sens",     qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while NOT aiming */
+    { "Look Sens (aim)",  "vita_aim_sens",     qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while aiming */
+    { "Crosshair (hip)",  "cg_crosshair_hip",  qfalse, 0 },
+    { "Crosshair (aim)",  "cg_crosshair_zoom", qfalse, 0 },
 };
 
-/* ---------- WORLD ---------- */
-static VitaPerfMenuItem g_pmWorld[] = {
+/* SYSTEM items run menu actions (see VitaPerfMenu_Action), not console commands. */
+#define VPM_ACTION_DEFAULTS "@defaults"
+#define VPM_ACTION_DEBUG    "@debug"
+#define VPM_ACTION_SETTINGS "@settings"
+#define VPM_ACTION_CLOSE    "@close"
+
+static VitaPerfMenuItem g_smSystem[] = {
+    { "Restore defaults", NULL, qfalse, 0, VPM_ACTION_DEFAULTS },
+    { "Debug menu",       NULL, qfalse, 0, VPM_ACTION_DEBUG },
+    { "Close",            NULL, qfalse, 0, VPM_ACTION_CLOSE },
+};
+
+/* ---------- DEBUG (developer) ---------- */
+static VitaPerfMenuItem g_dmRender[] = {
+    { "Render thread",       "r_vita_rthread",      qfalse, 0, NULL, qtrue },
+    { "GPU skinning",        "r_vita_gpu_skinning", qfalse, 0, NULL, qtrue },
+    { "World VBO",           "r_vita_vbo_world",    qfalse, 0, NULL, qtrue },
+    { "Force multitexture",  "r_vita_force_mtex",   qfalse, 0 },
+    { "Render thr. serial",  "r_vita_smp_serial",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSmpSerial) },
+    { "Server thread",       "sv_vita_thread",      qfalse, 0 },
+    { "Engine 2D Pass",      "vita_skip_draw2d",    qtrue,  0 }, /* ON = normal, OFF = stripped */
+};
+
+static VitaPerfMenuItem g_dmWorld[] = {
     { "BSP World",        "r_drawworld",          qfalse, 0 },
     { "Brush Models",     "r_drawbrushes",        qfalse, 0 },
     { "Static Models",    "r_drawstaticmodels",   qfalse, 0 },
@@ -199,79 +516,13 @@ static VitaPerfMenuItem g_pmWorld[] = {
     { "Curves",           "r_nocurves",           qtrue,  0 }, /* inverted: ON when r_nocurves=0 */
     { "Fast Sky",         "r_fastsky",            qfalse, 0 },
     { "Sky Box",          "r_drawSun",            qfalse, 0 },
-};
-
-/* ---------- LIGHTING ---------- */
-static VitaPerfMenuItem g_pmLighting[] = {
-    { "Dynamic Lights",   "r_dynamiclight",       qfalse, 0 },
     { "DLight Backfaces", "r_dlightBacks",        qfalse, 0 },
     /* r_vertexLight / r_lightmap / r_drawSpheres removed (2026-09-23): debug lighting
      * modes that need a vid_restart; toggled live with the world VBO + collapsed
      * multitexture on, they turned every BSP surface into flat garbage colours. */
-    { "Lens Flares",      "r_flares",             qfalse, 0 },
 };
 
-/* ---------- EFFECTS ---------- */
-static VitaPerfMenuItem g_pmEffects[] = {
-    { "Decals (Marks)",   "cg_marks_add",         qfalse, 0 },
-    { "Blood / Gore",     "com_blood",            qfalse, 0 },
-    { "Crosshair",        "ui_crosshair",         qfalse, 0 }, /* master on/off; per-state in AIM category */
-    { "HUD",              "cg_hud",               qfalse, 0 },
-    { "Engine 2D Pass",   "vita_skip_draw2d",     qtrue,  0 }, /* ON = normal, OFF = stripped */
-};
-
-
-/* ---------- AIM / LOOK ---------- */
-static VitaPerfMenuItem g_pmAim[] = {
-    { "Look Sens (hip)",  "vita_hip_sens",        qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while NOT aiming */
-    { "Look Sens (aim)",  "vita_aim_sens",        qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while aiming */
-    { "Crosshair (hip)",  "cg_crosshair_hip",     qfalse, 0 },  /* show crosshair while NOT aiming */
-    { "Crosshair (aim)",  "cg_crosshair_zoom",    qfalse, 0 },  /* show crosshair while aiming */
-};
-
-/* ---------- DEBUG / DIAG ---------- */
-static VitaPerfMenuItem g_pmDebug[] = {
-    { "Show FPS",                 "fps",               qfalse, 0 }, /* on-screen fps counter: watch the cost of each setting */
-    { "NO REFRESH (perf test)",   "r_norefresh",       qfalse, 0 }, /* skips ALL rendering — measure non-render CPU ceiling */
-    /* "Skip Backend" removed 2026-05-19 — r_skipBackEnd freezes the GL
-     * backend mid-frame and leaves the client unable to recover, since
-     * RE_EndFrame's BeginFrame check doesn't reset. Available via
-     * console (`/r_skipBackEnd 1`) but the menu toggle was a foot-gun. */
-    /* "Measure Overdraw" removed 2026-05-19 — toggling r_measureOverdraw
-     * at runtime triggers a GL_INVALID_ENUM in vitaGL's stencil emulation
-     * (seen in crashlog), then RE_BeginFrame aborts the next frame and the
-     * client falls back to disconnect. Stays available via console for
-     * developer use. */
-    { "Show Tris",                "r_showtris",        qfalse, 0 },
-    { "Show Normals",             "r_shownormals",     qfalse, 0 },
-    { "r_speeds Print",           "r_speeds",          qfalse, 6 },
-    { "com_speeds Print",         "com_speeds",        qfalse, 0 },
-    { "VITA-PERF log (1×/sec)",   "r_vita_perflog",    qfalse, 0 }, /* timing breakdown of render subsystems */
-    { "VITA force multitexture",  "r_vita_force_mtex", qfalse, 0 }, /* Phase 3 — diffuse+lightmap single pass */
-    { "VITA world VBO",           "r_vita_vbo_world",  qfalse, 0, NULL, qtrue }, /* Phase 1 — BSP geometry from VRAM VBO (built at level load) */
-    { "VITA GPU skinning",        "r_vita_gpu_skinning", qfalse, 0, NULL, qtrue }, /* Phase 2b — NPC skinning+lighting on the vertex shader (live off-switch; shader compiles at boot if set in autoexec) */
-    { "VITA render thread",       "r_vita_rthread",        qfalse, 0, NULL, qtrue },
-    { "VITA render thr. serial",  "r_vita_smp_serial", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSmpSerial) }, /* diagnostic */ /* backend on core 1 (tr_vita_smp.c); off = single-threaded */
-};
-
-/* ---------- FASES (level loader) ----------
- * Same campaign list as the Switch dev menu (cl_scrn.cpp). A here runs
- * "spmap <level>" via Cbuf and closes the menu so the load starts clean.
- * cmd-items leave cvarName NULL — GetStateStr/ToggleItem skip the cvar path. */
-#define VFASE(n) { n, NULL, qfalse, 0, "spmap " n }
-static VitaPerfMenuItem g_pmFases[] = {
-    VFASE("training"),
-    VFASE("m1l1"), VFASE("m1l2a"), VFASE("m1l2b"), VFASE("m1l3a"), VFASE("m1l3b"), VFASE("m1l3c"),
-    VFASE("m2l1"), VFASE("m2l2a"), VFASE("m2l2b"), VFASE("m2l2c"), VFASE("m2l3"),
-    VFASE("m3l1a"), VFASE("m3l1b"), VFASE("m3l2"), VFASE("m3l3"),
-    VFASE("m4l0"), VFASE("m4l1"), VFASE("m4l2"), VFASE("m4l3"),
-    VFASE("m5l1a"), VFASE("m5l1b"), VFASE("m5l2a"), VFASE("m5l2b"), VFASE("m5l3"),
-    VFASE("m6l1a"), VFASE("m6l1b"), VFASE("m6l1c"), VFASE("m6l2a"), VFASE("m6l2b"),
-    VFASE("m6l3a"), VFASE("m6l3b"), VFASE("m6l3c"), VFASE("m6l3d"), VFASE("m6l3e"),
-};
-
-/* ---------- GAME (cheats / control) ---------- */
-static VitaPerfMenuItem g_pmGame[] = {
+static VitaPerfMenuItem g_dmGame[] = {
     { "Main Menu",        NULL, qfalse, 0, "disconnect" },
     { "Restart Level",    NULL, qfalse, 0, "restart" },
     { "Suicide (kill)",   NULL, qfalse, 0, "kill" },
@@ -285,24 +536,77 @@ static VitaPerfMenuItem g_pmGame[] = {
     { "Give Health",      NULL, qfalse, 0, "give health" },
 };
 
-static VitaPerfMenuCategory g_pmCats[] = {
-    { "QUALITY",   g_pmQuality,  sizeof(g_pmQuality)  / sizeof(VitaPerfMenuItem) },
-    { "FASES",     g_pmFases,    sizeof(g_pmFases)    / sizeof(VitaPerfMenuItem) },
-    { "GAME",      g_pmGame,     sizeof(g_pmGame)     / sizeof(VitaPerfMenuItem) },
-    { "WORLD",     g_pmWorld,    sizeof(g_pmWorld)    / sizeof(VitaPerfMenuItem) },
-    { "LIGHTING",  g_pmLighting, sizeof(g_pmLighting) / sizeof(VitaPerfMenuItem) },
-    { "EFFECTS",   g_pmEffects,  sizeof(g_pmEffects)  / sizeof(VitaPerfMenuItem) },
-    { "AIM",       g_pmAim,      sizeof(g_pmAim)      / sizeof(VitaPerfMenuItem) },
-    { "DEBUG",     g_pmDebug,    sizeof(g_pmDebug)    / sizeof(VitaPerfMenuItem) },
+/* Level loader. Same campaign list as the Switch dev menu (cl_scrn.cpp). */
+#define VFASE(n) { n, NULL, qfalse, 0, "spmap " n }
+static VitaPerfMenuItem g_dmLevels[] = {
+    VFASE("training"),
+    VFASE("m1l1"), VFASE("m1l2a"), VFASE("m1l2b"), VFASE("m1l3a"), VFASE("m1l3b"), VFASE("m1l3c"),
+    VFASE("m2l1"), VFASE("m2l2a"), VFASE("m2l2b"), VFASE("m2l2c"), VFASE("m2l3"),
+    VFASE("m3l1a"), VFASE("m3l1b"), VFASE("m3l2"), VFASE("m3l3"),
+    VFASE("m4l0"), VFASE("m4l1"), VFASE("m4l2"), VFASE("m4l3"),
+    VFASE("m5l1a"), VFASE("m5l1b"), VFASE("m5l2a"), VFASE("m5l2b"), VFASE("m5l3"),
+    VFASE("m6l1a"), VFASE("m6l1b"), VFASE("m6l1c"), VFASE("m6l2a"), VFASE("m6l2b"),
+    VFASE("m6l3a"), VFASE("m6l3b"), VFASE("m6l3c"), VFASE("m6l3d"), VFASE("m6l3e"),
 };
-static const int g_pmCatCount = sizeof(g_pmCats) / sizeof(g_pmCats[0]);
+
+static VitaPerfMenuItem g_dmDiag[] = {
+    { "NO REFRESH (perf test)", "r_norefresh",    qfalse, 0 },
+    /* "Skip Backend" and "Measure Overdraw" removed 2026-05-19: r_skipBackEnd freezes the
+     * backend mid-frame, r_measureOverdraw trips a GL error in vitaGL's stencil emulation.
+     * Both stay available from the console. */
+    { "Show Tris",              "r_showtris",     qfalse, 0 },
+    { "Show Normals",           "r_shownormals",  qfalse, 0 },
+    { "r_speeds Print",         "r_speeds",       qfalse, 6 },
+    { "com_speeds Print",       "com_speeds",     qfalse, 0 },
+    { "Perf log",               "r_vita_perflog", qfalse, 0 },
+    { "Back to settings",       NULL, qfalse, 0, VPM_ACTION_SETTINGS },
+};
+
+struct VitaPerfMenuCategory {
+    const char        *label;
+    VitaPerfMenuItem  *items;
+    int                itemCount;
+};
+
+#define VPM_CAT(label, arr) { label, arr, (int)(sizeof(arr) / sizeof(arr[0])) }
+
+static VitaPerfMenuCategory g_smCats[] = {
+    VPM_CAT("GRAPHICS", g_smGraphics),
+    VPM_CAT("DISPLAY",  g_smDisplay),
+    VPM_CAT("CONTROLS", g_smControls),
+    VPM_CAT("SYSTEM",   g_smSystem),
+};
+
+static VitaPerfMenuCategory g_dmCats[] = {
+    VPM_CAT("RENDER", g_dmRender),
+    VPM_CAT("WORLD",  g_dmWorld),
+    VPM_CAT("GAME",   g_dmGame),
+    VPM_CAT("LEVELS", g_dmLevels),
+    VPM_CAT("DIAG",   g_dmDiag),
+};
+
+/* The screen being shown: settings or debug. */
+static VitaPerfMenuCategory *g_pmCats     = g_smCats;
+static int                   g_pmCatCount = sizeof(g_smCats) / sizeof(g_smCats[0]);
+static qboolean              g_pmDebug    = qfalse;
 
 static qboolean g_pmActive   = qfalse;
+static int      g_pmOpenTime = 0;       /* keys right after opening are ignored (see HandleKey) */
 static qboolean g_pmNeedRestart = qfalse; /* a restart-only setting changed: vid_restart on close */
 static int      g_pmCatIdx   = 0;
 static int      g_pmItemIdx  = 0;
-static int      g_pmScroll   = 0;       /* first visible item (FASES is long) */
-#define VPM_VISIBLE 12                  /* items shown at once (box fits ~14) */
+static int      g_pmScroll   = 0;       /* first visible item (LEVELS is long) */
+#define VPM_VISIBLE 12                  /* items shown at once */
+
+static void VitaPerfMenu_SetScreen(qboolean debug)
+{
+    g_pmDebug    = debug;
+    g_pmCats     = debug ? g_dmCats : g_smCats;
+    g_pmCatCount = debug ? (int)(sizeof(g_dmCats) / sizeof(g_dmCats[0])) : (int)(sizeof(g_smCats) / sizeof(g_smCats[0]));
+    g_pmCatIdx   = 0;
+    g_pmItemIdx  = 0;
+    g_pmScroll   = 0;
+}
 
 static int VitaPerfMenu_GetValue(const VitaPerfMenuItem *it)
 {
@@ -320,9 +624,6 @@ static void VitaPerfMenu_ClampScroll(void)
     if (g_pmScroll > n - 1) g_pmScroll = (n > 0) ? n - 1 : 0;
 }
 
-/* Returns a display string for the item's current state.
- * Toggle (cycleMax==0): "[X]" / "[ ]" depending on inverted flag.
- * Cycle (cycleMax>0): "[N/MAX]". */
 /* The cvar's pending value if it is latched (applied at the next vid_restart). */
 static const char *VitaPerfMenu_CvarString(const char *name)
 {
@@ -344,22 +645,44 @@ static int VitaPerfMenu_ChoiceIndex(const VitaPerfMenuItem *it)
     return -1;
 }
 
+/* The item's current state: a named level, On/Off, n/max, or ">" for actions. */
 static const char *VitaPerfMenu_GetStateStr(const VitaPerfMenuItem *it)
 {
-    static char buf[32];
-    if (it->cmd) return ">>";   /* action item: no checkbox, just "run me" */
+    static char buf[64];
+    if (it->cmd) return ">";
     if (it->choices) {
         const int idx = VitaPerfMenu_ChoiceIndex(it);
-        Com_sprintf(buf, sizeof(buf), "[%s]", idx >= 0 ? it->choices[idx].name : "Custom");
-        return buf;
+        return VT(idx >= 0 ? it->choices[idx].name : "Custom");
     }
     int cur = VitaPerfMenu_GetValue(it);
     if (it->cycleMax > 0) {
-        Com_sprintf(buf, sizeof(buf), "[%d/%d]", cur, it->cycleMax);
+        Com_sprintf(buf, sizeof(buf), "%d / %d", cur, it->cycleMax);
         return buf;
     }
     qboolean on = it->inverted ? (cur == 0) : (cur != 0);
-    return on ? "[X]" : "[ ]";
+    return VT(on ? "On" : "Off");
+}
+
+/* Runs "a; b; c" right now. Cbuf_ExecuteText(EXEC_NOW) runs its text as ONE command,
+ * so presets like "seta r_picmip 2; seta r_lodscale 0.35; ..." used to set r_picmip to
+ * the whole string ("must be numeric") and never reach the other cvars. */
+static void VitaPerfMenu_RunNow(const char *cmds)
+{
+    char        one[256];
+    const char *p = cmds;
+
+    while (*p) {
+        const char *end = strchr(p, ';');
+        int         len = end ? (int)(end - p) : (int)strlen(p);
+
+        if (len >= (int)sizeof(one)) {
+            len = sizeof(one) - 1;
+        }
+        memcpy(one, p, len);
+        one[len] = 0;
+        Cbuf_ExecuteText(EXEC_NOW, va("%s\n", one));
+        p += end ? len + 1 : len;
+    }
 }
 
 static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
@@ -369,7 +692,7 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
         const int      next = (VitaPerfMenu_ChoiceIndex(it) + 1) % it->numChoices;
         const cvar_t *cv;
 
-        Cbuf_ExecuteText(EXEC_NOW, va("%s\n", it->choices[next].cmd));
+        VitaPerfMenu_RunNow(it->choices[next].cmd);
         cv = Cvar_FindVar(it->cvarName);
         if (it->restart || (cv && (cv->flags & CVAR_LATCH))) {
             g_pmNeedRestart = qtrue;
@@ -387,13 +710,10 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
     }
     char buf[16];
     Com_sprintf(buf, sizeof(buf), "%d", next);
-    /* 2026-05-19: mark the cvar CVAR_ARCHIVE so the toggle PERSISTS
-     * across launches. Previously Cvar_Set didn't archive, which is
-     * why the "bonitão" config the user set up by hand reverted to
-     * autoexec defaults on every restart. */
     /* Forced: several of these are CVAR_CHEAT (r_drawbrushes, r_nocurves, r_showtris...)
      * and a plain Cvar_Set is refused with cheats off -- the menu showed the new value
-     * but nothing changed. (Cheat cvars still revert on the next map load.) */
+     * but nothing changed. (Cheat cvars still revert on the next map load.) The cvar is
+     * archived so the choice persists across launches. */
     Cvar_Set2(it->cvarName, buf, qtrue);
     cvar_t *cv = Cvar_FindVar(it->cvarName);
     if (it->restart || (cv && (cv->flags & CVAR_LATCH))) {
@@ -420,14 +740,32 @@ static void VitaPerfMenu_Close(void)
     }
 }
 
+static void VitaPerfMenu_Open(qboolean debug)
+{
+    VitaPerfMenu_SetScreen(debug);
+    g_pmActive   = qtrue;
+    g_pmOpenTime = Sys_Milliseconds();
+    Com_Printf("PERF-MENU: OPEN (%s)\n", debug ? "debug" : "settings");
+}
+
 void CL_VitaPerfMenu_Toggle_f(void)
 {
     if (g_pmActive) {
         VitaPerfMenu_Close();
         return;
     }
-    g_pmActive = qtrue;
-    Com_Printf("PERF-MENU: OPEN\n");
+    VitaPerfMenu_Open(qfalse);
+}
+
+/* "vitasettings" / "vitadebug": open a given screen (menus, LiveArea launch param). */
+static void CL_VitaSettings_f(void)
+{
+    VitaPerfMenu_Open(qfalse);
+}
+
+static void CL_VitaDebug_f(void)
+{
+    VitaPerfMenu_Open(qtrue);
 }
 
 qboolean CL_VitaPerfMenu_IsActive(void)
@@ -435,42 +773,81 @@ qboolean CL_VitaPerfMenu_IsActive(void)
     return g_pmActive;
 }
 
+/* Menu actions (SYSTEM tab, "Back to settings"). */
+static void VitaPerfMenu_Action(const char *action)
+{
+    if (!strcmp(action, VPM_ACTION_DEFAULTS)) {
+        VitaPerfMenu_RunNow(VPM_DEFAULTS);
+        g_pmNeedRestart = qtrue;
+        VitaPerfMenu_Close();
+    } else if (!strcmp(action, VPM_ACTION_DEBUG)) {
+        VitaPerfMenu_SetScreen(qtrue);
+    } else if (!strcmp(action, VPM_ACTION_SETTINGS)) {
+        VitaPerfMenu_SetScreen(qfalse);
+    } else if (!strcmp(action, VPM_ACTION_CLOSE)) {
+        VitaPerfMenu_Close();
+    }
+}
+
 /* Called from CL_KeyEvent. Returns true if the key was consumed. */
 qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
 {
-    if (!g_pmActive) return qfalse;
+    if (!g_pmActive) {
+        /* In the 2D menus the +vitaselect bind never fires (the UI eats the key),
+         * so the double tap on Select is detected here instead. */
+        static int s_uiSelectLastDown = -100000;
+        if (down && key == K_PAD0_BACK && (Key_GetCatcher() & KEYCATCH_UI) && !UI_BindActive()) {
+            const int now = Sys_Milliseconds();
+            if (now - s_uiSelectLastDown < 350) {
+                s_uiSelectLastDown = -100000;
+                VitaPerfMenu_Open(qfalse);
+                return qtrue;
+            }
+            s_uiSelectLastDown = now;
+        }
+        return qfalse;
+    }
     if (!down) return qtrue;
+    /* A press still held from whatever opened the menu (the LiveArea's Start button,
+     * a double-tapped Select, the Options menu's Cross) must not act on the first item. */
+    if (Sys_Milliseconds() - g_pmOpenTime < 400) return qtrue;
 
     static qboolean s_resolved = qfalse;
     static int      k_select   = -1;
+    static int      k_start    = -1;
     static int      k_circle   = -1;
     static int      k_cross    = -1;
     static int      k_up       = -1;
     static int      k_down     = -1;
     static int      k_left     = -1;
     static int      k_right    = -1;
+    static int      k_lshoulder = -1;
+    static int      k_rshoulder = -1;
     if (!s_resolved) {
-        s_resolved = qtrue;
-        k_select = Key_StringToKeynum("PAD0_BACK");
-        k_circle = Key_StringToKeynum("PAD0_B");
-        k_cross  = Key_StringToKeynum("PAD0_A");
-        k_up     = Key_StringToKeynum("PAD0_DPAD_UP");
-        k_down   = Key_StringToKeynum("PAD0_DPAD_DOWN");
-        k_left   = Key_StringToKeynum("PAD0_DPAD_LEFT");
-        k_right  = Key_StringToKeynum("PAD0_DPAD_RIGHT");
+        s_resolved  = qtrue;
+        k_select    = Key_StringToKeynum("PAD0_BACK");
+        k_start     = Key_StringToKeynum("PAD0_START");
+        k_circle    = Key_StringToKeynum("PAD0_B");
+        k_cross     = Key_StringToKeynum("PAD0_A");
+        k_up        = Key_StringToKeynum("PAD0_DPAD_UP");
+        k_down      = Key_StringToKeynum("PAD0_DPAD_DOWN");
+        k_left      = Key_StringToKeynum("PAD0_DPAD_LEFT");
+        k_right     = Key_StringToKeynum("PAD0_DPAD_RIGHT");
+        k_lshoulder = Key_StringToKeynum("PAD0_LEFTSHOULDER");
+        k_rshoulder = Key_StringToKeynum("PAD0_RIGHTSHOULDER");
     }
 
-    if (key == k_select || key == k_circle) {
+    if (key == k_select || key == k_circle || key == k_start || key == K_ESCAPE) {
         VitaPerfMenu_Close();
         return qtrue;
     }
-    if (key == k_left) {
+    if (key == k_left || key == k_lshoulder) {
         g_pmCatIdx--;
         if (g_pmCatIdx < 0) g_pmCatIdx = g_pmCatCount - 1;
         g_pmItemIdx = 0; g_pmScroll = 0;
         return qtrue;
     }
-    if (key == k_right) {
+    if (key == k_right || key == k_rshoulder) {
         g_pmCatIdx++;
         if (g_pmCatIdx >= g_pmCatCount) g_pmCatIdx = 0;
         g_pmItemIdx = 0; g_pmScroll = 0;
@@ -490,13 +867,13 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
     }
     if (key == k_cross) {
         VitaPerfMenuItem *it = &g_pmCats[g_pmCatIdx].items[g_pmItemIdx];
-        if (it->cmd) {
-            /* Action item (load a level, cheat, restart…). Close the menu first
-             * so input returns to the game, then queue the command. */
+        if (it->cmd && it->cmd[0] == '@') {
+            VitaPerfMenu_Action(it->cmd);
+        } else if (it->cmd) {
             if (it->restart) {
                 /* Quality preset: plain cvar sets, applied now so the vid_restart
                  * queued by Close sees them. */
-                Cbuf_ExecuteText(EXEC_NOW, va("%s\n", it->cmd));
+                VitaPerfMenu_RunNow(it->cmd);
                 g_pmNeedRestart = qtrue;
                 VitaPerfMenu_Close();
             } else {
@@ -514,68 +891,111 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
     return qtrue;
 }
 
-/* Draw the menu overlay. Called from View3D::Draw2D after game render. */
+/* Wraps text into at most two lines of maxChars. */
+static void VitaPerfMenu_Wrap(const char *text, int maxChars, char *line1, char *line2, int size)
+{
+    int len = (int)strlen(text);
+    int cut;
+
+    line1[0] = line2[0] = 0;
+    if (len <= maxChars) {
+        Q_strncpyz(line1, text, size);
+        return;
+    }
+    for (cut = maxChars; cut > 0 && text[cut] != ' '; cut--) {
+    }
+    if (cut == 0) {
+        cut = maxChars;
+    }
+    Q_strncpyz(line1, text, cut + 1 < size ? cut + 1 : size);
+    Q_strncpyz(line2, text + cut + (text[cut] == ' ' ? 1 : 0), size);
+}
+
+/* Draw the menu overlay: in game from View3D::Draw2D, elsewhere from UI_Update. */
 void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
 {
     if (!g_pmActive) return;
 
-    /* Solid black box behind menu for readability. */
-    vec4_t bg = {0.0f, 0.0f, 0.0f, 0.85f};
+    const vec4_t bg     = {0.02f, 0.03f, 0.02f, 0.92f};
+    const vec4_t band   = {0.30f, 0.26f, 0.12f, 0.95f};
+    const vec4_t selBar = {0.45f, 0.38f, 0.12f, 0.60f};
+    const float  boxW   = screenW < 620.0f ? screenW - 20.0f : 600.0f;
+    const float  boxH   = screenH < 460.0f ? screenH - 20.0f : 440.0f;
+    const float  boxX   = (screenW - boxW) * 0.5f;
+    const float  boxY   = (screenH - boxH) * 0.5f;
+    const float  lineH  = 20.0f;
+    float        y;
+
     re.SetColor(bg);
-    float boxW = 480.0f, boxH = 360.0f;
-    float boxX = (screenW - boxW) * 0.5f;
-    float boxY = (screenH - boxH) * 0.5f;
     re.DrawBox(boxX, boxY, boxW, boxH);
+    re.SetColor(band);
+    re.DrawBox(boxX, boxY, boxW, 30.0f);
 
-    if (!menuFont) return;
+    if (!menuFont) {
+        re.SetColor(NULL);
+        return;
+    }
 
-    /* Header with category tabs. Highlight current. */
-    float y = boxY + 16.0f;
-    char  hdr[256];
-    Com_sprintf(hdr, sizeof(hdr), "PERF MENU  --  D-pad to navigate, A toggle, B close");
+    /* Title */
     menuFont->setColor(UWhite);
-    menuFont->Print(boxX + 12.0f, y, hdr, -1, NULL);
-    y += 22.0f;
+    menuFont->Print(boxX + 12.0f, boxY + 7.0f, VitaMenu_Latin1(VT(g_pmDebug ? "DEBUG" : "VITA SETTINGS")), -1, NULL);
 
-    /* Category row */
+    /* Tabs */
+    y = boxY + 40.0f;
     float catX = boxX + 12.0f;
     for (int i = 0; i < g_pmCatCount; i++) {
-        if (i == g_pmCatIdx) menuFont->setColor(UYellow);
-        else                 menuFont->setColor(UWhite);
-        menuFont->Print(catX, y, g_pmCats[i].label, -1, NULL);
-        catX += (float)strlen(g_pmCats[i].label) * 9.0f + 12.0f;
+        const char *label = VitaMenu_Latin1(VT(g_pmCats[i].label));
+        menuFont->setColor(i == g_pmCatIdx ? UYellow : UWhite);
+        menuFont->Print(catX, y, label, -1, NULL);
+        catX += (float)strlen(label) * 9.0f + 18.0f;
     }
-    y += 28.0f;
+    y += 30.0f;
 
-    /* Items in current category — windowed [g_pmScroll, +VPM_VISIBLE) so long
-     * lists (FASES = 35 levels) scroll instead of overflowing the box. */
+    /* Items, windowed [g_pmScroll, +VPM_VISIBLE) so long lists (LEVELS) scroll. */
     VitaPerfMenuCategory *cat = &g_pmCats[g_pmCatIdx];
     int last = g_pmScroll + VPM_VISIBLE;
     if (last > cat->itemCount) last = cat->itemCount;
     for (int i = g_pmScroll; i < last; i++) {
-        char line[128];
-        const cvar_t *icv = cat->items[i].cvarName ? Cvar_FindVar(cat->items[i].cvarName) : NULL;
-        const qboolean needsRestart = cat->items[i].restart || (icv && (icv->flags & CVAR_LATCH));
-        Com_sprintf(line, sizeof(line), "%s %-20s  %s%s",
-            i == g_pmItemIdx ? ">" : " ",
-            cat->items[i].label,
-            VitaPerfMenu_GetStateStr(&cat->items[i]),
-            needsRestart ? " *" : "");
-        if (i == g_pmItemIdx) menuFont->setColor(UYellow);
-        else                  menuFont->setColor(UWhite);
-        menuFont->Print(boxX + 12.0f, y, line, -1, NULL);
-        y += 20.0f;
+        const VitaPerfMenuItem *it = &cat->items[i];
+        const cvar_t  *icv          = it->cvarName ? Cvar_FindVar(it->cvarName) : NULL;
+        const qboolean needsRestart = it->restart || (icv && (icv->flags & CVAR_LATCH));
+        char           value[96];
+
+        if (i == g_pmItemIdx) {
+            re.SetColor(selBar);
+            re.DrawBox(boxX + 6.0f, y - 2.0f, boxW - 12.0f, lineH);
+        }
+        menuFont->setColor(i == g_pmItemIdx ? UYellow : UWhite);
+        menuFont->Print(boxX + 16.0f, y, VitaMenu_Latin1(VT(it->label)), -1, NULL);
+        Com_sprintf(value, sizeof(value), "%s%s", VitaPerfMenu_GetStateStr(it), needsRestart && !it->cmd ? " *" : "");
+        menuFont->Print(boxX + boxW * 0.62f, y, VitaMenu_Latin1(value), -1, NULL);
+        y += lineH;
     }
     if (cat->itemCount > VPM_VISIBLE) {
-        char more[64];
-        Com_sprintf(more, sizeof(more), "  -- %d/%d --", g_pmItemIdx + 1, cat->itemCount);
+        char more[32];
+        Com_sprintf(more, sizeof(more), "%d / %d", g_pmItemIdx + 1, cat->itemCount);
         menuFont->setColor(UYellow);
-        menuFont->Print(boxX + 12.0f, y, more, -1, NULL);
+        menuFont->Print(boxX + boxW - 70.0f, boxY + 40.0f, more, -1, NULL);
     }
+
+    /* Description of the selected item */
+    {
+        const char *desc = VD(cat->items[g_pmItemIdx].label);
+        char        l1[160], l2[160];
+        VitaPerfMenu_Wrap(desc, 62, l1, l2, sizeof(l1));
+        menuFont->setColor(UWhite);
+        menuFont->Print(boxX + 12.0f, boxY + boxH - 88.0f, VitaMenu_Latin1(l1), -1, NULL);
+        menuFont->Print(boxX + 12.0f, boxY + boxH - 70.0f, VitaMenu_Latin1(l2), -1, NULL);
+    }
+
+    /* Footer: restart note and controls */
     menuFont->setColor(g_pmNeedRestart ? UYellow : UWhite);
+    menuFont->Print(boxX + 12.0f, boxY + boxH - 46.0f,
+        VitaMenu_Latin1(VT(g_pmNeedRestart ? "* changed: applied when the menu closes"
+                                           : "* applied when the menu closes (video restart)")), -1, NULL);
+    menuFont->setColor(UWhite);
     menuFont->Print(boxX + 12.0f, boxY + boxH - 24.0f,
-        g_pmNeedRestart ? "* changed: applied when the menu closes (video restart)"
-                        : "* = applied when the menu closes (video restart)", -1, NULL);
+        VitaMenu_Latin1(VT("L/R: tab   D-pad: select   X: change   O: close")), -1, NULL);
 
     re.SetColor(NULL);
 }
@@ -596,8 +1016,7 @@ static void CL_VitaSelectDown_f(void)
     if (now - s_vitaSelectLastDown < VITA_SELECT_DOUBLE_TAP_MS) {
         s_vitaSelectLastDown = -100000;
         Cbuf_ExecuteText(EXEC_NOW, "-scores\n");
-        g_pmActive = qtrue;
-        Com_Printf("PERF-MENU: OPEN\n");
+        VitaPerfMenu_Open(qfalse);
         return;
     }
     s_vitaSelectLastDown = now;
@@ -612,6 +1031,8 @@ static void CL_VitaSelectUp_f(void)
 void CL_VitaPerfMenu_Init(void)
 {
     Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
+    Cmd_AddCommand("vitasettings", CL_VitaSettings_f);
+    Cmd_AddCommand("vitadebug", CL_VitaDebug_f);
     Cmd_AddCommand("+vitaselect", CL_VitaSelectDown_f);
     Cmd_AddCommand("-vitaselect", CL_VitaSelectUp_f);
 }

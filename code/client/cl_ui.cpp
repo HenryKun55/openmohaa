@@ -2394,6 +2394,22 @@ void UI_Update(void)
     }
 
     uWinMan.UpdateViews();
+
+#if defined(__vita__) || defined(__SWITCH__)
+    // Vita settings/debug menu outside of gameplay (main menu, loading, launched from
+    // the LiveArea): in game View3D::Draw2D draws it.
+    {
+        extern qboolean CL_VitaPerfMenu_IsActive(void);
+        extern void     CL_VitaPerfMenu_Draw(class UIFont * menuFont, float screenW, float screenH);
+        if (CL_VitaPerfMenu_IsActive() && !(view3d && view3d->IsVisible())) {
+            static UIFont *s_menuFont;
+            if (!s_menuFont) {
+                s_menuFont = new UIFont("verdana-14");
+            }
+            CL_VitaPerfMenu_Draw(s_menuFont, uWinMan.getFrame().size.width, uWinMan.getFrame().size.height);
+        }
+    }
+#endif
 }
 
 /*
