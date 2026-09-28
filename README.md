@@ -1,70 +1,69 @@
 # OpenMoHAA for PlayStation Vita
 
-**Medal of Honor: Allied Assault** single-player, running natively on the PS Vita
-as a homebrew app.
+**Medal of Honor: Allied Assault** single-player, running natively on the PS Vita.
+The same code also builds for **Nintendo Switch** and **macOS**.
 
 > [!NOTE]
-> **In development.** There is no release right now: the next `.vpk` will be
-> published on the [Releases](https://github.com/HenryKun55/openmohaa/releases)
-> page when the current round of work is finished.
+> **In development.** No release right now. The next one will be on the
+> [Releases](https://github.com/HenryKun55/openmohaa/releases) page with builds
+> for Vita (`.vpk`), Switch (`.nro`) and macOS.
 
-You need your own copy of the original game. No game data is included here.
+You need your own copy of the original game. No game data is included.
 
-## What it does
+## Install (Vita)
 
-- The Allied Assault campaign, with level transitions and saves.
-- Dual-analog controls and menus used with the pad (no touch needed).
-- A settings menu in English or Portuguese (it follows the Vita's language), with
-  quality presets and a debug menu for testing.
-- Built for the Vita's hardware: the renderer runs on its own CPU core, characters
-  are skinned on the GPU, the world is drawn from a vertex buffer, and light and
-  shadow work is cached. Around 30-45 FPS in combat on the first mission on a
-  stock Vita, more in lighter scenes.
-- Multiplayer is not available on the Vita.
+1. Install `OpenMoHAA.vpk` with VitaShell.
+2. Copy your game's `Pak0.pk3` ... `Pak5.pk3` to `ux0:data/openmohaa/main/`.
+3. Start it from the LiveArea.
 
-## Install, controls and building
+Full guide: [docs/PORTING-VITA.md](docs/PORTING-VITA.md). Updating never touches
+your settings or saves.
 
-Everything is in **[docs/PORTING-VITA.md](docs/PORTING-VITA.md)**: installing the
-`.vpk`, where to put your game files, controls, the settings menu, how settings
-and saves are kept, and how to build it yourself.
+## Controls
 
-Updating the app never touches your settings or saves: they live in
-`ux0:data/openmohaa/`, and an install only replaces the app itself.
+| Button | In game |
+|---|---|
+| Left stick | Move |
+| Right stick | Look |
+| R | Fire |
+| L | Secondary attack |
+| Cross | Use |
+| Circle | Crouch |
+| Square | Reload |
+| Triangle | Jump |
+| D-pad left / right | Previous / next weapon |
+| D-pad up | Use |
+| Start | Pause menu |
+| Select (hold) | Objectives |
+| Select (tap twice) | Vita settings |
 
-## How this port is made
+In menus: left stick moves the cursor, Cross clicks, Circle goes back. Buttons can
+be changed in the game's Controls menu.
 
-This port is developed with the help of AI (Claude, through Claude Code) together
-with manual work:
+**Vita settings** (tap Select twice, in game or in the menus): graphics presets
+and detail, HUD, crosshair, look sensitivity. English or Portuguese, following
+the Vita's language.
 
-- The AI writes and changes most of the code, reads the engine to find the
-  causes of crashes and slowdowns, and builds the profilers used to measure them.
-- The maintainer decides what gets done, tests every build by hand on a real Vita
-  and on Vita3K, reports what they see (crashes, glitches, frame rate, load times)
-  and approves each change.
-- Each change is a separate commit, so any regression can be found and reverted
-  on its own.
-- Performance work is based on measurements taken on the real hardware, not on
-  the emulator.
+## Switch and macOS
 
-## Based on OpenMoHAA
+- **Switch:** `OpenMoHAA.nro` in `sdmc:/switch/`, game files in
+  `sdmc:/switch/openmohaa/main/`. See [docs/CONSOLE-PORTS.md](docs/CONSOLE-PORTS.md).
+- **macOS:** game files in `~/Library/Application Support/openmohaa/main/`.
 
-This is a fork of [OpenMoHAA](https://github.com/openmoh/openmohaa), the
-open-source engine for Medal of Honor: Allied Assault, which is built on
-[ioquake3](https://github.com/ioquake/ioq3). All the engine work is theirs; this
-repository adds the Vita port on the `vita-port` branch. The Vita code is kept
-behind `__vita__`, so the desktop builds are unchanged.
+Multiplayer is not available on Vita or Switch.
 
-For the PC version, multiplayer, servers and everything else about OpenMoHAA
-itself, go to the [OpenMoHAA project](https://github.com/openmoh/openmohaa).
+## How it is made
 
-This branch also contains an experimental Nintendo Switch port and notes on
-preparing the game data for consoles: see
-[docs/CONSOLE-PORTS.md](docs/CONSOLE-PORTS.md).
+Developed with AI (Claude, through Claude Code) and manual work: the AI writes
+most of the code and the profilers, the maintainer decides what to do, tests every
+build on a real Vita and approves each change. Every change is its own commit, so
+any regression can be found and reverted.
 
-## License
+## Credits and license
 
-GPL v2, like OpenMoHAA and ioquake3 (see [COPYING.txt](COPYING.txt)). Each
-release includes the source code of that exact build.
+A fork of [OpenMoHAA](https://github.com/openmoh/openmohaa), built on
+[ioquake3](https://github.com/ioquake/ioq3). GPL v2 (see [COPYING.txt](COPYING.txt));
+each release includes its source code.
 
-Medal of Honor is a trademark of Electronic Arts. This project is not affiliated
-with or endorsed by Electronic Arts or Sony.
+Medal of Honor is a trademark of Electronic Arts. Not affiliated with Electronic
+Arts, Sony or Nintendo.
