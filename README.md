@@ -63,7 +63,7 @@ preparing the game data for consoles: see
 
 ## License
 
-GPL v2, like OpenMoHAA and ioquake3 (see [LICENSE.txt](LICENSE.txt)). Each
+GPL v2, like OpenMoHAA and ioquake3 (see [COPYING.txt](COPYING.txt)). Each
 release includes the source code of that exact build.
 
 Medal of Honor is a trademark of Electronic Arts. This project is not affiliated
