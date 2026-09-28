@@ -186,10 +186,10 @@ def main():
     logo = extract_logo(load_from_paks(main_dir, TITLE))
     photo = load_from_paks(main_dir, PHOTO)
 
-    # LiveArea background: the landing craft, logo upper-left (the launch gate sits
-    # on the right half and the Settings button at the bottom-left).
+    # LiveArea background: the landing craft, logo on the left, below the system
+    # icons at the top (the launch gate sits on the right half).
     bg = backdrop(photo, (840, 500), focus_y=0.58, darken=0.5, top_shade=0.6).convert("RGBA")
-    place_logo(bg, logo, 340, (215, 175))
+    place_logo(bg, logo, 320, (205, 230))
     save(bg, "sce_sys/livearea/contents/bg.png")
 
     # Launch gate image (shown as the bubble opens).
