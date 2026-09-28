@@ -584,6 +584,72 @@ void RB_Light_Real(unsigned char *colors)
     }
 }
 
+#ifdef __vita__
+/*
+ * Light visibility cache (Vita, render thread only). Spherical entity lighting traces
+ * from each entity to every nearby static light (and to the sun) every frame: ~10 ms of
+ * render thread time per frame in m1l1 combat on hardware, holding the collision lock
+ * the main thread's traces then wait on. Lights don't move and entities move a little
+ * per frame, so a result is reused while the entity's trace origin stays within 8 units,
+ * for up to 250 ms.
+ */
+#define SPHERE_TRACE_CACHE 1024
+
+typedef struct {
+    int      ent;
+    int      hModel;
+    int      light;
+    int      time;  // backEnd.refdef.time of the trace; 0 = empty
+    vec3_t   origin;
+    qboolean visible;
+} sphereTraceCache_t;
+
+static sphereTraceCache_t s_sphereTraceCache[SPHERE_TRACE_CACHE];
+
+// Returns the slot for (current entity, light): *hit when its result can be reused,
+// otherwise a slot to store the new result in (RB_Sphere_TraceCacheStore).
+static sphereTraceCache_t *RB_Sphere_TraceCacheFind(int light, qboolean *hit)
+{
+    const int           ent    = backEnd.currentEntity->e.entityNumber;
+    const int           hModel = backEnd.currentEntity->e.hModel;
+    const int           now    = backEnd.refdef.time;
+    unsigned int        h      = (unsigned int)(ent * 2654435761u) ^ (unsigned int)(light * 40503u) ^ (unsigned int)hModel;
+    sphereTraceCache_t *oldest = NULL;
+    int                 i;
+
+    for (i = 0; i < 4; i++) {
+        sphereTraceCache_t *c = &s_sphereTraceCache[(h + i) & (SPHERE_TRACE_CACHE - 1)];
+
+        if (c->time && c->ent == ent && c->hModel == hModel && c->light == light) {
+            if (c->time <= now && now - c->time < 250
+                && Distance(c->origin, backEnd.currentSphere->traceOrigin) < 8.0f) {
+                *hit = qtrue;
+                return c;
+            }
+            *hit = qfalse;
+            return c;  // same key, stale: refresh in place
+        }
+        if (!oldest || c->time < oldest->time || c->time > now) {
+            oldest = c;
+        }
+    }
+    *hit = qfalse;
+    return oldest;
+}
+
+static void RB_Sphere_TraceCacheStore(sphereTraceCache_t *c, int light, qboolean visible)
+{
+    c->ent     = backEnd.currentEntity->e.entityNumber;
+    c->hModel  = backEnd.currentEntity->e.hModel;
+    c->light   = light;
+    c->time    = backEnd.refdef.time ? backEnd.refdef.time : 1;
+    c->visible = visible;
+    VectorCopy(backEnd.currentSphere->traceOrigin, c->origin);
+}
+
+#define SPHERE_TRACE_LIGHT_SUN -1
+#endif
+
 static void RB_Sphere_Light_Sun()
 {
     int      curleaf;
@@ -648,11 +714,28 @@ static void RB_Sphere_Light_Sun()
     }
 
     VectorMA(backEnd.currentSphere->traceOrigin, 16384.0, s_sun.direction, end);
+#ifdef __vita__
+    sphereTraceCache_t *sunCache = NULL;
+    qboolean            sunHit   = qfalse;
+    if (!r_light_sun_line->integer) {
+        sunCache = RB_Sphere_TraceCacheFind(SPHERE_TRACE_LIGHT_SUN, &sunHit);
+    }
+    if (sunHit) {
+        hitSun = sunCache->visible;
+    } else
+#endif
+    {
     ri.CM_BoxTrace(
         &trace, backEnd.currentSphere->traceOrigin, end, vec3_origin, vec3_origin, 0, CONTENTS_SOLID | CONTENTS_FENCE, 0
     );
 
     hitSun = (trace.surfaceFlags >> 2) & 1;
+#ifdef __vita__
+    if (sunCache) {
+        RB_Sphere_TraceCacheStore(sunCache, SPHERE_TRACE_LIGHT_SUN, hitSun);
+    }
+#endif
+    }
     if (r_light_sun_line->integer) {
         vec3_t transpos;
         vec3_t temppos;
@@ -981,6 +1064,20 @@ static void RB_Sphere_AddLight(const spherel_t *thislight)
     }
 
     if (thislight->needs_trace) {
+#ifdef __vita__
+        const int light = (thislight >= tr.sLights && thislight < tr.sLights + tr.numSLights)
+                            ? (int)(thislight - tr.sLights)
+                            : (int)(((uintptr_t)thislight >> 4) & 0x7fffffff);
+        qboolean            hit;
+        sphereTraceCache_t *cache = RB_Sphere_TraceCacheFind(light, &hit);
+
+        if (hit) {
+            if (!cache->visible) {
+                return;
+            }
+        } else
+#endif
+        {
         trace_t trace;
         ri.CM_BoxTrace(
             &trace,
@@ -993,8 +1090,12 @@ static void RB_Sphere_AddLight(const spherel_t *thislight)
             0
         );
 
+#ifdef __vita__
+        RB_Sphere_TraceCacheStore(cache, light, trace.fraction >= 1);
+#endif
         if (trace.fraction < 1) {
             return;
+        }
         }
     }
 
