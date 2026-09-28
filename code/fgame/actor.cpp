@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // actor.cpp: Base class for character AI.
 
+#include "g_vitaprof.h"
 #include "g_local.h"
 #include "actor.h"
 #include "scriptthread.h"
@@ -7562,8 +7563,7 @@ void Actor::Think(void)
     }
 
     m_eNextAnimMode = -1;
-    FixAIParameters();
-    UpdateEnableEnemy();
+    GP(GP_AI_PARMS, FixAIParameters(); UpdateEnableEnemy());
 
     if (m_pTetherEnt) {
         m_vHome = m_pTetherEnt->origin;
@@ -7582,7 +7582,7 @@ void Actor::Think(void)
     GlobalFuncs_t *Think = &GlobalFuncs[m_Think[m_ThinkLevel]];
 
     if (Think->ThinkState) {
-        (this->*Think->ThinkState)();
+        GP(GP_AI_STATE, (this->*Think->ThinkState)());
     }
 
     m_bNeedReload        = false;
@@ -7638,11 +7638,11 @@ void Actor::PostThink(bool bDontFaceWall)
         return;
     }
 
-    UpdateAngles();
-    UpdateAnim();
-    DoMove();
-    UpdateBoneControllers();
-    UpdateFootsteps();
+    GP(GP_AI_ANGLES, UpdateAngles());
+    GP(GP_AI_ANIM, UpdateAnim());
+    GP(GP_AI_MOVE, DoMove());
+    GP(GP_AI_BONES, UpdateBoneControllers());
+    GP(GP_AI_STEPS, UpdateFootsteps());
 }
 
 /*

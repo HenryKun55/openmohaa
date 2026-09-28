@@ -423,6 +423,38 @@ G_AddGEntity
 
 ================
 */
+#include "g_vitaprof.h"
+
+#ifdef __vita__
+unsigned int gp_acc[GP_COUNT];
+static int   gp_frames;
+
+static void G_VitaProfFrame(void)
+{
+    static const char *names[GP_COUNT] = {
+        "events", "preanimate", "scripts", "nav", "smoke", "actors", "player", "others", "endframes", "total",
+        "| ai:parms", "state", "angles", "anim", "move", "bones", "steps", "nactors", "nents"
+    };
+    char line[768];
+    int  i, n;
+
+    if (++gp_frames < 60) {
+        return;
+    }
+    n = Com_sprintf(line, sizeof(line), "G-PROF (ms/frame):");
+    for (i = 0; i < GP_COUNT; i++) {
+        if (i >= GP_NACTORS) {
+            n += Com_sprintf(line + n, sizeof(line) - n, " %s=%d", names[i], gp_acc[i] / gp_frames);
+        } else {
+            n += Com_sprintf(line + n, sizeof(line) - n, " %s=%.1f", names[i], gp_acc[i] / 1000.0f / gp_frames);
+        }
+        gp_acc[i] = 0;
+    }
+    gi.Printf("%s\n", line);
+    gp_frames = 0;
+}
+#endif
+
 void G_AddGEntity(gentity_t *edict, qboolean showentnums)
 {
     unsigned long long start, end;
@@ -442,7 +474,16 @@ void G_AddGEntity(gentity_t *edict, qboolean showentnums)
             g_fMsecPerClock
         );
     } else {
+#ifdef __vita__
+        const int slot = ent->IsSubclassOfActor() ? GP_ACTORS : ent->IsSubclassOfPlayer() ? GP_PLAYER : GP_OTHERS;
+        gp_acc[GP_NENTS]++;
+        if (slot == GP_ACTORS) {
+            gp_acc[GP_NACTORS]++;
+        }
+        GP(slot, G_RunEntity(ent));
+#else
         G_RunEntity(ent);
+#endif
     }
 
     // remove the entity in case of invalid server flags
@@ -483,6 +524,9 @@ void G_RunFrame(int levelTime, int frameTime)
     static int         processedFrameID         = 0;
 
     try {
+#ifdef __vita__
+        const unsigned int gpFrameStart = sceKernelGetProcessTimeLow();
+#endif
         g_iInThinks = 0;
 
         if (g_showmem->integer) {
@@ -507,7 +551,7 @@ void G_RunFrame(int levelTime, int frameTime)
         level.setTime(levelTime);
 
         if (level.intermissiontime || level.died_already) {
-            L_ProcessPendingEvents();
+            GP(GP_EVENTS, L_ProcessPendingEvents());
             G_ClientDoBlends();
 
             if (g_gametype->integer != GT_SINGLE_PLAYER && g_maxintermission->value != 0.0f) {
@@ -528,7 +572,7 @@ void G_RunFrame(int levelTime, int frameTime)
 
         // Process most of the events before the physics are run
         // so that we can affect the physics immediately
-        L_ProcessPendingEvents();
+        GP(GP_EVENTS, L_ProcessPendingEvents());
 
         Director.AllowPause(true);
         Director.Pause();
@@ -546,17 +590,17 @@ void G_RunFrame(int levelTime, int frameTime)
             if (actor->IsSubclassOfActor()) {
                 actor->m_bUpdateAnimDoneFlags = false;
                 if (actor->m_bAnimating) {
-                    actor->PreAnimate();
+                    GP(GP_PREANIMATE, actor->PreAnimate());
                 }
             }
         }
 
         g_iInThinks++;
-        Director.Unpause();
+        GP(GP_SCRIPTS, Director.Unpause());
         g_iInThinks--;
 
         // Process any pending events that got posted during the script code
-        L_ProcessPendingEvents();
+        GP(GP_EVENTS, L_ProcessPendingEvents());
 
         path_checksthisframe = 0;
 
@@ -566,14 +610,13 @@ void G_RunFrame(int levelTime, int frameTime)
 
         PathManager.ShowNodes();
 
-        G_Navigation_Frame();
+        GP(GP_NAV, G_Navigation_Frame());
 
         showentnums = (sv_showentnums->integer && (g_gametype->integer == GT_SINGLE_PLAYER || sv_cheats->integer));
 
         g_iInThinks++;
 
-        G_UpdateSmokeSprites();
-        level.UpdateBadPlaces();
+        GP(GP_SMOKE, G_UpdateSmokeSprites(); level.UpdateBadPlaces());
 
         processedFrameID++;
 
@@ -627,16 +670,17 @@ void G_RunFrame(int levelTime, int frameTime)
         g_bBeforeThinks = qfalse;
 
         // Process any pending events that got posted during the physics code.
-        L_ProcessPendingEvents();
-        level.DoEarthquakes();
-
-        // build the playerstate_t structures for all players
-        G_ClientEndServerFrames();
+        GP(GP_EVENTS, L_ProcessPendingEvents());
+        GP(GP_ENDFRAMES, level.DoEarthquakes(); G_ClientEndServerFrames());
 
         level.Unregister(STRING_POSTTHINK);
 
         // Process any pending events that got posted during the script code
-        L_ProcessPendingEvents();
+        GP(GP_EVENTS, L_ProcessPendingEvents());
+#ifdef __vita__
+        gp_acc[GP_TOTAL] += sceKernelGetProcessTimeLow() - gpFrameStart;
+        G_VitaProfFrame();
+#endif
 
         // show how many traces the game code is doing
         if (sv_traceinfo->integer) {
