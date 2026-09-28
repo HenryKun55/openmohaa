@@ -4044,6 +4044,16 @@ void UI_ServerLoaded(void)
         return;
     }
 
+#ifdef __vita__
+    // Test automation: start the level without waiting for CONTINUE, then run
+    // vita_levelcmd (e.g. "god; notarget").
+    if (Cvar_VariableIntegerValue("vita_autocontinue")) {
+        UI_FinishLoadingScreen_f();
+        Cbuf_AddText(va("%s\n", Cvar_VariableString("vita_levelcmd")));
+        return;
+    }
+#endif
+
     server_loading_waiting = qtrue;
 
     event = new Event(EV_Widget_Enable);
