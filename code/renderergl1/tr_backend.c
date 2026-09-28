@@ -1542,6 +1542,11 @@ const void	*RB_SwapBuffers( const void *data ) {
 			qglFinish();
 		}
 	}
+	// glState belongs to the backend: RE_BeginFrame used to reset this from the front
+	// end, i.e. while the render thread was still drawing the previous frame, so the
+	// check above usually saw qfalse and called glFinish, stalling ~14 ms a frame
+	// waiting for the GPU to drain. Reset it here for the next frame instead.
+	glState.finishCalled = qfalse;
 #endif
 
 	backEnd.in2D = qfalse;

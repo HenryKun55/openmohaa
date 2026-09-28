@@ -416,7 +416,9 @@ void RE_BeginFrame( stereoFrame_t stereoFrame ) {
 	if ( !tr.registered ) {
 		return;
 	}
-	glState.finishCalled = qfalse;
+#ifndef __vita__
+	glState.finishCalled = qfalse;	// the Vita resets it in RB_SwapBuffers (backend-owned)
+#endif
 
 	tr.frameCount++;
 	tr.frameSceneNum = 0;
