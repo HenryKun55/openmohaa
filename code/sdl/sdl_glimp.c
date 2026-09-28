@@ -429,6 +429,12 @@ static qboolean GLimp_GetProcAddresses( qboolean fixedFunction ) {
 		if ( QGL_VERSION_ATLEAST( 1, 3 ) ) {
 			QGL_1_3_PROCS;
 		}
+#ifdef __vita__
+		// vitaGL reports "OpenGL ES 2.0", so the 1.3 set above is skipped, but it has
+		// these two (not glCompressedTexSubImage2D): needed for .dds textures.
+		qglActiveTexture         = glActiveTexture;
+		qglCompressedTexImage2D  = glCompressedTexImage2D;
+#endif
 	} else {
 		if ( QGL_VERSION_ATLEAST( 2, 0 ) ) {
 			QGL_1_1_PROCS;
@@ -1122,8 +1128,15 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 	glConfig.textureCompression = TC_NONE;
 
 	// GL_EXT_texture_compression_s3tc
+#ifdef __vita__
+	// SDL has no GL context on the Vita (vitaGL is linked directly), so
+	// SDL_GL_ExtensionSupported always fails: check vitaGL's extension string, which
+	// lists S3TC. Without this the loader never looked for .dds textures.
+	if ( strstr( glConfig.extensions_string, "GL_EXT_texture_compression_s3tc" ) )
+#else
 	if ( ( QGLES_VERSION_ATLEAST( 2, 0 ) || SDL_GL_ExtensionSupported( "GL_ARB_texture_compression" ) ) &&
 	     SDL_GL_ExtensionSupported( "GL_EXT_texture_compression_s3tc" ) )
+#endif
 	{
 		if ( r_ext_compressed_textures->value )
 		{
