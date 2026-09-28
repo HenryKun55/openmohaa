@@ -284,6 +284,10 @@ typedef struct {
     int                numIndexes;
     int                numBoneSlots;
     int                boneChannel[VITA_SKIN_MAX_BONESLOTS];
+    /* boneChannel -> the tiki's local channel, for localChnTiki (the lookup depends on
+     * the model only, so it is done once instead of per surface per frame). */
+    const void        *localChnTiki;
+    int                localChn[VITA_SKIN_MAX_BONESLOTS];
 } vitaSkinCacheEntry_t;
 
 static vitaSkinCacheEntry_t s_skin_cache[VITA_SKIN_CACHE_CAP];
@@ -297,6 +301,18 @@ static skelSurfaceGame_t *s_hash_key[VITA_SKIN_HASH_SIZE];
 static int                s_hash_slot[VITA_SKIN_HASH_SIZE];
 
 static unsigned int        s_skin_program = 0;
+/* The skin program stays bound across consecutive GPU-skinned surfaces (the surface
+ * list is sorted by shader, so they usually come in runs); R_VitaGpuSkin_Unbind puts
+ * program 0 back before any fixed-function draw. */
+static qboolean            s_skin_program_bound = qfalse;
+
+void R_VitaGpuSkin_Unbind(void)
+{
+    if (s_skin_program_bound) {
+        glUseProgram(0);
+        s_skin_program_bound = qfalse;
+    }
+}
 static qboolean            s_skin_ready   = qfalse;
 static int                 s_loc_mvp = -1, s_loc_boneMatrix = -1, s_loc_diffuse = -1;
 static int                 s_loc_mvZ = -1, s_loc_fog = -1, s_loc_fogColor = -1, s_loc_alphaTest = -1;
@@ -515,7 +531,8 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
     slot  = s_skin_cache_count++;
     entry = &s_skin_cache[slot];
     Com_Memset(entry, 0, sizeof(*entry));
-    entry->sf = sf;
+    entry->sf           = sf;
+    entry->localChnTiki = NULL;
 
     /* One tightly packed GPU-mapped array per attribute + a u16 index list, built
      * once per surface. vglVertexAttribPointerMapped / vglIndexPointerMapped then
@@ -687,9 +704,16 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     e = &s_skin_cache[slot];
     if (e->sf != sf || !e->ibuf) { vita_skin_fail = 4; return qfalse; }       /* stale guard */
 
+    if (e->localChnTiki != tiki) {
+        for (i = 0; i < e->numBoneSlots; i++) {
+            e->localChn[i] = ri.TIKI_GetLocalChannel(tiki, e->boneChannel[i]);
+        }
+        e->localChnTiki = tiki;
+    }
+
     /* Pack the bone matrix palette for THIS entity (transposed, see header). */
     for (i = 0; i < e->numBoneSlots; i++) {
-        int localChn = ri.TIKI_GetLocalChannel(tiki, e->boneChannel[i]);
+        int localChn = e->localChn[i];
         if (localChn < 0) { vita_skin_fail = 5; return qfalse; }              /* channel absent → CPU */
         skelBoneCache_t *b = &bones[localChn];
         int base = i * 12;
@@ -791,7 +815,10 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
 
     if (!s_skin_err_traced) glGetError(); /* clear any pre-existing error so checks below are ours */
 
-    glUseProgram(s_skin_program);                                    SKIN_GLCHK("glUseProgram");
+    if (!s_skin_program_bound || !s_skin_err_traced) {
+        glUseProgram(s_skin_program);                                SKIN_GLCHK("glUseProgram");
+        s_skin_program_bound = qtrue;
+    }
     glUniformMatrix4fv(s_loc_mvp, 1, 0, mvp);                        SKIN_GLCHK("uniform mvp");
     glUniform4fv(s_loc_boneMatrix, e->numBoneSlots * 3, boneMatrixData); SKIN_GLCHK("uniform boneMat");
     glUniform4fv(s_loc_mvZ, 1, mvZ);
@@ -817,7 +844,9 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     vglIndexPointerMapped(e->ibuf);                                  SKIN_GLCHK("vglIndexPointerMapped");
     vglDrawObjects(GL_TRIANGLES, e->numIndexes, 0 /* shader does mvp */); SKIN_GLCHK("vglDrawObjects");
 
-    glUseProgram(0);                                                 SKIN_GLCHK("glUseProgram(0)");
+    if (!s_skin_err_traced) {
+        R_VitaGpuSkin_Unbind();                                      SKIN_GLCHK("glUseProgram(0)");
+    }
     /* One-shot trace done. From here NO glGetError runs in the skin path —
      * on vitaGL glGetError forces a full GPU sync (glFinish), and one per
      * surface tanked the frame to ~1 FPS. The path must therefore be 100%

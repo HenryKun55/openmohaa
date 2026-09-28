@@ -939,6 +939,9 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	if (oldShader != NULL) {
 		RB_EndSurface();
 	}
+#ifdef __vita__
+	R_VitaGpuSkin_Unbind();
+#endif
 
 	// go back to the world modelview matrix
 	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
@@ -1658,6 +1661,7 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			}
 			vp_rt[vpSlot] += VP_Now() - vpCmdT;
 			vp_curType = VPR_NSURF;
+			R_VitaGpuSkin_Unbind();
 		}
 #endif
 	}

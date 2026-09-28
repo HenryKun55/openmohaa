@@ -2010,6 +2010,8 @@ void RB_EndSurface( void ) {
 	VP_BEGIN( vpT );
 	const int type = vp_curType;
 
+	R_VitaGpuSkin_Unbind();
+
 	if ( tess.numIndexes ) {
 		vp_rt[VPR_BATCHES]++;
 		vp_rt[VPR_VERTS] += tess.numVertexes;
