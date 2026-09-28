@@ -288,6 +288,9 @@ typedef struct {
      * the model only, so it is done once instead of per surface per frame). */
     const void        *localChnTiki;
     int                localChn[VITA_SKIN_MAX_BONESLOTS];
+    /* The surface has morph targets (faces): drawn here only for entities whose
+     * morphs are off this frame, which RB_SkelMesh also skins without them. */
+    qboolean           hasMorphs;
 } vitaSkinCacheEntry_t;
 
 static vitaSkinCacheEntry_t s_skin_cache[VITA_SKIN_CACHE_CAP];
@@ -520,11 +523,10 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
     v = sf->pVerts;
     for (i = 0; i < sf->numVerts; i++) {
         /* More than VITA_SKIN_MAX_WEIGHTS weights: the strongest ones are kept and
-         * renormalized below (e.g. Ranger_pants has 5). */
-        if (v->numMorphs > 0) {
-            return -4;
-        }
+         * renormalized below (e.g. Ranger_pants has 5). Morph targets are skipped:
+         * see hasMorphs. */
         v = (skeletorVertex_t *)((byte *)v + sizeof(skeletorVertex_t)
+                                  + sizeof(skeletorMorph_t) * v->numMorphs
                                   + sizeof(skelWeight_t) * v->numWeights);
     }
 
@@ -558,8 +560,13 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
 
     v = sf->pVerts;
     for (i = 0; i < sf->numVerts; i++) {
-        skelWeight_t *w = (skelWeight_t *)((byte *)v + sizeof(skeletorVertex_t));
+        skelWeight_t *w = (skelWeight_t *)((byte *)v + sizeof(skeletorVertex_t)
+                                           + sizeof(skeletorMorph_t) * v->numMorphs);
         int           pick[VITA_SKIN_MAX_WEIGHTS];
+
+        if (v->numMorphs > 0) {
+            entry->hasMorphs = qtrue;
+        }
         int           numPick = v->numWeights < VITA_SKIN_MAX_WEIGHTS ? v->numWeights : VITA_SKIN_MAX_WEIGHTS;
         float         weightScale = 1.0f;
 
@@ -618,6 +625,7 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
         entry->attr[ATTR_NORMAL][i * 3 + 2]   = v->normal[2];
 
         v = (skeletorVertex_t *)((byte *)v + sizeof(skeletorVertex_t)
+                                  + sizeof(skeletorMorph_t) * v->numMorphs
                                   + sizeof(skelWeight_t) * v->numWeights);
     }
 
@@ -769,6 +777,10 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     if (slot >= s_skin_cache_count) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
     e = &s_skin_cache[slot];
     if (e->sf != sf || !e->ibuf) { vita_skin_fail = 4; return qfalse; }       /* stale guard */
+    if (e->hasMorphs && backEnd.currentEntity->e.hasMorph) {
+        vita_skin_fail = 0;                         /* face animating this frame → CPU morphs */
+        return qfalse;
+    }
 
     if (e->localChnTiki != tiki) {
         for (i = 0; i < e->numBoneSlots; i++) {
