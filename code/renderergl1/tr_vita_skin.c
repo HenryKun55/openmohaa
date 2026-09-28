@@ -519,7 +519,9 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
     /* Eligibility: <=4 weights, no morph targets (face anim). */
     v = sf->pVerts;
     for (i = 0; i < sf->numVerts; i++) {
-        if (v->numWeights > VITA_SKIN_MAX_WEIGHTS || v->numMorphs > 0) {
+        /* More than VITA_SKIN_MAX_WEIGHTS weights: the strongest ones are kept and
+         * renormalized below (e.g. Ranger_pants has 5). */
+        if (v->numMorphs > 0) {
             return -4;
         }
         v = (skeletorVertex_t *)((byte *)v + sizeof(skeletorVertex_t)
@@ -557,11 +559,41 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
     v = sf->pVerts;
     for (i = 0; i < sf->numVerts; i++) {
         skelWeight_t *w = (skelWeight_t *)((byte *)v + sizeof(skeletorVertex_t));
+        int           pick[VITA_SKIN_MAX_WEIGHTS];
+        int           numPick = v->numWeights < VITA_SKIN_MAX_WEIGHTS ? v->numWeights : VITA_SKIN_MAX_WEIGHTS;
+        float         weightScale = 1.0f;
+
+        /* the numPick strongest weights, renormalized when some were dropped */
+        {
+            int   k, m;
+            float kept = 0.0f, total = 0.0f;
+            for (k = 0; k < v->numWeights; k++) {
+                total += w[k].boneWeight;
+            }
+            for (m = 0; m < numPick; m++) {
+                int best = -1;
+                for (k = 0; k < v->numWeights; k++) {
+                    int used = 0, u;
+                    for (u = 0; u < m; u++) {
+                        if (pick[u] == k) used = 1;
+                    }
+                    if (!used && (best < 0 || w[k].boneWeight > w[best].boneWeight)) {
+                        best = k;
+                    }
+                }
+                pick[m] = best;
+                kept += w[best].boneWeight;
+            }
+            if (v->numWeights > numPick && kept > 0.0f) {
+                weightScale = total / kept;
+            }
+        }
 
         for (j = 0; j < VITA_SKIN_MAX_WEIGHTS; j++) {
             float *wo = entry->attr[ATTR_W0 + j] + i * 4;
-            if (j < v->numWeights) {
-                int channel = skelmodel->pBones[w[j].boneIndex].channel;
+            if (j < numPick) {
+                const skelWeight_t *wj = &w[pick[j]];
+                int channel = skelmodel->pBones[wj->boneIndex].channel;
                 int slotIdx = VitaSkin_LookupOrAddBoneSlot(entry, channel);
                 if (slotIdx < 0) {
                     VitaSkin_FreeEntry(entry);
@@ -569,10 +601,10 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
                     s_skin_cache_count--;
                     return -7;
                 }
-                wo[0] = w[j].offset[0];
-                wo[1] = w[j].offset[1];
-                wo[2] = w[j].offset[2];
-                wo[3] = w[j].boneWeight;
+                wo[0] = wj->offset[0];
+                wo[1] = wj->offset[1];
+                wo[2] = wj->offset[2];
+                wo[3] = wj->boneWeight * weightScale;
                 entry->attr[ATTR_IDX][i * 4 + j] = (float)slotIdx;
             } else {
                 wo[0] = wo[1] = wo[2] = wo[3] = 0.0f;
@@ -619,28 +651,31 @@ static void VitaSkin_MatMul(float *out, const float *a, const float *b)
  * would do for the current shader + lighting, and rejects anything the skin
  * shader doesn't implement (those surfaces fall back to RB_SkelMesh's CPU loop).
  */
+/* Why the last VitaSkin_EligibleStage call refused (log only): the n-th check. */
+static int s_stageFail;
+
 static shaderStage_t *VitaSkin_EligibleStage(int *alphaTestMode, float *entityAlpha)
 {
     shaderStage_t *st;
     unsigned int   atest;
 
-    if (!tess.shader || !tess.xstages || tess.shader->numUnfoggedPasses != 1) return NULL;
+    if (!tess.shader || !tess.xstages || tess.shader->numUnfoggedPasses != 1) { s_stageFail = 1; return NULL; }
     st = tess.xstages[0];
-    if (!st || !st->active) return NULL;
-    if (tess.xstages[1] && tess.xstages[1]->active) return NULL;   /* multi-stage */
+    if (!st || !st->active) { s_stageFail = 2; return NULL; }
+    if (tess.xstages[1] && tess.xstages[1]->active) { s_stageFail = 3; return NULL; }   /* multi-stage */
 
-    if (st->bundle[0].numImageAnimations > 1 || !st->bundle[0].image[0]) return NULL;
-    if (st->bundle[0].tcGen != TCGEN_TEXTURE || st->bundle[0].numTexMods) return NULL;
-    if (st->bundle[1].image[0]) return NULL;                       /* multitexture */
+    if (st->bundle[0].numImageAnimations > 1 || !st->bundle[0].image[0]) { s_stageFail = 4; return NULL; }
+    if (st->bundle[0].tcGen != TCGEN_TEXTURE || st->bundle[0].numTexMods) { s_stageFail = 5; return NULL; }
+    if (st->bundle[1].image[0]) { s_stageFail = 6; return NULL; }                       /* multitexture */
 
     /* rgbGen: only the spherical-lighting path that RB_Light_Real / fullbright feed. */
-    if (st->rgbGen != CGEN_LIGHTING_SPHERICAL) return NULL;
-    if (!r_drawspherelights->integer || !backEnd.currentSphere) return NULL;
+    if (st->rgbGen != CGEN_LIGHTING_SPHERICAL) { s_stageFail = 7; return NULL; }
+    if (!r_drawspherelights->integer || !backEnd.currentSphere) { s_stageFail = 8; return NULL; }
     if (backEnd.currentSphere->TessFunction == RB_Light_Real) {
-        if (backEnd.currentSphere->bUsesCubeMap) return NULL;
-        if (backEnd.currentSphere->numRealLights > VITA_SKIN_MAX_LIGHTS) return NULL;
+        if (backEnd.currentSphere->bUsesCubeMap) { s_stageFail = 9; return NULL; }
+        /* more than VITA_SKIN_MAX_LIGHTS: the strongest ones are used (DrawSurf) */
     } else if (backEnd.currentSphere->TessFunction != RB_Light_Fullbright) {
-        return NULL;                                               /* grid / none → CPU */
+        { s_stageFail = 11; return NULL; }                                               /* grid / none → CPU */
     }
 
     switch (st->alphaGen) {
@@ -652,7 +687,7 @@ static shaderStage_t *VitaSkin_EligibleStage(int *alphaTestMode, float *entityAl
         *entityAlpha = backEnd.currentEntity->e.shaderRGBA[3] * (1.0f / 255.0f);
         break;
     default:
-        return NULL;
+        { s_stageFail = 12; return NULL; }
     }
 
     atest = st->stateBits & GLS_ATEST_BITS;
@@ -661,7 +696,7 @@ static shaderStage_t *VitaSkin_EligibleStage(int *alphaTestMode, float *entityAl
     case GLS_ATEST_GT_0:  *alphaTestMode = 1; break;
     case GLS_ATEST_LT_80: *alphaTestMode = 2; break;
     case GLS_ATEST_GE_80: *alphaTestMode = 3; break;
-    default:              return NULL;                             /* foliage tests → CPU */
+    default:              { s_stageFail = 13; return NULL; }                             /* foliage tests → CPU */
     }
     return st;
 }
@@ -671,6 +706,37 @@ static shaderStage_t *VitaSkin_EligibleStage(int *alphaTestMode, float *entityAl
  * handled the draw (caller must then skip the CPU path), qfalse to fall
  * back to CPU (ineligible surface/shader, missing bone channel, or not ready).
  */
+/* Log each refused surface (by build) or shader (by stage check) once. */
+static void VitaSkin_LogRefusal(const char *what, const char *name, int code, const skelSurfaceGame_t *sf)
+{
+    static const void *logged[128];
+    static int         numLogged;
+    const void        *key = sf ? (const void *)sf : (const void *)tess.shader;
+    int                i, maxWeights = 0, morphVerts = 0;
+
+    for (i = 0; i < numLogged; i++) {
+        if (logged[i] == key) {
+            return;
+        }
+    }
+    if (numLogged == (int)ARRAY_LEN(logged)) {
+        return;
+    }
+    logged[numLogged++] = key;
+    if (sf && sf->pVerts) {
+        const skeletorVertex_t *v = sf->pVerts;
+        for (i = 0; i < sf->numVerts; i++) {
+            if (v->numWeights > maxWeights) maxWeights = v->numWeights;
+            if (v->numMorphs > 0) morphVerts++;
+            v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                          + sizeof(skelWeight_t) * v->numWeights
+                                          + sizeof(skeletorMorph_t) * v->numMorphs);
+        }
+    }
+    ri.Printf(PRINT_ALL, "[VITA-SKIN] refused %s '%s' code %d | shader '%s' | verts %d maxWeights %d morphVerts %d\n",
+        what, name, code, tess.shader ? tess.shader->name : "?", sf ? sf->numVerts : 0, maxWeights, morphVerts);
+}
+
 int vita_skin_fail;	// RT-PROF: why the last R_VitaGpuSkin_DrawSurf fell back to the CPU
 
 qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *bonesV, float scale)
@@ -691,7 +757,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     if (!s_skin_ready || !r_vita_gpu_skinning || !r_vita_gpu_skinning->integer) { vita_skin_fail = 1; return qfalse; }
 
     stage = VitaSkin_EligibleStage(&alphaTestMode, &entityAlpha);
-    if (!stage) { vita_skin_fail = 2; return qfalse; }
+    if (!stage) { vita_skin_fail = 2; VitaSkin_LogRefusal("stage", sf->name, s_stageFail, NULL); return qfalse; }
 
     slot = VitaSkin_HashFind(sf);
     if (slot == 0) {
@@ -699,7 +765,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         slot = VitaSkin_BuildSurf(sf, skelmodel);
         VitaSkin_HashInsert(sf, slot > 0 ? slot : -1);
     }
-    if (slot <= 0) { vita_skin_fail = 3; return qfalse; }                     /* ineligible → CPU */
+    if (slot <= 0) { vita_skin_fail = 3; VitaSkin_LogRefusal("surface", sf->name, slot, sf); return qfalse; }                     /* ineligible → CPU */
     if (slot >= s_skin_cache_count) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
     e = &s_skin_cache[slot];
     if (e->sf != sf || !e->ibuf) { vita_skin_fail = 4; return qfalse; }       /* stale guard */
@@ -771,7 +837,31 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     /* Lighting, straight from the sphere RB_Light_Real would have used. */
     {
         const int fullbright = backEnd.currentSphere->TessFunction == RB_Light_Fullbright;
-        const int numLights  = fullbright ? 0 : backEnd.currentSphere->numRealLights;
+        const int numAll     = fullbright ? 0 : backEnd.currentSphere->numRealLights;
+        const int numLights  = numAll < VITA_SKIN_MAX_LIGHTS ? numAll : VITA_SKIN_MAX_LIGHTS;
+        int       lightIdx[VITA_SKIN_MAX_LIGHTS];
+
+        /* The shader takes VITA_SKIN_MAX_LIGHTS lights: with more around the entity,
+         * use the strongest (the rest add little and would send the whole model to
+         * the CPU path, which is what most soldier surfaces did near 5+ lights). */
+        {
+            int k, m;
+            for (m = 0; m < numLights; m++) {
+                int best = -1;
+                for (k = 0; k < numAll; k++) {
+                    int used = 0, u;
+                    for (u = 0; u < m; u++) {
+                        if (lightIdx[u] == k) used = 1;
+                    }
+                    if (!used && (best < 0
+                                  || backEnd.currentSphere->light[k].fIntensity
+                                         > backEnd.currentSphere->light[best].fIntensity)) {
+                        best = k;
+                    }
+                }
+                lightIdx[m] = best;
+            }
+        }
         ambient[0] = backEnd.currentSphere->ambient.level[0];
         ambient[1] = backEnd.currentSphere->ambient.level[1];
         ambient[2] = backEnd.currentSphere->ambient.level[2];
@@ -780,7 +870,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         lightInfo[1] = fullbright ? 1.0f : 0.0f;
         lightInfo[2] = lightInfo[3] = 0.0f;
         for (i = 0; i < numLights; i++) {
-            const reallightinfo_t *l = &backEnd.currentSphere->light[i];
+            const reallightinfo_t *l = &backEnd.currentSphere->light[lightIdx[i]];
             lDir[i * 4 + 0] = l->vDirection[0];
             lDir[i * 4 + 1] = l->vDirection[1];
             lDir[i * 4 + 2] = l->vDirection[2];
