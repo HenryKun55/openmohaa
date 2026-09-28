@@ -279,6 +279,8 @@ function(package_vita_vpk)
                     --add ${VITA_ICON_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
                     ${VITA_SPLASH_ADD}
                     --add ${VITA_SCE_DIR}/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
+                    --add ${VITA_SCE_DIR}/livearea/contents/settings_en.png=sce_sys/livearea/contents/settings_en.png
+                    --add ${VITA_SCE_DIR}/livearea/contents/settings_pt.png=sce_sys/livearea/contents/settings_pt.png
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg=main/autoexec.cfg
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg=main/vita_defaults.cfg
                     # Game / cgame PRX modules at the VPK root so they
@@ -292,6 +294,9 @@ function(package_vita_vpk)
                 ${CMAKE_BINARY_DIR}/cgame_suprx
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg
+                ${VITA_SCE_DIR}/livearea/contents/template.xml
+                ${VITA_SCE_DIR}/livearea/contents/settings_en.png
+                ${VITA_SCE_DIR}/livearea/contents/settings_pt.png
                 ${VITA_ART_DEPENDS}
         COMMENT "Packaging ${VPK_FILE}"
         VERBATIM

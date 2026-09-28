@@ -2401,6 +2401,8 @@ void UI_Update(void)
     {
         extern qboolean CL_VitaPerfMenu_IsActive(void);
         extern void     CL_VitaPerfMenu_Draw(class UIFont * menuFont, float screenW, float screenH);
+        extern void     CL_VitaPerfMenu_Frame(void);
+        CL_VitaPerfMenu_Frame();
         if (CL_VitaPerfMenu_IsActive() && !(view3d && view3d->IsVisible())) {
             static UIFont *s_menuFont;
             if (!s_menuFont) {
