@@ -8,6 +8,12 @@
 
 ![logo](misc/openmohaa-text-sm.png)
 
+> [!IMPORTANT]
+> **PlayStation Vita port** — this fork (branch `vita-port`) runs the Allied Assault
+> single-player campaign natively on the PS Vita. Download the `.vpk` from
+> [Releases](https://github.com/HenryKun55/openmohaa/releases) and see **[docs/PORTING-VITA.md](docs/PORTING-VITA.md)**
+> for install steps, controls and build instructions.
+
 ## What is OpenMoHAA?
 
 OpenMoHAA is an open-source project aimed at preserving and enhancing **Medal of Honor: Allied Assault** (including Spearhead and Breakthrough expansions) by providing more features and bugfixes, across modern platforms and architectures.

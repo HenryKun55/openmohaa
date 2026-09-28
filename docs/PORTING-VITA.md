@@ -1,35 +1,119 @@
 # OpenMoHAA on the PlayStation Vita
 
-Single-player Medal of Honor: Allied Assault running natively on the
-PS Vita as a homebrew app, built on top of OpenMoHAA's existing
-SDL2 / OpenGL renderer.
+Single-player **Medal of Honor: Allied Assault** running natively on the PS Vita
+as a homebrew app, built on OpenMoHAA's SDL2 / OpenGL renderer through vitaGL.
+
+> This is a fan port of [OpenMoHAA](https://github.com/openmoh/openmohaa), which is
+> built on [ioquake3](https://github.com/ioquake/ioq3). You need your own copy of
+> the original game: no game data is included.
+
+## Download
+
+Get `OpenMoHAA.vpk` from the [Releases](https://github.com/HenryKun55/openmohaa/releases) page. Every release also
+carries the source code of that exact build, as the GPL requires.
 
 ## What works
 
-- Full engine bring-up: filesystem (pk3 mounting), config exec, client
-  initialisation, renderer, audio, scripting (TIKI), AI.
-- Single-player campaign (Allied Assault base game).
-- Spearhead and Breakthrough expansions, if their pk3s are present.
-- Native dual-analog control via SDL_GameController.
-- 960x544 fullscreen, vsync enabled, vitaGL (OpenGL ES → GXM).
+- The Allied Assault single-player campaign, level transitions and saves.
+- Spearhead and Breakthrough, if their pk3s are present (less tested).
+- Dual-analog controls, touch-free menus (analog cursor, Cross clicks).
+- A render thread on its own CPU core, GPU skinning for characters, a world
+  vertex buffer, and a performance menu to tune quality live.
+- Around 30-45 FPS in combat on m1l1 on a stock Vita (444 MHz), more in lighter
+  scenes.
 
-## What's stubbed (multiplayer + dev tooling)
+## Install on the Vita
 
-The following subsystems are intentionally disabled because the Vita
-SDK either does not ship the underlying API (BSD sockets) or because
-the feature has no meaningful counterpart on the platform. Single-
-player gameplay is unaffected.
+You need a Vita with custom firmware (HENkaku / h-encore / Enso) and VitaShell.
 
-| Subsystem | Reason | Source of stubs |
-|---|---|---|
-| GameSpy SDK (~30 funcs) | No BSD sockets, GameSpy masters defunct since 2014 | `code/gamespy/gamespy_vita_stub.c` |
-| `net_ip.c` (UDP/TCP) | vitasdk uses `sceNet`, not BSD; SP needs no networking | `code/qcommon/net_vita.c` |
-| `cl_uiserverlist.cpp` | Pulls GameSpy types | gated in `cmake/client.cmake` |
-| `libmumblelink.c` (voice) | Needs `sys/mman.h` (no mmap on Vita) | gated in `cmake/client.cmake` |
-| Launcher binaries | Vita has no multi-binary picker concept | gated in `CMakeLists.txt` |
-| 8 desktop GL legacy entry points | vitaGL is GL ES based; never called by GL1 path | `code/sdl/vita_gl_stubs.c` |
-| `mkfifo` (Sys_Mkfifo) | dedicated-server console FIFO, not built on Vita | gated in `code/sys/sys_unix.c` |
-| `_kill_r` for arbitrary signals | vitasdk newlib only handles SIGINT/SIGTERM | `Sys_PIDIsRunning` returns true if pid==self |
+1. Copy `OpenMoHAA.vpk` to the root of the memory card (`ux0:`), by FTP
+   (VitaShell: SELECT) or USB, and install it in VitaShell (Cross -> Install).
+2. Copy the game files from your Medal of Honor: Allied Assault install:
+   ```
+   ux0:data/openmohaa/main/        Pak0.pk3 ... Pak5.pk3 (and music/, sound/, video/ if loose)
+   ux0:data/openmohaa/mainta/      Spearhead pk3s (optional)
+   ux0:data/openmohaa/maintt/      Breakthrough pk3s (optional)
+   ```
+3. Optional, faster loading: build a pre-resampled sound pack on a PC and copy it
+   next to the paks (saves several seconds per level load):
+   ```sh
+   tools/snd_pak.py /path/to/main/Pak*.pk3 -o snd_out   # needs ffmpeg
+   (cd snd_out && zip -r ../Pak8_snd.pk3 .)
+   ```
+   then copy `Pak8_snd.pk3` to `ux0:data/openmohaa/main/`.
+4. Launch it from the LiveArea bubble.
+
+A level load takes about a minute: the game reads ~60 MB of data per level and
+the memory card's throughput is the limit.
+
+## Controls
+
+| Vita | Action |
+|---|---|
+| Left stick | Move |
+| Right stick | Look |
+| R | Fire |
+| L | Secondary attack |
+| Cross | Use / click in menus / skip cutscenes and videos |
+| Circle | Crouch |
+| Square | Reload |
+| Triangle | Jump |
+| D-pad left / right | Previous / next weapon |
+| D-pad up | Use |
+| Start | Menu |
+| Select (hold) | Objectives / scores |
+| Select (double tap) | Performance menu |
+
+The Controls menu changes these; they are saved in `ux0:data/openmohaa/main/configs/omconfig.cfg`.
+
+## Performance menu
+
+Double-tap Select in game. Tabs:
+
+- **QUALITY**: presets (Performance / Balanced / Quality) and texture, model,
+  distant, curve, effect and terrain detail, texture filter, shadows (Off / Blob /
+  Precise) and weapon model.
+- **FASES / GAME**: jump to a mission, god mode and other test helpers.
+- **WORLD / LIGHTING / EFFECTS**: toggle world parts, dynamic lights, lens flares,
+  decals, HUD...
+- **AIM**: look sensitivity and crosshair per state.
+- **DEBUG**: FPS counter, render thread, GPU skinning, world VBO, and profiling.
+
+Settings marked `*` restart the video when the menu closes.
+
+## Performance notes
+
+Measured on hardware with the in-game profiler (lines in
+`ux0:data/openmohaa/main/boot.log`, every 60 frames):
+
+- `FRAME-PROF`: main thread breakdown (server, client, cgame, scene building) and
+  render thread busy time.
+- `RT-PROF` / `RT-PROF2`: render thread by command and surface type, batches,
+  vertexes, GPU vs CPU skinned surfaces.
+- `CG-PROF`: cgame breakdown (entities, shadows, effects...).
+- `G-PROF`: game logic (AI, scripts, player, other entities).
+- `LOAD-PROF`: level load phases, file reads, images, models, sounds.
+
+Main optimizations in this port: the renderer backend runs on its own core, the
+render thread no longer waits for the GPU every frame, character skinning runs
+on the GPU (including faces while not animating), entity light visibility and
+shadow marks are cached, and shadow cost is bounded.
+
+## Known issues
+
+- Level loads take ~60-70 s (memory card throughput).
+- Compressed (.dds) textures crash vitaGL on hardware, so they stay disabled.
+- Multiplayer is not available (no networking layer on the Vita build).
+- Vita3K runs the game, but is not representative of hardware performance.
+
+## Debugging
+
+- `ux0:data/openmohaa/main/boot.log`: engine log with the profiler lines.
+- `ux0:data/openmohaa/main/crashlog.txt`: written on internal `Com_Error` failures.
+- Crash dumps land in `ux0:data/psp2core-*.psp2dmp`; symbolicate them with
+  [vita-parse-core](https://github.com/xyzz/vita-parse-core) against the matching
+  ELF (`eboot`, `game.suprx` or `cgame.suprx` module).
+- Vita3K log (macOS): `~/Library/Application Support/Vita3K/Vita3K/vita3k.log`.
 
 ## Build
 
@@ -81,124 +165,6 @@ cmake --build . -j$(nproc)
 ```
 
 The `OpenMoHAA.vpk` lands in `build-vita/`.
-
-## Install on the Vita
-
-1. Vita CFW required (HENkaku/h-encore/Enso).
-2. Copy `OpenMoHAA.vpk` to the Vita (FTP via VitaShell or USB).
-3. Install in VitaShell (X → Install).
-4. Copy your legitimate MoH:AA install to:
-   ```
-   ux0:data/openmohaa/main/        Pak0..Pak5.pk3, music/, sound/, video/
-   ux0:data/openmohaa/mainta/      Spearhead pk3s (optional)
-   ux0:data/openmohaa/maintt/      Breakthrough pk3s (optional)
-   ```
-5. Launch from the LiveArea bubble.
-
-The stock Vita CD/DVD ROM dumps work — install via Wine or extract
-with `unshield` from `data1.hdr` + `data1.cab` + `data2.cab` + `data3.cab`,
-plus the loose `Pak2.pk3` from disc 2.
-
-## Controls
-
-Default bindings shipped in `app0:/main/autoexec.cfg`:
-
-| Vita | Action |
-|---|---|
-| Left stick | Move |
-| Right stick | Look |
-| Cross | Fire |
-| Square | Jump |
-| Circle | Crouch |
-| Triangle | Reload / use |
-| L | Walk (vs run) |
-| R | Iron sights / zoom |
-| L3 (left stick press) | Sprint |
-| R3 (right stick press) | Lean |
-| Select | Show scores |
-| Start | Open menu |
-| D-pad | Weapon select |
-
-Override in `ux0:data/openmohaa/main/autoexec.cfg` if you want a
-different layout.
-
-## Known issues
-
-- **In-game gameplay crashes at script compilation.** The menu, audio,
-  cinematics and renderer are all working on real hardware. Selecting
-  Single Player → a mission successfully loads `game.suprx` (statically
-  linked into the eboot — see `cmake/basegame.cmake` and
-  `code/sys/new/sys_main_new.c`) and `G_InitGame` runs cleanly. The
-  briefing map then crashes inside `ClassDef::GetDef(int)` at
-  `this->m_pResponseDefs[event]` with `m_pResponseDefs == NULL`,
-  called from `ScriptCompiler::EmitField`.
-
-  Diagnosed via `vita-parse-core` against the psp2dmp file:
-  ```
-  PC: ClassDef::GetDef(int) at "ldr.w r0, [r3, r1, lsl #2]"
-      r0 = this  (heap, 0x83b9c8e0)
-      r1 = eventnum (0x330)
-      r3 = this->responseLookup  ← NULL → crash
-  LR: ScriptCompiler::EmitField
-  ```
-
-  `responseLookup` is allocated by `ClassDef::BuildResponseList()`
-  which iterates `ClassDef::classlist` during `L_InitEvents()`. So
-  the crash means BuildResponseList didn't run for this ClassDef
-  *or* `this` is a stale/duplicate instance not in `classlist`.
-
-  Things that did **not** turn out to be the cause (already tested
-  and reverted):
-    - `WITH_SCRIPT_ENGINE` struct-layout drift between TUs: we
-      hypothesised that fgame's view of `ClassDef` (with
-      `waitTillSet`) put `responseLookup` at a different offset to
-      the engine's view (without `waitTillSet`). Disassembly of
-      both compiled GetDef bodies shows both compilers read
-      `[r0, #24]` — `waitTillSet` is declared *after*
-      `responseLookup` in the struct, so its presence/absence does
-      not shift the field. The layout was consistent all along.
-
-  More likely causes for the next attempt:
-    - `corepp/class.cpp` is linked into the eboot three times
-      (engine, cgame, game). Each TU has its own static `classlist`
-      / `classroot` pointer initialiser. With
-      `-Wl,--allow-multiple-definition` ld keeps the first, but the
-      C++ static initialisers in `.init_array` from all three TUs
-      *do* run — `ClassDef` constructors push to whatever `classlist`
-      symbol resolves at their TU's relocation, which may not be the
-      same address. The chain visible to `L_InitEvents` may be
-      missing some ClassDefs.
-    - This points to the proper fix: split corepp into its own
-      static library used by both the engine and the game module
-      so there's exactly one set of static initialisers, mirroring
-      the upstream SHARED-lib semantics.
-    - The `this = 0x83b9c8e0` being on the heap (vs the data section
-      where static `ClassInfo` instances should live) is also worth
-      investigating — that pointer may be coming from a copy/move
-      of a static ClassDef, or from a heap-allocated transient.
-- **Vita3K compatibility**: the binary boots and reaches `vglInitExtended`,
-  but Vita3K's GXM emulation is incomplete and the renderer hangs there.
-  Real Vita hardware works because vitaGL talks to GXM directly.
-- **Performance**: Cortex-A9 quad @ 444 MHz is below OpenMoHAA's
-  recommended (Cortex-A9 800 MHz). Expect 20-30 FPS in light scenes,
-  lower in busy ones. Overclocking to 500 MHz via PSVshell helps.
-- **GXM enum width warning**: linker warns about `32-bit enums vs
-  variable-size enums` on a few `.o` files. The Sce stub libs are
-  built with `-fshort-enums`; our app uses fixed 32-bit enums. They
-  agree on every value we care about, but if you see weird sce*
-  return-value handling that's the first place to look.
-- **Multiplayer is gone.** Direct-IP play would be possible by writing
-  a real `net_psp2.c` against `sceNet`; the existing stubs make every
-  send/recv a no-op.
-
-## Debugging
-
-- VitaShell → SELECT → Show log dumps the current process log to
-  `ux0:data/`.
-- `ux0:data/openmohaa/main/crashlog.txt` is written by the engine on
-  internal `Com_Error` failures.
-- For Vita3K dev iterations the log lives at:
-  `~/Library/Application Support/Vita3K/Vita3K/vita3k.log` (macOS).
 
 ## Layout of the Vita-specific changes
 
