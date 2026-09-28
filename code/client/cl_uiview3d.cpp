@@ -771,9 +771,20 @@ static void CL_VitaDebug_f(void)
     VitaPerfMenu_Open(qtrue);
 }
 
+/* Notice shown instead of the multiplayer menus, which the console ports do not
+ * support. Any button closes it. */
+static qboolean g_vnActive;
+static int      g_vnOpenTime;
+
+void CL_VitaNotice_Multiplayer(void)
+{
+    g_vnActive   = qtrue;
+    g_vnOpenTime = Sys_Milliseconds();
+}
+
 qboolean CL_VitaPerfMenu_IsActive(void)
 {
-    return g_pmActive;
+    return g_pmActive || g_vnActive;
 }
 
 /* Menu actions (SYSTEM tab, "Back to settings"). */
@@ -795,6 +806,12 @@ static void VitaPerfMenu_Action(const char *action)
 /* Called from CL_KeyEvent. Returns true if the key was consumed. */
 qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
 {
+    if (g_vnActive) {
+        if (down && Sys_Milliseconds() - g_vnOpenTime >= 400) {
+            g_vnActive = qfalse;
+        }
+        return qtrue;
+    }
     if (!g_pmActive) {
         /* In the 2D menus the +vitaselect bind never fires (the UI eats the key),
          * so the double tap on Select is detected here instead. */
@@ -915,8 +932,60 @@ static void VitaPerfMenu_Wrap(const char *text, int maxChars, char *line1, char 
 }
 
 /* Draw the menu overlay: in game from View3D::Draw2D, elsewhere from UI_Update. */
+static void VitaNotice_Draw(class UIFont *menuFont, float screenW, float screenH)
+{
+    static const char *const s_en[] = {
+        "Multiplayer is not available on this version.",
+        "",
+        "The Spearhead and Breakthrough expansions are not",
+        "available yet either: this version plays the",
+        "Allied Assault campaign.",
+    };
+    static const char *const s_pt[] = {
+        "O multiplayer não está disponível nesta versão.",
+        "",
+        "As expansões Spearhead e Breakthrough também ainda",
+        "não estão disponíveis: esta versão roda a campanha",
+        "de Allied Assault.",
+    };
+    const vec4_t       bg   = {0.02f, 0.03f, 0.02f, 0.92f};
+    const vec4_t       band = {0.30f, 0.26f, 0.12f, 0.95f};
+    const qboolean     pt   = VitaMenu_IsPortuguese();
+    const char *const *text = pt ? s_pt : s_en;
+    const float        boxW = screenW < 540.0f ? screenW - 20.0f : 520.0f;
+    const float        boxH = 200.0f;
+    const float        boxX = (screenW - boxW) * 0.5f;
+    const float        boxY = (screenH - boxH) * 0.5f;
+    float              y;
+
+    re.SetColor(bg);
+    re.DrawBox(boxX, boxY, boxW, boxH);
+    re.SetColor(band);
+    re.DrawBox(boxX, boxY, boxW, 30.0f);
+    re.SetColor(NULL);
+    if (!menuFont) {
+        return;
+    }
+
+    menuFont->setColor(UWhite);
+    menuFont->Print(boxX + 12.0f, boxY + 7.0f, "MULTIPLAYER", -1, NULL);
+    y = boxY + 44.0f;
+    for (size_t i = 0; i < ARRAY_LEN(s_en); i++) {
+        menuFont->Print(boxX + 16.0f, y, VitaMenu_Latin1(text[i]), -1, NULL);
+        y += 20.0f;
+    }
+    menuFont->setColor(UYellow);
+    menuFont->Print(boxX + 16.0f, boxY + boxH - 28.0f,
+                    VitaMenu_Latin1(pt ? "Aperte qualquer botão para voltar." : "Press any button to go back."), -1, NULL);
+    menuFont->setColor(UWhite);
+}
+
 void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
 {
+    if (g_vnActive) {
+        VitaNotice_Draw(menuFont, screenW, screenH);
+        return;
+    }
     if (!g_pmActive) return;
 
     const vec4_t bg     = {0.02f, 0.03f, 0.02f, 0.92f};

@@ -2622,6 +2622,16 @@ void UI_PushMenu(const char *name)
     Menu    *menu  = menuManager.CurrentMenu();
     qboolean bDiff = qfalse;
 
+#if defined(__vita__) || defined(__SWITCH__)
+    // No multiplayer on the console ports: the main menu's multiplayer door shows a
+    // notice instead of the server browser.
+    if (!str::icmp(name, "multiplayer") || !str::icmp(name, "dm_main")) {
+        extern void CL_VitaNotice_Multiplayer(void);
+        CL_VitaNotice_Multiplayer();
+        return;
+    }
+#endif
+
     if (menu) {
         bDiff = strcmp(menu->m_name, name) != 0;
     }
