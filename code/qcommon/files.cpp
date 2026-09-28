@@ -2236,6 +2236,9 @@ long FS_ReadFileEx( const char *qpath, void **buffer, qboolean quiet ) {
 	lp_acc[LP_FS_N]++;
 	if ( len > 0 ) {
 		lp_acc[LP_FS_KB] += len / 1024;
+		if ( buffer ) {
+			Com_VitaLoadNoteFile( qpath, len );
+		}
 	}
 	return len;
 }

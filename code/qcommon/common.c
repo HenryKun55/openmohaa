@@ -2375,6 +2375,34 @@ int          vp_renderThreadId = -1;
 unsigned int vp_rt[VPR_COUNT];
 unsigned int lp_acc[LP_COUNT];
 
+// Files read during the load, to find the ones read more than once.
+#define LOAD_FILES 4096
+static struct { unsigned int hash; char name[64]; int count; long len; } s_loadFiles[LOAD_FILES];
+static int s_numLoadFiles;
+
+void Com_VitaLoadNoteFile( const char *qpath, long len ) {
+	unsigned int h = 2166136261u;
+	const char  *p;
+	int          i;
+
+	for ( p = qpath; *p; p++ ) {
+		h = ( h ^ (unsigned char)tolower( *p ) ) * 16777619u;
+	}
+	for ( i = 0; i < s_numLoadFiles; i++ ) {
+		if ( s_loadFiles[i].hash == h && !Q_stricmp( s_loadFiles[i].name, qpath ) ) {
+			s_loadFiles[i].count++;
+			return;
+		}
+	}
+	if ( s_numLoadFiles < LOAD_FILES ) {
+		s_loadFiles[s_numLoadFiles].hash  = h;
+		Q_strncpyz( s_loadFiles[s_numLoadFiles].name, qpath, sizeof( s_loadFiles[0].name ) );
+		s_loadFiles[s_numLoadFiles].count = 1;
+		s_loadFiles[s_numLoadFiles].len   = len;
+		s_numLoadFiles++;
+	}
+}
+
 static struct { const char *name; unsigned int t; } s_loadMarks[24];
 static int s_numLoadMarks;
 
@@ -2406,6 +2434,73 @@ void Com_VitaLoadReport( void ) {
 		lp_acc[LP_IMGUP] / 1e6f, lp_acc[LP_SND] / 1e6f, lp_acc[LP_SND_N], lp_acc[LP_TIKI] / 1e6f, lp_acc[LP_TIKI_N],
 		lp_acc[LP_WORLD] / 1e6f, lp_acc[LP_CM] / 1e6f, lp_acc[LP_ZREAD] / 1e6f, lp_acc[LP_ZREAD_N],
 		lp_acc[LP_INFLATE] / 1e6f );
+	{
+		// duplicates: extra reads and their bytes, and the worst offenders by bytes
+		long dupKB = 0, uniqKB = 0;
+		int  dupReads = 0, j, k;
+		int  top[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
+
+		for ( i = 0; i < s_numLoadFiles; i++ ) {
+			uniqKB += s_loadFiles[i].len / 1024;
+			if ( s_loadFiles[i].count > 1 ) {
+				dupReads += s_loadFiles[i].count - 1;
+				dupKB += ( s_loadFiles[i].count - 1 ) * ( s_loadFiles[i].len / 1024 );
+				for ( j = 0; j < 8; j++ ) {
+					long w  = ( s_loadFiles[i].count - 1 ) * s_loadFiles[i].len;
+					long wj = top[j] < 0 ? -1 : ( s_loadFiles[top[j]].count - 1 ) * s_loadFiles[top[j]].len;
+					if ( w > wj ) {
+						for ( k = 7; k > j; k-- ) {
+							top[k] = top[k - 1];
+						}
+						top[j] = i;
+						break;
+					}
+				}
+			}
+		}
+		Com_Printf( "LOAD-PROF files: %d unique (%ld KB), %d repeat reads (%ld KB)\n", s_numLoadFiles, uniqKB, dupReads, dupKB );
+		{
+			// unique KB and count per extension
+			char ext[12][8];
+			long extKB[12];
+			int  extN[12], numExt = 0, e;
+			char line[512];
+			int  n;
+
+			for ( i = 0; i < s_numLoadFiles; i++ ) {
+				const char *dot = strrchr( s_loadFiles[i].name, '.' );
+				const char *x   = dot ? dot + 1 : "?";
+				for ( e = 0; e < numExt; e++ ) {
+					if ( !Q_stricmp( ext[e], x ) ) {
+						break;
+					}
+				}
+				if ( e == numExt ) {
+					if ( numExt == 12 ) {
+						e = 11;
+						Q_strncpyz( ext[11], "other", sizeof( ext[11] ) );
+					} else {
+						Q_strncpyz( ext[e], x, sizeof( ext[e] ) );
+						extKB[e] = 0;
+						extN[e]  = 0;
+						numExt++;
+					}
+				}
+				extKB[e] += s_loadFiles[i].len / 1024;
+				extN[e]++;
+			}
+			n = Com_sprintf( line, sizeof( line ), "LOAD-PROF by type (KB/files):" );
+			for ( e = 0; e < numExt; e++ ) {
+				n += Com_sprintf( line + n, sizeof( line ) - n, " %s=%ld/%d", ext[e], extKB[e], extN[e] );
+			}
+			Com_Printf( "%s\n", line );
+		}
+		for ( j = 0; j < 8 && top[j] >= 0; j++ ) {
+			Com_Printf( "LOAD-PROF dup: %s x%d (%ld KB each)\n", s_loadFiles[top[j]].name, s_loadFiles[top[j]].count,
+				s_loadFiles[top[j]].len / 1024 );
+		}
+		s_numLoadFiles = 0;
+	}
 	memset( lp_acc, 0, sizeof( lp_acc ) );
 	s_numLoadMarks = 0;
 }

@@ -63,6 +63,7 @@ enum {
 };
 extern unsigned int lp_acc[LP_COUNT];
 void Com_VitaLoadMark( const char *name );
+void Com_VitaLoadNoteFile( const char *qpath, long len );	// duplicate-read tracking
 void Com_VitaLoadReport( void );
 
 extern unsigned int vp_acc[VP_COUNT];
