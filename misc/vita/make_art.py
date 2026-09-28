@@ -90,7 +90,9 @@ def extract_logo(title):
     logo = title.crop(box).convert("RGBA")
     alpha = mask.crop(box).filter(ImageFilter.GaussianBlur(0.8))
     logo.putalpha(alpha)
-    return logo
+    # The title texture is 512x512 but the game shows it full screen at 640x480, so
+    # the art is stored squeezed: widen it by 4/3 to get the logo's real proportions.
+    return logo.resize((round(logo.width * 4 / 3), logo.height), Image.LANCZOS)
 
 
 def sepia(img, strength=1.0):
@@ -186,10 +188,9 @@ def main():
     logo = extract_logo(load_from_paks(main_dir, TITLE))
     photo = load_from_paks(main_dir, PHOTO)
 
-    # LiveArea background: the landing craft, logo on the left, below the system
-    # icons at the top (the launch gate sits on the right half).
+    # LiveArea background: the landing craft, logo centred.
     bg = backdrop(photo, (840, 500), focus_y=0.58, darken=0.5, top_shade=0.6).convert("RGBA")
-    place_logo(bg, logo, 320, (205, 230))
+    place_logo(bg, logo, 420, (420, 215))
     save(bg, "sce_sys/livearea/contents/bg.png")
 
     # Launch gate image (shown as the bubble opens).
