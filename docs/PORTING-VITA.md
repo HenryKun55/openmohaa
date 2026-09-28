@@ -156,15 +156,40 @@ render thread no longer waits for the GPU every frame, character skinning runs
 on the GPU (including faces while not animating), entity light visibility and
 shadow marks are cached, and shadow cost is bounded.
 
-## Known issues
+## Limits
+
+**Save often.** Use the game's own menu (Start -> Save Game), especially before
+leaving the game, closing it or putting the Vita to sleep. Saves have no thumbnail
+picture on the Vita (taking it froze the game for almost a second).
+
+**Not available:**
+
+- Multiplayer (no networking on the Vita build); its door in the main menu shows
+  a notice.
+- The Spearhead and Breakthrough expansions: the engine picks them with a
+  command-line option, which a Vita app does not have.
+
+**Not tested yet**, so they may fail (please [report it](https://github.com/HenryKun55/openmohaa/issues/new/choose)
+if they do):
+
+- Pressing the PS button to go to the home screen and coming back to the game.
+- Putting the Vita to sleep with the power button and waking it during a game.
+- Closing the game from the LiveArea and starting it again.
+- The whole campaign from start to end: not every mission has been played through.
+- Vita 2000 and PS TV (tested on a Vita 1000).
+
+**Known issues:**
 
 - Level loads take ~60-70 s (memory card throughput).
 - Compressed (.dds) textures crash vitaGL on hardware, so they stay disabled.
-- Multiplayer is not available (no networking layer on the Vita build); its door in
-  the main menu shows a notice.
-- The Spearhead and Breakthrough expansions are not available yet: the engine picks
-  them with a command-line option, which a Vita app does not have.
 - Vita3K runs the game, but is not representative of hardware performance.
+
+## Reporting a problem
+
+Open an issue with the [Vita problem form](https://github.com/HenryKun55/openmohaa/issues/new/choose),
+in English or Portuguese. Attach `ux0:data/openmohaa/main/boot.log`, copied right
+after the problem (every start overwrites it), and, after a crash, the newest
+`ux0:data/psp2core-*.psp2dmp` in a .zip.
 
 ## Debugging
 

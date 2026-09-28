@@ -1,0 +1,70 @@
+name: Problem on the PS Vita / Problema no PS Vita
+description: A crash, freeze, glitch, slowdown or anything else that went wrong. / Crash, travamento, erro visual, lentidão ou qualquer outro problema.
+labels: [vita]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Write in English or Portuguese. / Obrigado por reportar! Pode escrever em português ou inglês.
+        One problem per issue. / Um problema por issue.
+  - type: input
+    id: version
+    attributes:
+      label: Version / Versão
+      description: The release you installed, e.g. v0.1-vita. / A versão que você instalou, ex.: v0.1-vita.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened? / O que aconteceu?
+      options:
+        - Crash (the game closed or showed an error) / Crash (o jogo fechou ou mostrou erro)
+        - Freeze (stopped responding) / Travou (parou de responder)
+        - Graphics glitch / Erro gráfico
+        - Sound problem / Problema de som
+        - Controls / Controles
+        - Slow (low FPS or long loading) / Lento (FPS baixo ou carregamento demorado)
+        - Save or load game / Salvar ou carregar jogo
+        - Other / Outro
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Describe it / Descreva
+      description: What you did, what you expected, what happened instead. / O que você fez, o que esperava e o que aconteceu.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Mission and place / Missão e lugar
+      description: e.g. Mission 1, Level 2, after the truck. / ex.: Missão 1, Fase 2, depois do caminhão.
+  - type: dropdown
+    id: again
+    attributes:
+      label: Does it happen again? / Acontece de novo?
+      options:
+        - Every time / Sempre
+        - Sometimes / Às vezes
+        - Only once / Só uma vez
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your Vita / Seu Vita
+      description: Model (Vita 1000, 2000 or PS TV), firmware, plugins (e.g. overclock), and any settings you changed in the Vita settings menu. / Modelo (Vita 1000, 2000 ou PS TV), firmware, plugins (ex.: overclock) e as opções que você mudou no menu de configurações.
+      placeholder: Vita 1000, 3.65 Enso, PSVshell, Preset Quality
+  - type: markdown
+    attributes:
+      value: |
+        ### Files that help a lot / Arquivos que ajudam muito
+        Copy them with VitaShell's FTP (SELECT) or USB and drag them into the box below. / Copie pelo FTP do VitaShell (SELECT) ou USB e arraste para a caixa abaixo.
+        - `ux0:data/openmohaa/main/boot.log`: the game's log. **Copy it right after the problem, before opening the game again**: every start overwrites it. / o log do jogo. **Copie logo depois do problema, antes de abrir o jogo de novo**: cada abertura apaga o anterior.
+        - `ux0:data/psp2core-*.psp2dmp`: written by the Vita when a game crashes. Put it in a .zip first. / criado pelo Vita quando um jogo crasha. Coloque num .zip antes.
+        - A photo or video of the screen. / Uma foto ou vídeo da tela.
+  - type: textarea
+    id: files
+    attributes:
+      label: Files / Arquivos
+      description: Drag the files here. / Arraste os arquivos aqui.

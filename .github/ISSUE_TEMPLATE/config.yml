@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Install guide / Guia de instalação
+    url: https://github.com/HenryKun55/openmohaa/blob/vita-port/docs/PORTING-VITA.md#install-on-the-vita
+    about: Read this first if the game does not start. / Leia antes se o jogo não abre.

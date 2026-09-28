@@ -46,10 +46,18 @@ be changed in the game's Controls menu.
 and detail, HUD, crosshair, look sensitivity. English or Portuguese, following
 the Vita's language.
 
-## Not available
+## Limits
 
-Multiplayer, and the Spearhead and Breakthrough expansions: this version plays the
-Allied Assault campaign.
+- **Save often** from the game's menu (Start -> Save Game), especially before
+  leaving the game or putting the Vita to sleep.
+- Not available: multiplayer, and the Spearhead and Breakthrough expansions.
+- Not tested yet: the PS button and coming back, sleep with the power button,
+  closing and reopening the game, the whole campaign, Vita 2000 and PS TV.
+  [Details](docs/PORTING-VITA.md#limits).
+
+Something went wrong? [Report it](https://github.com/HenryKun55/openmohaa/issues/new/choose)
+(English or Portuguese), with `ux0:data/openmohaa/main/boot.log` copied right
+after the problem.
 
 This branch also has experimental Switch and macOS code
 ([docs/CONSOLE-PORTS.md](docs/CONSOLE-PORTS.md)), without builds.
