@@ -1687,7 +1687,11 @@ void View3D::Draw2D(void)
 #if defined(__vita__) || defined(__SWITCH__)
     /* Perf menu overlay — drawn last so it sits on top of everything. */
     if (CL_VitaPerfMenu_IsActive()) {
+#ifdef __vita__
+        setFont("vita-14"); // has the accented letters (misc/vita/make_font.py)
+#else
         setFont("verdana-14");
+#endif
         CL_VitaPerfMenu_Draw(m_font, m_frame.size.width, m_frame.size.height);
     }
 #endif

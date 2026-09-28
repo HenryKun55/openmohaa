@@ -2404,7 +2404,11 @@ void UI_Update(void)
         if (CL_VitaPerfMenu_IsActive() && !(view3d && view3d->IsVisible())) {
             static UIFont *s_menuFont;
             if (!s_menuFont) {
+#ifdef __vita__
+                s_menuFont = new UIFont("vita-14"); // has the accented letters
+#else
                 s_menuFont = new UIFont("verdana-14");
+#endif
             }
             CL_VitaPerfMenu_Draw(s_menuFont, uWinMan.getFrame().size.width, uWinMan.getFrame().size.height);
         }

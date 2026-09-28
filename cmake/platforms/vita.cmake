@@ -281,6 +281,11 @@ function(package_vita_vpk)
                     --add ${VITA_SCE_DIR}/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg=main/autoexec.cfg
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg=main/vita_defaults.cfg
+                    # Settings menu font with accented letters (misc/vita/make_font.py).
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont=main/fonts/vita-14.RitualFont
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/DejaVu-LICENSE.txt=main/fonts/DejaVu-LICENSE.txt
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga=main/gfx/fonts/vita-14.tga
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader=main/scripts/vita.shader
                     # Game / cgame PRX modules at the VPK root so they
                     # sit next to eboot.bin and Sys_LoadDll finds them
                     # via Sys_BinaryPath = "app0:" (set in sys_vita.c).
@@ -292,6 +297,9 @@ function(package_vita_vpk)
                 ${CMAKE_BINARY_DIR}/cgame_suprx
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader
                 ${VITA_ART_DEPENDS}
         COMMENT "Packaging ${VPK_FILE}"
         VERBATIM
