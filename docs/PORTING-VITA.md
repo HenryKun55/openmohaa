@@ -62,24 +62,39 @@ the memory card's throughput is the limit.
 | D-pad up | Use |
 | Start | Menu |
 | Select (hold) | Objectives / scores |
-| Select (double tap) | Performance menu |
+| Select (double tap) | Vita settings menu (in game and in the 2D menus) |
 
 The Controls menu changes these; they are saved in `ux0:data/openmohaa/main/configs/omconfig.cfg`.
 
-## Performance menu
+## Settings menu
 
-Double-tap Select in game. Tabs:
+Double-tap Select, in game or in the main menus (or type `vitasettings` in the
+console). It is in English, or Portuguese when the Vita's system language is
+Portuguese, and every item has a one-line description. L / R or D-pad left /
+right change tab, D-pad up / down select, Cross changes, Circle / Select / Start
+close.
 
-- **QUALITY**: presets (Performance / Balanced / Quality) and texture, model,
-  distant, curve, effect and terrain detail, texture filter, shadows (Off / Blob /
-  Precise) and weapon model.
-- **FASES / GAME**: jump to a mission, god mode and other test helpers.
-- **WORLD / LIGHTING / EFFECTS**: toggle world parts, dynamic lights, lens flares,
-  decals, HUD...
-- **AIM**: look sensitivity and crosshair per state.
-- **DEBUG**: FPS counter, render thread, GPU skinning, world VBO, and profiling.
+- **GRAPHICS**: presets (Performance / Balanced / Quality, Quality = every option
+  at its highest) and texture, model, distant, curve, effect and terrain detail,
+  texture filter, shadows (Off / Blob / Precise), dynamic lights, lens flares and
+  decals.
+- **DISPLAY**: FPS counter, HUD, crosshair, weapon model, blood.
+- **CONTROLS**: look sensitivity and crosshair, separately for hip and aim.
+- **SYSTEM**: restore the default settings, open the debug menu, close.
 
-Settings marked `*` restart the video when the menu closes.
+Settings marked `*` are applied when the menu closes (some restart the video).
+
+The **debug menu** (SYSTEM tab, or `vitadebug`) has the renderer switches
+(render thread, GPU skinning, world VBO, server thread...), world parts, cheats,
+a level list and the profilers.
+
+## Your settings and saves
+
+Installing a new `.vpk` only replaces the app in `ux0:app/OMHA00001`. Your
+settings (`configs/omconfig.cfg`), saves and game files live in
+`ux0:data/openmohaa/` and are never touched by an update. The default settings
+are only applied the first time the game starts on a Vita with no config; after
+that, only your own choices are used.
 
 ## Performance notes
 
