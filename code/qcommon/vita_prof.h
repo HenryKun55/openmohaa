@@ -31,8 +31,14 @@ enum {
 	VP_SORT,		// R_SortDrawSurfs (includes the sky portal view below)
 	VP_SKY,			// R_Sky_Render: the sky portal's whole view
 	VP_RTHREAD,		// render thread busy (runs in parallel)
+	VP_CMWAIT,		// main thread: waiting for the collision lock (held by the render thread)
+	VP_CMHOLD,		// main thread: time inside collision queries (traces etc.)
+	VP_CMWAIT_RT,	// render thread: waiting for the collision lock
+	VP_CMHOLD_RT,	// render thread: time inside collision queries
 	VP_COUNT
 };
+
+extern int vp_renderThreadId;	// set by the render thread (tr_vita_smp.c)
 
 extern unsigned int vp_acc[VP_COUNT];
 

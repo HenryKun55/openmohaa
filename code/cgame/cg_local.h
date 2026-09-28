@@ -34,6 +34,36 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "cm_public.h"
 #include "cg_public.h"
 
+#ifdef __vita__
+#include <psp2/kernel/processmgr.h>
+// CG-PROF (cg_view.c): cgame frame breakdown; CGP_MA_* split CG_ModelAnim (all entities).
+enum {
+    CGP_SNAP, CGP_PREDICT, CGP_VIEW, CGP_PLAYER, CGP_ENTS, CGP_MARKS, CGP_SOUND, CGP_EFFECTS, CGP_TEMPMODELS,
+    CGP_VSS, CGP_TRACERS, CGP_IMPACTS, CGP_BEAMS, CGP_DRAW,
+    CGP_MA_SETUP, CGP_MA_ATTACH, CGP_MA_SHADOW, CGP_MA_STEPS, CGP_MA_VIEW, CGP_MA_ADDREF, CGP_MA_EMITTERS,
+    CGP_MA_CMDS, CGP_MA_COUNT, CGP_SHADOW_HIT, CGP_SHADOW_MISS, CGP_COUNT
+};
+extern unsigned int cgp_acc[CGP_COUNT];
+#define CGP(slot, stmt) \
+    do { \
+        unsigned int _cgpT = sceKernelGetProcessTimeLow(); \
+        stmt; \
+        cgp_acc[slot] += sceKernelGetProcessTimeLow() - _cgpT; \
+    } while (0)
+// Laps: time since the previous lap goes to slot.
+#define CGP_LAP_START(var) unsigned int var = sceKernelGetProcessTimeLow()
+#define CGP_LAP(var, slot) \
+    do { \
+        unsigned int _cgpN = sceKernelGetProcessTimeLow(); \
+        cgp_acc[slot] += _cgpN - var; \
+        var = _cgpN; \
+    } while (0)
+#else
+#define CGP(slot, stmt) stmt
+#define CGP_LAP_START(var)
+#define CGP_LAP(var, slot)
+#endif
+
 #ifdef __cplusplus
 class MemArchiver;
 

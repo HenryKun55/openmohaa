@@ -19,6 +19,7 @@ along with Quake III Arena source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
+#include "vita_prof.h"
 #include "cm_local.h"
 
 // always use bbox vs. bbox collision and never capsule vs. bbox or vice versa
@@ -1281,6 +1282,8 @@ void CM_VitaInitLock( void ) {
 void (*cm_vitaLockHook)( void );	// renderer SMP diagnostic (r_vita_smp_serial 4)
 
 static volatile int cm_vitaLockDepth;
+static int cm_vitaHoldDepth[2];
+static unsigned int cm_vitaHoldStart[2];
 
 void CM_VitaLock( void ) {
 	// Only when nobody holds the lock: waiting for the render thread while holding
@@ -1289,7 +1292,16 @@ void CM_VitaLock( void ) {
 		cm_vitaLockHook();
 	}
 	if ( cm_vitaLockReady ) {
-		sceKernelLockLwMutex( &cm_vitaLock, 1, NULL );
+		// FRAME-PROF: time waiting for the lock and holding it, per thread
+		const int isRT = sceKernelGetThreadId() == vp_renderThreadId;
+		if ( sceKernelTryLockLwMutex( &cm_vitaLock, 1 ) < 0 ) {
+			VP_BEGIN( vpWait );
+			sceKernelLockLwMutex( &cm_vitaLock, 1, NULL );
+			vp_acc[isRT ? VP_CMWAIT_RT : VP_CMWAIT] += VP_Now() - vpWait;
+		}
+		if ( cm_vitaHoldDepth[isRT]++ == 0 ) {
+			cm_vitaHoldStart[isRT] = VP_Now();
+		}
 	}
 	cm_vitaLockDepth++;
 }
@@ -1297,6 +1309,10 @@ void CM_VitaLock( void ) {
 void CM_VitaUnlock( void ) {
 	cm_vitaLockDepth--;
 	if ( cm_vitaLockReady ) {
+		const int isRT = sceKernelGetThreadId() == vp_renderThreadId;
+		if ( --cm_vitaHoldDepth[isRT] == 0 ) {
+			vp_acc[isRT ? VP_CMHOLD_RT : VP_CMHOLD] += VP_Now() - cm_vitaHoldStart[isRT];
+		}
 		sceKernelUnlockLwMutex( &cm_vitaLock, 1 );
 	}
 }

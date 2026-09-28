@@ -48,6 +48,7 @@ static int R_RenderThread(SceSize args, void *argp)
 	(void)args;
 	(void)argp;
 	s_renderStackTop = (uintptr_t)&stackMark;
+	vp_renderThreadId = sceKernelGetThreadId();
 
 	for (;;) {
 		sceKernelWaitSema(s_semWork, 1, NULL);

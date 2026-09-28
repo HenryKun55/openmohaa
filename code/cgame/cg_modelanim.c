@@ -990,6 +990,7 @@ CG_ModelAnim
 */
 void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
 {
+    CGP_LAP_START(maT);
     entityState_t *s1;
     entityState_t *sNext = NULL;
     refEntity_t    model;
@@ -1181,6 +1182,10 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
     cgi.TIKI_SetEyeTargetPos(model.tiki, model.entityNumber, s1->eyeVector);
 
     CG_InterpolateAnimParms(s1, sNext, &model);
+#ifdef __vita__
+    cgp_acc[CGP_MA_COUNT]++;
+#endif
+    CGP_LAP(maT, CGP_MA_SETUP);
 
     if (cent->currentState.parent != ENTITYNUM_NONE) {
         int          iTagNum;
@@ -1286,6 +1291,7 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
         }
     }
 
+    CGP_LAP(maT, CGP_MA_ATTACH);
     if (!(s1->renderfx & RF_DONTDRAW) && (model.renderfx & RF_SHADOW) && cg_shadows->integer
         && !CG_SimpleDistanceCull(model.origin, Square(1400))
         && !CG_FrustumCullSphere(model.origin, model.radius + 64)) {
@@ -1293,6 +1299,7 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
         CG_EntityShadow(cent, &model);
     }
 
+    CGP_LAP(maT, CGP_MA_SHADOW);
     iAnimFlags = 0;
 
     // combine anim flags from all frame infos
@@ -1361,6 +1368,7 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
         cent->bFootOnGround_Right = qtrue;
     }
 
+    CGP_LAP(maT, CGP_MA_STEPS);
     if (cent->currentState.eType == ET_PLAYER && !(cent->currentState.eFlags & EF_DEAD)) {
         CG_PlayerTeamIcon(&model, &cent->currentState);
     }
@@ -1510,6 +1518,7 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
         }
     }
 
+    CGP_LAP(maT, CGP_MA_VIEW);
     model.reType = RT_MODEL;
     if (!(s1->renderfx & RF_DONTDRAW)) {
         cgi.R_Model_GetHandle(model.hModel);
@@ -1522,7 +1531,9 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
         cgi.R_AddRefEntityToScene(&model, s1->parent);
     }
 
+    CGP_LAP(maT, CGP_MA_ADDREF);
     CG_UpdateEntityEmitters(s1->number, &model, cent);
+    CGP_LAP(maT, CGP_MA_EMITTERS);
 
     if (s1->usageIndex == cent->usageIndexLast) {
         // process the exit commands of the last animations
@@ -1562,4 +1573,5 @@ void CG_ModelAnim(centity_t *cent, qboolean bDoShaderTime)
     }
 
     cent->usageIndexLast = cent->currentState.usageIndex;
+    CGP_LAP(maT, CGP_MA_CMDS);
 }

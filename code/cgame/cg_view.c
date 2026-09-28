@@ -824,6 +824,39 @@ CG_DrawActiveFrame
 Generates and draws a game scene and status information at the given time.
 =================
 */
+#ifdef __vita__
+// CG-PROF: cgame frame breakdown, ms per frame averaged over 60 frames.
+static const char *cgp_names[CGP_COUNT] = {
+    "snap", "predict", "view", "player", "ents", "marks", "sound", "effects", "tempmodels", "vss", "tracers",
+    "impacts", "beams", "draw", "| ma:setup", "attach", "shadow", "steps", "view", "addref", "emitters", "cmds", "n", "shadowcache hit", "miss"
+};
+unsigned int cgp_acc[CGP_COUNT];
+static int   cgp_frames;
+
+static void CG_VitaProfFrame(void)
+{
+    char line[768];
+    int  i, n;
+
+    if (++cgp_frames < 60) {
+        return;
+    }
+    n = Com_sprintf(line, sizeof(line), "CG-PROF (ms/frame):");
+    for (i = 0; i < CGP_COUNT; i++) {
+        if (i == CGP_MA_COUNT || i == CGP_SHADOW_HIT || i == CGP_SHADOW_MISS) {
+            n += Com_sprintf(line + n, sizeof(line) - n, " %s=%d", cgp_names[i], cgp_acc[i] / cgp_frames);
+        } else {
+            n += Com_sprintf(line + n, sizeof(line) - n, " %s=%.1f", cgp_names[i], cgp_acc[i] / 1000.0f / cgp_frames);
+        }
+        cgp_acc[i] = 0;
+    }
+    cgi.Printf("%s\n", line);
+    cgp_frames = 0;
+}
+#else
+#define CGP(slot, stmt) stmt
+#endif
+
 void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView, qboolean demoPlayback)
 {
     cg.time         = serverTime;
@@ -838,7 +871,7 @@ void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView,
     cgi.R_ClearScene();
 
     // set up cg.snap and possibly cg.nextSnap
-    CG_ProcessSnapshots();
+    CGP(CGP_SNAP, CG_ProcessSnapshots());
 
     // if we haven't received any snapshots yet, all
     // we can draw is the information screen
@@ -874,10 +907,10 @@ void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView,
     }
 
     // update cg.predicted_player_state
-    CG_PredictPlayerState();
+    CGP(CGP_PREDICT, CG_PredictPlayerState());
 
     // build cg.refdef
-    CG_CalcViewValues();
+    CGP(CGP_VIEW, CG_CalcViewValues());
 
     // display the intermission
     if (cg.snap->ps.pm_flags & PMF_INTERMISSION) {
@@ -989,12 +1022,12 @@ void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView,
     }
 
     // Added in OPM
-    CG_ProcessPlayerModel();
+    CGP(CGP_PLAYER, CG_ProcessPlayerModel());
 
     // build the render lists
     if (!cg.hyperspace) {
-        CG_AddPacketEntities(); // after calcViewValues, so predicted player state is correct
-        CG_AddMarks();
+        CGP(CGP_ENTS, CG_AddPacketEntities()); // after calcViewValues, so predicted player state is correct
+        CGP(CGP_MARKS, CG_AddMarks());
     }
 
     // finish up the rest of the refdef
@@ -1004,7 +1037,7 @@ void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView,
     memcpy(cg.refdef.areamask, cg.snap->areamask, sizeof(cg.refdef.areamask));
 
     // update audio positions
-    cgi.S_Respatialize(cg.snap->ps.clientNum, cg.SoundOrg, cg.SoundAxis);
+    CGP(CGP_SOUND, cgi.S_Respatialize(cg.snap->ps.clientNum, cg.SoundOrg, cg.SoundAxis));
 
     // make sure the lagometerSample and frame timing isn't done twice when in stereo
     if (stereoView != STEREO_RIGHT) {
@@ -1012,19 +1045,19 @@ void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView,
     }
 
     CG_UpdateTestEmitter();
-    CG_AddPendingEffects();
+    CGP(CGP_EFFECTS, CG_AddPendingEffects());
 
     if (!cg_hidetempmodels->integer) {
-        CG_AddTempModels();
+        CGP(CGP_TEMPMODELS, CG_AddTempModels());
     }
 
     if (vss_draw->integer) {
-        CG_AddVSSSources();
+        CGP(CGP_VSS, CG_AddVSSSources());
     }
 
-    CG_AddBulletTracers();
-    CG_AddBulletImpacts();
-    CG_AddBeams();
+    CGP(CGP_TRACERS, CG_AddBulletTracers());
+    CGP(CGP_IMPACTS, CG_AddBulletImpacts());
+    CGP(CGP_BEAMS, CG_AddBeams());
 
     if (cg_acidtrip->integer) {
         // lol disco
@@ -1032,7 +1065,10 @@ void CG_DrawActiveFrame(int serverTime, int frameTime, stereoFrame_t stereoView,
     }
 
     // actually issue the rendering calls
-    CG_DrawActive(stereoView);
+    CGP(CGP_DRAW, CG_DrawActive(stereoView));
+#ifdef __vita__
+    CG_VitaProfFrame();
+#endif
 
     if (cg_stats->integer) {
         cgi.Printf("cg.clientFrame:%i\n", cg.clientFrame);

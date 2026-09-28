@@ -2371,6 +2371,7 @@ Com_Frame
 */
 #ifdef __vita__
 unsigned int vp_acc[VP_COUNT];
+int          vp_renderThreadId = -1;
 unsigned int vp_rt[VPR_COUNT];
 
 // RT-PROF: the render thread's time per command group and, sorted, per surface type.
@@ -2434,7 +2435,8 @@ static void Com_VitaProfRenderThread( int frames ) {
 // FRAME-PROF: per-frame averages (ms) of vp_acc every 60 frames.
 static void Com_VitaProfFrame( void ) {
 	static const char *names[VP_COUNT] = {
-		"frame", "idle", "sv", "ev", "cl", "cg", "scene", "world", "terrain", "static", "ents", "sort", "sky", "rthread"
+		"frame", "idle", "sv", "ev", "cl", "cg", "scene", "world", "terrain", "static", "ents", "sort", "sky", "rthread",
+		"| cm main wait", "hold", "| cm rt wait", "hold"
 	};
 	static unsigned int last;
 	static int frames;
