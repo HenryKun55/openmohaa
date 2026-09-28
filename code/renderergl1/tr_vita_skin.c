@@ -654,6 +654,8 @@ static shaderStage_t *VitaSkin_EligibleStage(int *alphaTestMode, float *entityAl
  * handled the draw (caller must then skip the CPU path), qfalse to fall
  * back to CPU (ineligible surface/shader, missing bone channel, or not ready).
  */
+int vita_skin_fail;	// RT-PROF: why the last R_VitaGpuSkin_DrawSurf fell back to the CPU
+
 qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *bonesV, float scale)
 {
     skelSurfaceGame_t *sf        = (skelSurfaceGame_t *)sfV;
@@ -669,10 +671,10 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     static float boneMatrixData[VITA_SKIN_MAX_BONESLOTS * 3 * 4];
     static float lDir[VITA_SKIN_MAX_LIGHTS * 4], lOrg[VITA_SKIN_MAX_LIGHTS * 4], lCol[VITA_SKIN_MAX_LIGHTS * 4];
 
-    if (!s_skin_ready || !r_vita_gpu_skinning || !r_vita_gpu_skinning->integer) return qfalse;
+    if (!s_skin_ready || !r_vita_gpu_skinning || !r_vita_gpu_skinning->integer) { vita_skin_fail = 1; return qfalse; }
 
     stage = VitaSkin_EligibleStage(&alphaTestMode, &entityAlpha);
-    if (!stage) return qfalse;
+    if (!stage) { vita_skin_fail = 2; return qfalse; }
 
     slot = VitaSkin_HashFind(sf);
     if (slot == 0) {
@@ -680,15 +682,15 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         slot = VitaSkin_BuildSurf(sf, skelmodel);
         VitaSkin_HashInsert(sf, slot > 0 ? slot : -1);
     }
-    if (slot <= 0) return qfalse;                     /* ineligible → CPU */
-    if (slot >= s_skin_cache_count) return qfalse;    /* stale guard */
+    if (slot <= 0) { vita_skin_fail = 3; return qfalse; }                     /* ineligible → CPU */
+    if (slot >= s_skin_cache_count) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
     e = &s_skin_cache[slot];
-    if (e->sf != sf || !e->ibuf) return qfalse;       /* stale guard */
+    if (e->sf != sf || !e->ibuf) { vita_skin_fail = 4; return qfalse; }       /* stale guard */
 
     /* Pack the bone matrix palette for THIS entity (transposed, see header). */
     for (i = 0; i < e->numBoneSlots; i++) {
         int localChn = ri.TIKI_GetLocalChannel(tiki, e->boneChannel[i]);
-        if (localChn < 0) return qfalse;              /* channel absent → CPU */
+        if (localChn < 0) { vita_skin_fail = 5; return qfalse; }              /* channel absent → CPU */
         skelBoneCache_t *b = &bones[localChn];
         int base = i * 12;
         /* Pre-multiply by the model scale (tiki->load_scale * entity->scale).

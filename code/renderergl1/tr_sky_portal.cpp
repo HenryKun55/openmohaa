@@ -172,7 +172,9 @@ void R_Sky_Render()
 
     leaf = R_PointInLeaf(newParms.pvsOrigin);
     if (leaf) {
+        VP_BEGIN(vpSky);
         R_RenderView(&newParms);
+        VP_END(VP_SKY, vpSky);
     }
 
     tr.viewParms = oldParms;

@@ -706,6 +706,21 @@ void RB_BeginDrawingView (void) {
 	}
 }
 
+#ifdef __vita__
+// Which surface type the current tess batch holds (RT-PROF attributes RB_EndSurface to it).
+int vp_curType = VPR_NSURF;
+
+#define RB_VP_TESS( surf ) do { \
+		const int _vpType = *( surf ); \
+		VP_BEGIN( _vpT ); \
+		vp_curType = _vpType; \
+		rb_surfaceTable[ _vpType ]( ( surf ) ); \
+		vp_rt[VPR_TESS + _vpType] += VP_Now() - _vpT; \
+	} while ( 0 )
+#else
+#define RB_VP_TESS( surf ) rb_surfaceTable[ *( surf ) ]( ( surf ) )
+#endif
+
 /*
 ==================
 RB_RenderDrawSurfList
@@ -766,7 +781,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 #ifdef __vita__
 			RB_VitaFlushVboBatchIfNeeded(drawSurf->surface);
 #endif
-			rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
+			RB_VP_TESS( drawSurf->surface );
 			continue;
 		}
 		oldSort = (int)drawSurf->sort;
@@ -917,7 +932,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 #ifdef __vita__
 		RB_VitaFlushVboBatchIfNeeded(drawSurf->surface);
 #endif
-		rb_surfaceTable[ *drawSurf->surface ]( drawSurf->surface );
+		RB_VP_TESS( drawSurf->surface );
 	}
 
 	// draw the contents of the last shader batch
@@ -1291,7 +1306,15 @@ const void	*RB_DrawSurfs( const void *data ) {
 	backEnd.viewParms = cmd->viewParms;
 
 	RB_SetupFog();
+#ifdef __vita__
+	{
+		VP_BEGIN( vpList );
+		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+		vp_rt[VPR_LIST] += VP_Now() - vpList;
+	}
+#else
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
+#endif
 
 	return (const void *)(cmd + 1);
 }
@@ -1570,6 +1593,10 @@ void RB_ExecuteRenderCommands( const void *data ) {
 	while ( 1 ) {
 		data = PADP(data, sizeof(void *));
 
+#ifdef __vita__
+		const int vpCmd = *(const int *)data;
+		VP_BEGIN( vpCmdT );
+#endif
 		switch ( *(const int *)data ) {
 		case RC_SET_COLOR:
 			data = RB_SetColor( data );
@@ -1616,6 +1643,23 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			backEnd.pc.msec = t2 - t1;
 			return;
 		}
+#ifdef __vita__
+		{
+			int vpSlot;
+			switch ( vpCmd ) {
+			case RC_DRAW_SURFS:		vpSlot = VPR_SURFS; break;
+			case RC_SPRITE_SURFS:	vpSlot = VPR_SPRITES; break;
+			case RC_SET_COLOR:
+			case RC_STRETCH_PIC:
+			case RC_DRAW_2D:		vpSlot = VPR_2D; break;
+			case RC_SWAP_BUFFERS:	vpSlot = VPR_SWAP; break;
+			case RC_UPLOAD_DLIGHTS:	vpSlot = VPR_DLIGHTS; break;
+			default:				vpSlot = VPR_OTHER; break;
+			}
+			vp_rt[vpSlot] += VP_Now() - vpCmdT;
+			vp_curType = VPR_NSURF;
+		}
+#endif
 	}
 
 }

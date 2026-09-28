@@ -56,7 +56,11 @@ static int R_RenderThread(SceSize args, void *argp)
 		}
 		backEnd.data     = s_data;
 		backEnd.smpFrame = s_smpFrame;
-		RB_ExecuteRenderCommands(s_cmds);
+		{
+			VP_BEGIN(vpRt);
+			RB_ExecuteRenderCommands(s_cmds);
+			VP_END(VP_RTHREAD, vpRt);
+		}
 		sceKernelSignalSema(s_semDone, 1);
 	}
 

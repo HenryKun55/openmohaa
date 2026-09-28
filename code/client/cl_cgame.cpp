@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // cl_cgame.c  -- client system interaction with client game
 
+#include "../qcommon/vita_prof.h"
 #include "client.h"
 #include "cl_ui.h"
 #include "cl_uiradar.h"
@@ -1022,7 +1023,11 @@ void CL_CGameRendering( stereoFrame_t stereo ) {
 		cl.oldServerTime = cl.serverStartTime;
 	}
 
-	cge->CG_DrawActiveFrame( cl.serverTime, cl.serverTime - cl.oldServerTime, stereo, clc.demoplaying );
+	{
+		VP_BEGIN( vpCg );
+		cge->CG_DrawActiveFrame( cl.serverTime, cl.serverTime - cl.oldServerTime, stereo, clc.demoplaying );
+		VP_END( VP_CG, vpCg );
+	}
 
 	cl.oldServerTime = cl.serverTime;
 	//

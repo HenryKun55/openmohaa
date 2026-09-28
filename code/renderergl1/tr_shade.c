@@ -2001,7 +2001,27 @@ void RB_VitaDrawCheckFrame(void)
 }
 #endif
 
+#ifdef __vita__
+// RT-PROF: time each batch's shading + draw, attributed to its surface type.
+extern int vp_curType;
+static void RB_EndSurface_Real( void );
+
 void RB_EndSurface( void ) {
+	VP_BEGIN( vpT );
+	const int type = vp_curType;
+
+	if ( tess.numIndexes ) {
+		vp_rt[VPR_BATCHES]++;
+		vp_rt[VPR_VERTS] += tess.numVertexes;
+	}
+	RB_EndSurface_Real();
+	vp_rt[VPR_DRAW + ( type >= 0 && type <= VPR_NSURF ? type : VPR_NSURF )] += VP_Now() - vpT;
+}
+
+static void RB_EndSurface_Real( void ) {
+#else
+void RB_EndSurface( void ) {
+#endif
 	shaderCommands_t *input;
 #ifdef __vita__
 	int _vp_es_t0 = (r_vita_perflog && r_vita_perflog->integer) ? Sys_Milliseconds() : 0;

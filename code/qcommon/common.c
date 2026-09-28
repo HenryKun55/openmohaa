@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // common.c -- misc functions used in client and server
 
+#include "vita_prof.h"
 #include "q_shared.h"
 #include "qcommon.h"
 #include "q_version.h"
@@ -2368,6 +2369,97 @@ void Com_PollSwitchCmdFile( void )
 Com_Frame
 =================
 */
+#ifdef __vita__
+unsigned int vp_acc[VP_COUNT];
+unsigned int vp_rt[VPR_COUNT];
+
+// RT-PROF: the render thread's time per command group and, sorted, per surface type.
+static void Com_VitaProfRenderThread( int frames ) {
+	static const char *types[VPR_NSURF + 1] = {
+		"bad", "skip", "face", "grid", "poly", "mark", "flare", "entity", "dlist", "skel", "static",
+		"swipe", "sprite", "terrain", "tris", "md3", "md4", "other"
+	};
+	char line[768];
+	int i, j, n, best;
+	unsigned int v[2 * VPR_NSURF + 1];
+	const char *what[2 * VPR_NSURF + 1];
+	int cnt = 0;
+
+	n = Com_sprintf( line, sizeof( line ), "RT-PROF (ms/frame): 3d=%.1f sprites=%.1f 2d=%.1f swap=%.1f dl=%.1f other=%.1f | %d batches %d verts |",
+		vp_rt[VPR_SURFS] / 1000.0f / frames, vp_rt[VPR_SPRITES] / 1000.0f / frames, vp_rt[VPR_2D] / 1000.0f / frames,
+		vp_rt[VPR_SWAP] / 1000.0f / frames, vp_rt[VPR_DLIGHTS] / 1000.0f / frames, vp_rt[VPR_OTHER] / 1000.0f / frames,
+		vp_rt[VPR_BATCHES] / frames, vp_rt[VPR_VERTS] / frames );
+	for ( i = 0; i < VPR_NSURF; i++ ) {
+		v[cnt] = vp_rt[VPR_TESS + i]; what[cnt++] = types[i];
+	}
+	for ( i = 0; i <= VPR_NSURF; i++ ) {
+		v[cnt] = vp_rt[VPR_DRAW + i]; what[cnt++] = types[i];
+	}
+	// top 8 entries: tess entries are the first VPR_NSURF
+	for ( j = 0; j < 8; j++ ) {
+		best = -1;
+		for ( i = 0; i < cnt; i++ ) {
+			if ( v[i] && ( best < 0 || v[i] > v[best] ) ) {
+				best = i;
+			}
+		}
+		if ( best < 0 || v[best] / 1000.0f / frames < 0.1f ) {
+			break;
+		}
+		n += Com_sprintf( line + n, sizeof( line ) - n, " %s:%s=%.1f", best < VPR_NSURF ? "tess" : "draw", what[best],
+			v[best] / 1000.0f / frames );
+		v[best] = 0;
+	}
+	Com_Printf( "%s\n", line );
+	{
+		unsigned int tessAll = 0, drawAll = 0;
+		for ( i = 0; i < VPR_NSURF; i++ ) {
+			tessAll += vp_rt[VPR_TESS + i];
+		}
+		for ( i = 0; i <= VPR_NSURF; i++ ) {
+			drawAll += vp_rt[VPR_DRAW + i];
+		}
+		Com_Printf( "RT-PROF2: surflist=%.1f (entity/shader setup=%.1f) | skin surfaces gpu=%d cpu=%d, cpu why: off=%d stage=%d inelig=%d stale=%d chan=%d\n",
+			vp_rt[VPR_LIST] / 1000.0f / frames,
+			( (int)vp_rt[VPR_LIST] - (int)tessAll - (int)drawAll ) / 1000.0f / frames,
+			vp_rt[VPR_SKIN_GPU] / frames, vp_rt[VPR_SKIN_CPU] / frames,
+			vp_rt[VPR_SKINFAIL + 1] / frames, vp_rt[VPR_SKINFAIL + 2] / frames, vp_rt[VPR_SKINFAIL + 3] / frames,
+			vp_rt[VPR_SKINFAIL + 4] / frames, vp_rt[VPR_SKINFAIL + 5] / frames );
+	}
+	for ( i = 0; i < VPR_COUNT; i++ ) {
+		vp_rt[i] = 0;
+	}
+}
+
+// FRAME-PROF: per-frame averages (ms) of vp_acc every 60 frames.
+static void Com_VitaProfFrame( void ) {
+	static const char *names[VP_COUNT] = {
+		"frame", "idle", "sv", "ev", "cl", "cg", "scene", "world", "terrain", "static", "ents", "sort", "sky", "rthread"
+	};
+	static unsigned int last;
+	static int frames;
+	unsigned int now = VP_Now();
+	char line[512];
+	int i, n;
+
+	if ( last ) {
+		vp_acc[VP_FRAME] += now - last;
+	}
+	last = now;
+	if ( ++frames < 60 ) {
+		return;
+	}
+	n = Com_sprintf( line, sizeof( line ), "FRAME-PROF (ms/frame):" );
+	for ( i = 0; i < VP_COUNT; i++ ) {
+		n += Com_sprintf( line + n, sizeof( line ) - n, " %s=%.1f", names[i], vp_acc[i] / 1000.0f / frames );
+		vp_acc[i] = 0;
+	}
+	Com_Printf( "%s\n", line );
+	Com_VitaProfRenderThread( frames );
+	frames = 0;
+}
+#endif
+
 void Com_Frame( void ) {
 
 	int		msec, minMsec;
@@ -2458,6 +2550,10 @@ void Com_Frame( void ) {
     else
         minMsec = 1;
 
+#ifdef __vita__
+	Com_VitaProfFrame();
+#endif
+    VP_BEGIN( vpIdle );
     do
     {
         if (com_sv_running->integer)
@@ -2477,6 +2573,7 @@ void Com_Frame( void ) {
         else
             NET_Sleep(timeVal - 1);
     } while (Com_TimeVal(minMsec));
+    VP_END( VP_IDLE, vpIdle );
 
     IN_Frame();
 
@@ -2514,7 +2611,11 @@ void Com_Frame( void ) {
         timeBeforeServer = Sys_Milliseconds();
     }
 
-	SV_Frame( msec );
+	{
+		VP_BEGIN( vpSv );
+		SV_Frame( msec );
+		VP_END( VP_SV, vpSv );
+	}
 
 	// if "dedicated" has been modified, start up
 	// or shut down the client system.
@@ -2546,9 +2647,13 @@ void Com_Frame( void ) {
 	if ( com_speeds->integer ) {
 		timeBeforeEvents = Sys_Milliseconds ();
 	}
-	Com_EventLoop();
-	if (CL_FinishedIntro()) {
-		Cbuf_Execute(msec);
+	{
+		VP_BEGIN( vpEv );
+		Com_EventLoop();
+		if (CL_FinishedIntro()) {
+			Cbuf_Execute(msec);
+		}
+		VP_END( VP_EV, vpEv );
 	}
 
 
@@ -2559,7 +2664,11 @@ void Com_Frame( void ) {
 		timeBeforeClient = Sys_Milliseconds ();
 	}
 
-	CL_Frame( msec );
+	{
+		VP_BEGIN( vpCl );
+		CL_Frame( msec );
+		VP_END( VP_CL, vpCl );
+	}
 
 	if ( com_speeds->integer ) {
 		timeAfter = Sys_Milliseconds ();

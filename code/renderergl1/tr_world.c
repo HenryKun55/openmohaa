@@ -887,6 +887,7 @@ void R_AddWorldSurfaces (void) {
 		R_TerrainPrepareFrame();
 	}
 
+	VP_BEGIN( vpWorld );
 	// determine which leaves are in the PVS / areamask
 	R_MarkLeaves();
 
@@ -900,14 +901,19 @@ void R_AddWorldSurfaces (void) {
 	R_TransformDlights(tr.refdef.num_dlights, tr.refdef.dlights, &tr.viewParms.world);
 	R_SmpSerialPoint(9);
 	R_RecursiveWorldNode(tr.world->nodes, tr.viewParms.fog.extrafrustums ? 31 : 15, (1 << tr.refdef.num_dlights) - 1);
+	VP_END( VP_WORLD, vpWorld );
 
 	R_SmpSerialPoint(10);
 	if (r_drawterrain->integer && tr.refdef.render_terrain && !tr.viewParms.isPortalSky) {
+		VP_BEGIN( vpTerrain );
 		R_AddTerrainSurfaces();
+		VP_END( VP_TERRAIN, vpTerrain );
 	}
 	R_SmpSerialPoint(11);
 	if (r_drawstaticmodels->integer) {
+		VP_BEGIN( vpStatic );
 		R_AddStaticModelSurfaces();
+		VP_END( VP_STATIC, vpStatic );
 	}
 
 	if (g_bInfostaticmodels) {

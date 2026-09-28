@@ -1479,7 +1479,11 @@ void R_GenerateDrawSurfs( void ) {
     R_AddTerrainMarkSurfaces();
 
 	R_SmpSerialPoint(13);
-    R_AddEntitySurfaces();
+	{
+		VP_BEGIN( vpEnts );
+		R_AddEntitySurfaces();
+		VP_END( VP_ENTS, vpEnts );
+	}
 
 	R_AddSpriteSurfaces();
 
@@ -1795,10 +1799,17 @@ void R_RenderView (viewParms_t *parms) {
 	R_GenerateDrawSurfs();
 	R_SmpSerialPoint(14);
 
-    R_SortDrawSurfs(
-		tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf,
-		tr.refdef.spriteSurfs + firstSpriteSurf, tr.refdef.numSpriteSurfs - firstSpriteSurf
-	);
+	{
+		VP_BEGIN( vpSort );
+		R_SortDrawSurfs(
+			tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf,
+			tr.refdef.spriteSurfs + firstSpriteSurf, tr.refdef.numSpriteSurfs - firstSpriteSurf
+		);
+		// the sky portal view is nested in here: don't count its sort twice
+		if ( !tr.viewParms.isPortalSky ) {
+			VP_END( VP_SORT, vpSort );
+		}
+	}
 
 	R_DrawDebugLines();
     R_DebugSkeleton();
