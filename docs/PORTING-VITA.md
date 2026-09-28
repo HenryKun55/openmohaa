@@ -15,7 +15,6 @@ carries the source code of that exact build, as the GPL requires.
 ## What works
 
 - The Allied Assault single-player campaign, level transitions and saves.
-- Spearhead and Breakthrough, if their pk3s are present (less tested).
 - Dual-analog controls, touch-free menus (analog cursor, Cross clicks).
 - A render thread on its own CPU core, GPU skinning for characters, a world
   vertex buffer, and a performance menu to tune quality live.
@@ -31,8 +30,6 @@ You need a Vita with custom firmware (HENkaku / h-encore / Enso) and VitaShell.
 2. Copy the game files from your Medal of Honor: Allied Assault install:
    ```
    ux0:data/openmohaa/main/        Pak0.pk3 ... Pak5.pk3 (and music/, sound/, video/ if loose)
-   ux0:data/openmohaa/mainta/      Spearhead pk3s (optional)
-   ux0:data/openmohaa/maintt/      Breakthrough pk3s (optional)
    ```
 3. Optional, faster loading: build a pre-resampled sound pack on a PC and copy it
    next to the paks (saves several seconds per level load):
@@ -118,7 +115,10 @@ shadow marks are cached, and shadow cost is bounded.
 
 - Level loads take ~60-70 s (memory card throughput).
 - Compressed (.dds) textures crash vitaGL on hardware, so they stay disabled.
-- Multiplayer is not available (no networking layer on the Vita build).
+- Multiplayer is not available (no networking layer on the Vita build); its door in
+  the main menu shows a notice.
+- The Spearhead and Breakthrough expansions are not available yet: the engine picks
+  them with a command-line option, which a Vita app does not have.
 - Vita3K runs the game, but is not representative of hardware performance.
 
 ## Debugging

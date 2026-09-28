@@ -50,7 +50,8 @@ the Vita's language.
   `sdmc:/switch/openmohaa/main/`. See [docs/CONSOLE-PORTS.md](docs/CONSOLE-PORTS.md).
 - **macOS:** game files in `~/Library/Application Support/openmohaa/main/`.
 
-Multiplayer is not available on Vita or Switch.
+Multiplayer is not available on Vita or Switch, and the Vita plays only the Allied
+Assault campaign for now (not the Spearhead and Breakthrough expansions).
 
 ## How it is made
 
