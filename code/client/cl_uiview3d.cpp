@@ -27,7 +27,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __vita__
 #include <psp2/apputil.h>
 #include <psp2/system_param.h>
-#include <psp2/appmgr.h>
 #endif
 
 CLASS_DECLARATION(UIWidget, View3D, NULL) {
@@ -775,28 +774,6 @@ static void CL_VitaDebug_f(void)
 qboolean CL_VitaPerfMenu_IsActive(void)
 {
     return g_pmActive;
-}
-
-/* LiveArea "Settings" button: it launches the game with psgm:play?...&param=settings.
- * Checked once, on the first UI frame after boot, so the menu opens over the main
- * menu. A tap while the game is already running only resumes it. */
-void CL_VitaPerfMenu_Frame(void)
-{
-#ifdef __vita__
-    static qboolean s_checked;
-    char            param[1024];
-
-    if (s_checked) {
-        return;
-    }
-    s_checked = qtrue;
-
-    memset(param, 0, sizeof(param));
-    if (sceAppMgrGetAppParam(param) >= 0 && strstr(param, "param=settings")) {
-        Com_Printf("VITA: launched from the LiveArea settings button\n");
-        VitaPerfMenu_Open(qfalse);
-    }
-#endif
 }
 
 /* Menu actions (SYSTEM tab, "Back to settings"). */

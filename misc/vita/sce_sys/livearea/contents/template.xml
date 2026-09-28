@@ -1,29 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<livearea style="psmobile" format-ver="01.00" content-rev="2">
+<livearea style="a1" format-ver="01.00" content-rev="1">
 
 	<livearea-background>
 		<image>bg.png</image>
 	</livearea-background>
 
 	<gate>
-		<startup-image>startup.png</startup-image>
+		<startup-image>
+			<image>startup.png</image>
+		</startup-image>
 	</gate>
-
-	<!-- Settings button: starts (or resumes) the game with param=settings, which
-	     opens the Vita settings menu (code/sys/sys_vita.c, Sys_VitaLaunchParam). -->
-	<frame id="frame3">
-		<liveitem> <lang>pt-br</lang>
-			<image valign="bottom" origin="frame" align="left" image-align="left" image-valign="bottom" width="200" height="62" x="-209">settings_pt.png</image>
-			<target type="u">psgm:play?titleid=OMHA00001&amp;param=settings</target>
-		</liveitem>
-		<liveitem> <lang>pt</lang>
-			<image valign="bottom" origin="frame" align="left" image-align="left" image-valign="bottom" width="200" height="62" x="-209">settings_pt.png</image>
-			<target type="u">psgm:play?titleid=OMHA00001&amp;param=settings</target>
-		</liveitem>
-		<liveitem>
-			<image valign="bottom" origin="frame" align="left" image-align="left" image-valign="bottom" width="200" height="62" x="-209">settings_en.png</image>
-			<target type="u">psgm:play?titleid=OMHA00001&amp;param=settings</target>
-		</liveitem>
-	</frame>
 
 </livearea>
