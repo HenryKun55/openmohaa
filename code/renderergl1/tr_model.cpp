@@ -1573,7 +1573,7 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
     if (skelmodel->pLOD && r_staticlod->integer) {
         float lod_val;
 
-        lod_val = backEnd.currentStaticModel->lodpercentage[0];
+        lod_val = staticSurf->lodpercentage;
 
         if (surf->numVerts > 3) {
             skelIndex_t *collapseIndex;
@@ -1582,9 +1582,9 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
 
             if (lod_tool->integer && !strcmp(backEnd.currentStaticModel->tiki->a->name, lod_tikiname->string)
                 && meshNum == lod_mesh->integer) {
-                lod_cutoff = GetToolLodCutoff(skelmodel, backEnd.currentStaticModel->lodpercentage[0]);
+                lod_cutoff = GetToolLodCutoff(skelmodel, staticSurf->lodpercentage);
             } else {
-                lod_cutoff = GetLodCutoff(skelmodel, backEnd.currentStaticModel->lodpercentage[0], 0);
+                lod_cutoff = GetLodCutoff(skelmodel, staticSurf->lodpercentage, 0);
             }
 
             collapseIndex = surf->pCollapseIndex;

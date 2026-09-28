@@ -17,7 +17,7 @@
  *  - Collision traces are serialized by CM_VitaLock (the backend traces for
  *    spherical lighting and lens flares).
  *
- * r_vita_rthread 1 enables it (latched, off by default: see R_SmpInit).
+ * r_vita_rthread 0 restores the single-threaded path (latched).
  */
 
 #include "tr_local.h"
@@ -207,10 +207,7 @@ void R_SmpHandoff(const void *cmds)
 
 void R_SmpInit(void)
 {
-	// Off by default: with the render thread on, frames still pick up flashes and stray
-	// colors from a front-end/back-end race not found yet (single-threaded is clean).
-	// Renamed from r_vita_smp so configs that archived the old default of 1 start off.
-	r_vita_smp = ri.Cvar_Get("r_vita_rthread", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	r_vita_smp = ri.Cvar_Get("r_vita_rthread", "1", CVAR_ARCHIVE | CVAR_LATCH);
 	r_vita_smp_serial = ri.Cvar_Get("r_vita_smp_serial", "0", 0);
 	cm_vitaLockHook = R_SmpCmLockHook;
 	if (!r_vita_smp->integer || s_thread >= 0) {

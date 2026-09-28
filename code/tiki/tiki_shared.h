@@ -356,6 +356,7 @@ typedef struct staticSurface_s {
     int                ofsStaticData;
     skelSurfaceGame_t *surface;
     int                meshNum;
+    float              lodpercentage;	// the model's LOD when this frame queued it
 } staticSurface_t;
 
 typedef struct {

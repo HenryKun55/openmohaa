@@ -29,7 +29,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MAX_DISTINCT_STATIC_MODELS 1000
 
 int             g_nStaticSurfaces;
-staticSurface_t g_staticSurfaces[MAX_STATIC_MODELS_SURFS];
+// One set per frame slot (tr.smpFrame): the queued draw surfaces point into it, and with
+// the render thread the backend still draws the previous frame's static models while the
+// front end refills this array for the next one (it is reset in RE_BeginFrame).
+staticSurface_t g_staticSurfaces[2][MAX_STATIC_MODELS_SURFS];
 qboolean        g_bInfostaticmodels = qfalse;
 
 /*
@@ -388,11 +391,12 @@ void R_AddStaticModelSurfaces(void)
                         continue;
                     }
 
-                    s_surface                = &g_staticSurfaces[g_nStaticSurfaces++];
+                    s_surface                = &g_staticSurfaces[tr.smpFrame][g_nStaticSurfaces++];
                     s_surface->ident         = SF_TIKI_STATIC;
                     s_surface->ofsStaticData = ofsStaticData;
                     s_surface->surface       = surface;
                     s_surface->meshNum       = mesh;
+                    s_surface->lodpercentage = SM->lodpercentage[0];
 
                     shader = tr.shaders[dsurf->hShader[0]];
 
