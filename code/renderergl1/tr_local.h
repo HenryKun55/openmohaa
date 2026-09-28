@@ -770,6 +770,7 @@ typedef struct {
 	// view is queued (R_AddDrawSurfCmd): the front end resets tr.* for the next frame
 	// while the render thread still executes this one.
 	qboolean	clearToFog;
+	int			farclip;		// tr.farclip of this view's scene (the backend must not read tr.farclip)
 } viewParms_t;
 
 

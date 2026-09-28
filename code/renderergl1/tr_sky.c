@@ -810,7 +810,7 @@ void RB_StageIteratorSky( void ) {
 #ifdef __vita__
     if (vita_skip_mask && (vita_skip_mask->integer & 32)) return;
 #endif
-	if ( r_fastsky->integer || tr.farclip ) {
+	if ( r_fastsky->integer || backEnd.viewParms.farclip ) {
 		return;
 	}
 
