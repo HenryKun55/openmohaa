@@ -828,7 +828,7 @@ Generates and draws a game scene and status information at the given time.
 // CG-PROF: cgame frame breakdown, ms per frame averaged over 60 frames.
 static const char *cgp_names[CGP_COUNT] = {
     "snap", "predict", "view", "player", "ents", "marks", "sound", "effects", "tempmodels", "vss", "tracers",
-    "impacts", "beams", "draw", "| ma:setup", "attach", "shadow", "steps", "view", "addref", "emitters", "cmds", "n", "shadowcache hit", "miss"
+    "impacts", "beams", "draw", "| ma:setup", "attach", "shadow", "steps", "view", "addref", "emitters", "cmds", "n", "shadowcache hit", "miss", "| sh:trace", "feet", "mark", "calls"
 };
 unsigned int cgp_acc[CGP_COUNT];
 static int   cgp_frames;
@@ -843,7 +843,7 @@ static void CG_VitaProfFrame(void)
     }
     n = Com_sprintf(line, sizeof(line), "CG-PROF (ms/frame):");
     for (i = 0; i < CGP_COUNT; i++) {
-        if (i == CGP_MA_COUNT || i == CGP_SHADOW_HIT || i == CGP_SHADOW_MISS) {
+        if (i == CGP_MA_COUNT || i == CGP_SHADOW_HIT || i == CGP_SHADOW_MISS || i == CGP_SH_CALLS) {
             n += Com_sprintf(line + n, sizeof(line) - n, " %s=%d", cgp_names[i], cgp_acc[i] / cgp_frames);
         } else {
             n += Com_sprintf(line + n, sizeof(line) - n, " %s=%.1f", cgp_names[i], cgp_acc[i] / 1000.0f / cgp_frames);

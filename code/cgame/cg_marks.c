@@ -796,6 +796,44 @@ void CG_ImpactMark(
         originalPoints[3][i] = origin[i] - fSScale2 * info.axis[1][i] + fTScale3 * info.axis[2][i];
     }
 
+#ifdef __vita__
+    // Far from the viewer, a shadow is a small blob: draw it as one quad on the ground
+    // plane found by the entity's trace instead of clipping it against the world's
+    // polygons (the clip is most of the cgame's shadow cost on hardware). Up close the
+    // clipped mark still follows steps and edges exactly.
+    if (cacheEntry) {
+        // Foot shadows (precise mode) are small and flat on the ground: a quad is nearly
+        // indistinguishable from the clipped mark past a short distance.
+        static cvar_t *cg_vita_shadowclip, *cg_vita_footshadowclip;
+        float          clipDist;
+        if (!cg_vita_shadowclip) {
+            cg_vita_shadowclip     = cgi.Cvar_Get("cg_vita_shadowclip", "384", CVAR_ARCHIVE);
+            cg_vita_footshadowclip = cgi.Cvar_Get("cg_vita_footshadowclip", "128", CVAR_ARCHIVE);
+        }
+        clipDist = markShader == cgs.media.footShadowMarkShader ? cg_vita_footshadowclip->value
+                                                                : cg_vita_shadowclip->value;
+        if (clipDist > 0 && DistanceSquared(origin, cg.refdef.vieworg) > Square(clipDist)) {
+            polyVert_t quad[4];
+
+            for (i = 0; i < 4; i++) {
+                vec3_t delta;
+
+                VectorMA(originalPoints[i], 0.25f, dir, quad[i].xyz);
+                VectorSubtract(originalPoints[i], origin, delta);
+                quad[i].st[0]       = fSCenter + DotProduct(delta, info.axis[1]) * info.texCoordScaleS;
+                quad[i].st[1]       = fTCenter + DotProduct(delta, info.axis[2]) * info.texCoordScaleT;
+                quad[i].modulate[0] = (byte)(red * 255.0f);
+                quad[i].modulate[1] = (byte)(green * 255.0f);
+                quad[i].modulate[2] = (byte)(blue * 255.0f);
+                quad[i].modulate[3] = fadein ? 0 : (byte)(alpha * 255.0f);
+            }
+            cgi.R_AddPolyToScene(markShader, 4, quad, 0);
+            cacheEntry->time = 0;  // nothing cached for this key
+            return;
+        }
+    }
+#endif
+
     // get the fragments
     VectorScale(dir, -32, projection);
 

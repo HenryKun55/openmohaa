@@ -390,7 +390,13 @@ void CG_CastFootShadow(const vec_t *vLightPos, vec_t *vLightIntensity, int iTag,
     fLength = fPitchCos * fPitchCos * 32.0 + fPitchCos * 8.0 + 10.0;
     fOfs    = 0.5 - (-4.1 / tan(DEG2RAD(vLightAngles[0])) + 4.0 - fLength) / fLength * 0.5;
     VectorMA(vPos, -96.0, vDelta, vEnd);
+#ifdef __vita__
+    // Against the world only: a foot shadow landing on another entity doesn't show,
+    // and clipping to every entity per foot per light is a large share of the cost.
+    CG_Trace(&trace, vPos, vec3_origin, vec3_origin, vEnd, 0, MASK_FOOTSHADOW, qfalse, qfalse, "CG_CastFootShadow");
+#else
     CG_Trace(&trace, vPos, vec3_origin, vec3_origin, vEnd, 0, MASK_FOOTSHADOW, qfalse, qtrue, "CG_CastFootShadow");
+#endif
 
     if (cg_shadowdebug->integer) {
         cgi.R_DebugLine(vPos, vLightPos, 0.75, 0.75, 0.5, 1.0);
@@ -480,7 +486,7 @@ void CG_CastSimpleFeetShadow(
     // right foot
     //
     VectorCopy(pTrace->endpos, vRightPos);
-    oFoot = cgi.TIKI_Orientation(model, iRightTag);
+    CGP(CGP_SH_FEET, oFoot = cgi.TIKI_Orientation(model, iRightTag));
     VectorMA(oFoot.origin, 3, oFoot.axis[1], vPos);
 
     for (i = 0; i < 3; i++) {
@@ -493,7 +499,7 @@ void CG_CastSimpleFeetShadow(
     // left foot
     //
     VectorCopy(pTrace->endpos, vLeftPos);
-    oFoot = cgi.TIKI_Orientation(model, iLeftTag);
+    CGP(CGP_SH_FEET, oFoot = cgi.TIKI_Orientation(model, iLeftTag));
     VectorMA(oFoot.origin, 3, oFoot.axis[1], vPos);
 
     for (i = 0; i < 3; i++) {
@@ -513,6 +519,9 @@ void CG_CastSimpleFeetShadow(
     }
 
     // add the mark
+#ifdef __vita__
+    unsigned int shMarkT = sceKernelGetProcessTimeLow();
+#endif
     CG_ImpactMark(
         cgs.media.shadowMarkShader,
         vPos,
@@ -531,6 +540,9 @@ void CG_CastSimpleFeetShadow(
         0.5,
         0.5
     );
+#ifdef __vita__
+    cgp_acc[CGP_SH_MARK] += sceKernelGetProcessTimeLow() - shMarkT;
+#endif
 }
 
 /*
@@ -565,7 +577,26 @@ qboolean CG_EntityShadow(centity_t *cent, refEntity_t *model)
         return qfalse;
     }
 
-    if (cg_shadows->integer == 2 && (model->renderfx & RF_SHADOW_PRECISE)) {
+#ifdef __vita__
+    /* Precise shadows cast one foot shadow per light per foot (up to 8 lights: 16
+     * traces + 16 clipped marks per soldier per frame, 8-27 ms of cgame time in m1l1
+     * combat on hardware). On the Vita they use at most cg_vita_shadowlights lights
+     * (the strongest, R_GatherLightSources sorts them) and only within
+     * cg_vita_shadowprecisedist of the viewer; farther soldiers get the simple feet
+     * shadow below. */
+    static cvar_t *cg_vita_shadowlights, *cg_vita_shadowprecisedist;
+    if (!cg_vita_shadowlights) {
+        cg_vita_shadowlights      = cgi.Cvar_Get("cg_vita_shadowlights", "2", CVAR_ARCHIVE);
+        cg_vita_shadowprecisedist = cgi.Cvar_Get("cg_vita_shadowprecisedist", "512", CVAR_ARCHIVE);
+    }
+    const qboolean bPreciseInRange = cg_vita_shadowprecisedist->value <= 0
+                                  || DistanceSquared(model->origin, cg.refdef.vieworg)
+                                         < Square(cg_vita_shadowprecisedist->value);
+#else
+    const qboolean bPreciseInRange = qtrue;
+#endif
+
+    if (cg_shadows->integer == 2 && (model->renderfx & RF_SHADOW_PRECISE) && bPreciseInRange) {
         iTagL = cgi.Tag_NumForName(model->tiki, "Bip01 L Foot");
         if (iTagL != -1) {
             iTagR = cgi.Tag_NumForName(model->tiki, "Bip01 R Foot");
@@ -576,6 +607,11 @@ qboolean CG_EntityShadow(centity_t *cent, refEntity_t *model)
             vec3_t avLightPos[16], avLightIntensity[16];
 
             iNumLights = Q_clamp(cg_shadowscount->integer, 1, 8);
+#ifdef __vita__
+            if (cg_vita_shadowlights->integer > 0 && iNumLights > cg_vita_shadowlights->integer) {
+                iNumLights = cg_vita_shadowlights->integer;
+            }
+#endif
             iNumLights = cgi.R_GatherLightSources(model->origin, avLightPos, avLightIntensity, iNumLights);
             if (iNumLights) {
                 for (iCurrLight = 0; iCurrLight < iNumLights; iCurrLight++) {
@@ -593,7 +629,10 @@ qboolean CG_EntityShadow(centity_t *cent, refEntity_t *model)
     VectorCopy(model->origin, end);
     end[2] -= SHADOW_DISTANCE;
 
-    cgi.CM_BoxTrace(&trace, model->origin, end, vec3_origin, vec3_origin, 0, MASK_PLAYERSOLID, qfalse);
+#ifdef __vita__
+    cgp_acc[CGP_SH_CALLS]++;
+#endif
+    CGP(CGP_SH_TRACE, cgi.CM_BoxTrace(&trace, model->origin, end, vec3_origin, vec3_origin, 0, MASK_PLAYERSOLID, qfalse));
 
     // no shadow if too high
     if (trace.fraction == 1.0) {
