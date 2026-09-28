@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 // tiki_cache.cpp : TIKI's fast implementation
 
+#include "../qcommon/vita_prof.h"
 #include "q_shared.h"
 #include "qcommon.h"
 #include "../skeletor/skeletor.h"
@@ -147,7 +148,28 @@ dtikianim_t *TIKI_RegisterTikiAnim(const char *path)
 TIKI_RegisterTikiFlags
 ===============
 */
+#ifdef __vita__
+static dtiki_t *TIKI_RegisterTikiFlags_Real(const char *path, qboolean use);
+
 dtiki_t *TIKI_RegisterTikiFlags(const char *path, qboolean use)
+{
+    static int depth;
+    dtiki_t   *tiki;
+    VP_BEGIN(lpT);
+
+    depth++;
+    tiki = TIKI_RegisterTikiFlags_Real(path, use);
+    if (--depth == 0) {
+        lp_acc[LP_TIKI] += VP_Now() - lpT;
+        lp_acc[LP_TIKI_N]++;
+    }
+    return tiki;
+}
+
+static dtiki_t *TIKI_RegisterTikiFlags_Real(const char *path, qboolean use)
+#else
+dtiki_t *TIKI_RegisterTikiFlags(const char *path, qboolean use)
+#endif
 {
     dtiki_t          *tiki     = NULL;
     dtikianim_t      *tikianim = NULL;

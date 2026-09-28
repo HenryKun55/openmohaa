@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *****************************************************************************/
 
 
+#include "vita_prof.h"
 #include "q_shared.h"
 #include "qcommon.h"
 #include "unzip.h"
@@ -2225,7 +2226,24 @@ Filename are relative to the quake search path
 a null buffer will just return the file length without loading
 ============
 */
+#ifdef __vita__
+static long FS_ReadFileEx_Real( const char *qpath, void **buffer, qboolean quiet );
+
 long FS_ReadFileEx( const char *qpath, void **buffer, qboolean quiet ) {
+	VP_BEGIN( lpT );
+	long len = FS_ReadFileEx_Real( qpath, buffer, quiet );
+	lp_acc[LP_FS] += VP_Now() - lpT;
+	lp_acc[LP_FS_N]++;
+	if ( len > 0 ) {
+		lp_acc[LP_FS_KB] += len / 1024;
+	}
+	return len;
+}
+
+static long FS_ReadFileEx_Real( const char *qpath, void **buffer, qboolean quiet ) {
+#else
+long FS_ReadFileEx( const char *qpath, void **buffer, qboolean quiet ) {
+#endif
 	fileHandle_t	h;
 	byte*			buf;
 	qboolean		isConfig;

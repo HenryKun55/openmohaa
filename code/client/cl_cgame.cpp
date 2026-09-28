@@ -941,6 +941,9 @@ void CL_InitCGame( void ) {
 	clientGameImport_t	cgi;
 
 	t1 = Sys_Milliseconds();
+#ifdef __vita__
+	Com_VitaLoadMark( "connect" );	// server done -> client starts cgame
+#endif
 
 	// find the current mapname
 	info = cl.gameState.stringData + cl.gameState.stringOffsets[ CS_SERVERINFO ];
@@ -994,6 +997,10 @@ void CL_InitCGame( void ) {
 	t2 = Sys_Milliseconds();
 
 	Com_Printf( "CL_InitCGame: %5.2f seconds\n", ( t2 - t1 ) / 1000.0 );
+#ifdef __vita__
+	Com_VitaLoadMark( "cgame" );	// world, models, sounds, cgame init
+	Com_VitaLoadReport();
+#endif
 }
 
 

@@ -2373,6 +2373,42 @@ Com_Frame
 unsigned int vp_acc[VP_COUNT];
 int          vp_renderThreadId = -1;
 unsigned int vp_rt[VPR_COUNT];
+unsigned int lp_acc[LP_COUNT];
+
+static struct { const char *name; unsigned int t; } s_loadMarks[24];
+static int s_numLoadMarks;
+
+void Com_VitaLoadMark( const char *name ) {
+	if ( s_numLoadMarks < (int)ARRAY_LEN( s_loadMarks ) ) {
+		s_loadMarks[s_numLoadMarks].name = name;
+		s_loadMarks[s_numLoadMarks].t    = VP_Now();
+		s_numLoadMarks++;
+	}
+}
+
+void Com_VitaLoadReport( void ) {
+	char line[1024];
+	int  i, n;
+
+	if ( !s_numLoadMarks ) {
+		return;
+	}
+	n = Com_sprintf( line, sizeof( line ), "LOAD-PROF phases (s):" );
+	for ( i = 1; i < s_numLoadMarks; i++ ) {
+		n += Com_sprintf( line + n, sizeof( line ) - n, " %s=%.2f", s_loadMarks[i].name,
+			( s_loadMarks[i].t - s_loadMarks[i - 1].t ) / 1000000.0f );
+	}
+	n += Com_sprintf( line + n, sizeof( line ) - n, " | total=%.2f",
+		( s_loadMarks[s_numLoadMarks - 1].t - s_loadMarks[0].t ) / 1000000.0f );
+	Com_Printf( "%s\n", line );
+	Com_Printf( "LOAD-PROF totals (s): files=%.2f (%u files, %u KB) images=%.2f (%u) upload=%.2f sounds=%.2f (%u) tiki=%.2f (%u) world=%.2f cm=%.2f | pk3 read=%.2f (%u chunks) inflate=%.2f\n",
+		lp_acc[LP_FS] / 1e6f, lp_acc[LP_FS_N], lp_acc[LP_FS_KB], lp_acc[LP_IMGLOAD] / 1e6f, lp_acc[LP_IMG_N],
+		lp_acc[LP_IMGUP] / 1e6f, lp_acc[LP_SND] / 1e6f, lp_acc[LP_SND_N], lp_acc[LP_TIKI] / 1e6f, lp_acc[LP_TIKI_N],
+		lp_acc[LP_WORLD] / 1e6f, lp_acc[LP_CM] / 1e6f, lp_acc[LP_ZREAD] / 1e6f, lp_acc[LP_ZREAD_N],
+		lp_acc[LP_INFLATE] / 1e6f );
+	memset( lp_acc, 0, sizeof( lp_acc ) );
+	s_numLoadMarks = 0;
+}
 
 // RT-PROF: the render thread's time per command group and, sorted, per surface type.
 static void Com_VitaProfRenderThread( int frames ) {

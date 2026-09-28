@@ -41,6 +41,7 @@ woven in by Terry Thorsen 1/2003.
  */
 
 
+#include "vita_prof.h"
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "unzip.h"
@@ -1281,6 +1282,9 @@ extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
                 uReadThis = (uInt)pfile_in_zip_read_info->rest_read_compressed;
             if (uReadThis == 0)
                 return UNZ_EOF;
+#ifdef __vita__
+            VP_BEGIN(lpRd);
+#endif
             if (ZSEEK(pfile_in_zip_read_info->z_filefunc,
                       pfile_in_zip_read_info->filestream,
                       pfile_in_zip_read_info->pos_in_zipfile +
@@ -1292,6 +1296,10 @@ extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
                       pfile_in_zip_read_info->read_buffer,
                       uReadThis)!=uReadThis)
                 return UNZ_ERRNO;
+#ifdef __vita__
+            lp_acc[LP_ZREAD] += VP_Now() - lpRd;
+            lp_acc[LP_ZREAD_N]++;
+#endif
 
 
 #            ifndef NOUNCRYPT
@@ -1360,7 +1368,15 @@ extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
                 (pfile_in_zip_read_info->rest_read_compressed == 0))
                 flush = Z_FINISH;
             */
+#ifdef __vita__
+            {
+            VP_BEGIN(lpInf);
             err=inflate(&pfile_in_zip_read_info->stream,flush);
+            lp_acc[LP_INFLATE] += VP_Now() - lpInf;
+            }
+#else
+            err=inflate(&pfile_in_zip_read_info->stream,flush);
+#endif
 
             if ((err>=0) && (pfile_in_zip_read_info->stream.msg!=NULL))
               err = Z_DATA_ERROR;

@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#include "../qcommon/vita_prof.h"
 #include "snd_local.h"
 #include "cl_ui.h"
 
@@ -437,7 +438,10 @@ static qboolean S_LoadSound_Real(const char *fileName, sfx_t *sfx, int streamed,
 qboolean S_LoadSound(const char *fileName, sfx_t *sfx, int streamed, qboolean force_load)
 {
     const int t0 = Sys_Milliseconds();
+    VP_BEGIN(lpT);
     const qboolean ret = S_LoadSound_Real(fileName, sfx, streamed, force_load);
+    lp_acc[LP_SND] += VP_Now() - lpT;
+    lp_acc[LP_SND_N]++;
     const int dt = Sys_Milliseconds() - t0;
     if (dt > 20) {
         Com_Printf("SND-LOAD: '%s' %d ms (streamed=%d)\n", fileName, dt, streamed);

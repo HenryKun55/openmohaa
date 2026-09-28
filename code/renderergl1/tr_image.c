@@ -2630,11 +2630,23 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 	//
 	numMipmaps = mipmap;
 	iMipmapsAvailable = 0;
+#ifdef __vita__
+	{
+		VP_BEGIN( lpT );
+		R_LoadImage(name, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
+		lp_acc[LP_IMGLOAD] += VP_Now() - lpT;
+		lp_acc[LP_IMG_N]++;
+	}
+#else
 	R_LoadImage(name, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
+#endif
 	if (pic == NULL) {
 		return NULL;
 	}
 
+#ifdef __vita__
+	{
+	VP_BEGIN( lpUp );
 	image = R_CreateImageOld(
 		name,
 		pic,
@@ -2648,6 +2660,23 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 		glCompressMode,
 		glWrapClampModeX,
 		glWrapClampModeY);
+	lp_acc[LP_IMGUP] += VP_Now() - lpUp;
+	}
+#else
+	image = R_CreateImageOld(
+		name,
+		pic,
+		width,
+		height,
+		numMipmaps,
+		iMipmapsAvailable,
+		allowPicmip,
+		force32bit,
+		hasAlpha,
+		glCompressMode,
+		glWrapClampModeX,
+		glWrapClampModeY);
+#endif
 
     len = strlen(name);
     if (len > 4 && !strcmp(&name[len - 4], ".gst")) {

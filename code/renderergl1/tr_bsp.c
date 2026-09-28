@@ -2302,7 +2302,19 @@ RE_LoadWorldMap
 Called directly from cgame
 =================
 */
+#ifdef __vita__
+static void RE_LoadWorldMap_Real( const char *name );
+
 void RE_LoadWorldMap( const char *name ) {
+	VP_BEGIN( lpT );
+	RE_LoadWorldMap_Real( name );
+	lp_acc[LP_WORLD] += VP_Now() - lpT;
+}
+
+static void RE_LoadWorldMap_Real( const char *name ) {
+#else
+void RE_LoadWorldMap( const char *name ) {
+#endif
 	// Replaces the world (and its VBO) the render thread may still be drawing.
 	R_SyncRenderThread();
 

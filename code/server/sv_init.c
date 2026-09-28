@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
+#include "../qcommon/vita_prof.h"
 #include "server.h"
 #include "../client/client.h"
 #include "../corepp/tiki.h"
@@ -580,6 +581,9 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 	int			iStart;
 	int			iEnd;
 	int			checksum;
+#ifdef __vita__
+	Com_VitaLoadMark( "start" );
+#endif
 	char		systemInfo[ MAX_INFO_STRING ];
 	char		mapname[ MAX_QPATH ];
 	char		*spawnpos;
@@ -761,6 +765,9 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 	UI_LoadResource( "*137" );
 
 	// set game dll map
+#ifdef __vita__
+	Com_VitaLoadMark( "sv_setup" );	// shutdown, CM_LoadMap, configstrings, ...
+#endif
 	Com_Printf("[sv] ge->SetMap\n");
 	ge->SetMap( sv_mapname->string );
 
@@ -768,6 +775,9 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 		Com_Printf("[sv] ge->Precache\n");
 		ge->Precache();
 		Com_Printf("[sv] ge->Precache done\n");
+#ifdef __vita__
+		Com_VitaLoadMark( "sv_precache" );	// ge->SetMap + ge->Precache (models, scripts)
+#endif
 	}
 
 	UI_LoadResource( "*138" );
@@ -800,6 +810,9 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 		Com_Printf("[sv] ge->SpawnEntities\n");
 		ge->SpawnEntities( CM_EntityString(), svs.time );
 		Com_Printf("[sv] ge->SpawnEntities done\n");
+#ifdef __vita__
+		Com_VitaLoadMark( "sv_spawn" );
+#endif
 
 		UI_LoadResource( "*140" );
 

@@ -40,6 +40,31 @@ enum {
 
 extern int vp_renderThreadId;	// set by the render thread (tr_vita_smp.c)
 
+// LOAD-PROF: where level loading time goes. Totals overlap (an image load includes its
+// file read); counters are plain counts. Com_VitaLoadMark stamps phases relative to the
+// first mark; Com_VitaLoadReport prints everything and resets.
+enum {
+	LP_FS,			// FS_ReadFileEx
+	LP_FS_N,
+	LP_FS_KB,
+	LP_IMGLOAD,		// R_LoadImage: read + decode
+	LP_IMG_N,
+	LP_IMGUP,		// R_CreateImageOld: upload (+ mipmaps)
+	LP_SND,			// S_LoadSound
+	LP_SND_N,
+	LP_TIKI,		// TIKI_RegisterTikiFlags (outermost)
+	LP_TIKI_N,
+	LP_WORLD,		// RE_LoadWorldMap
+	LP_CM,			// CM_LoadMap
+	LP_ZREAD,		// pk3 member reads: seek + read of each compressed chunk
+	LP_ZREAD_N,
+	LP_INFLATE,		// pk3 member reads: zlib inflate
+	LP_COUNT
+};
+extern unsigned int lp_acc[LP_COUNT];
+void Com_VitaLoadMark( const char *name );
+void Com_VitaLoadReport( void );
+
 extern unsigned int vp_acc[VP_COUNT];
 
 // Render thread breakdown (RT-PROF line). Tessellation and shading/draw time per

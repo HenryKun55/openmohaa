@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // cmodel.c -- model loading
 
+#include "vita_prof.h"
 #include "cm_local.h"
 #include "../client/client.h"
 
@@ -825,7 +826,19 @@ CM_LoadMap
 Loads in the map and all submodels
 ==================
 */
+#ifdef __vita__
+static void CM_LoadMap_Real( const char *name, qboolean clientload, int *checksum );
+
 void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
+	VP_BEGIN( lpT );
+	CM_LoadMap_Real( name, clientload, checksum );
+	lp_acc[LP_CM] += VP_Now() - lpT;
+}
+
+static void CM_LoadMap_Real( const char *name, qboolean clientload, int *checksum ) {
+#else
+void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
+#endif
 	gamelump_t		lump, lump2;
 	int				*shaderSubdivisions;
 	int				i;
