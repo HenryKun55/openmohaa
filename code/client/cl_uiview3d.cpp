@@ -167,10 +167,13 @@ static const VitaPerfChoice g_pcWeapon[] = {
     "seta r_picmip 1; seta r_lodscale 0.45; seta r_lodcap 0.35; seta r_lodviewmodelcap 0.45; seta r_lodbias 1; " \
     "seta r_subdivisions 4; seta cg_effectdetail 0.7; seta vss_maxcount 20; seta ter_error 9; seta ter_maxlod 4; " \
     "seta r_texturemode gl_linear_mipmap_nearest; seta cg_shadows 1; seta r_dynamiclight 1; seta cg_marks_add 1; seta com_blood 1"
+/* Quality = the highest value of every graphics choice in this menu. */
 #define VPM_PRESET_QUALITY \
-    "seta r_picmip 1; seta r_lodscale 0.9; seta r_lodcap 0.9; seta r_lodviewmodelcap 0.9; seta r_lodbias 0; " \
-    "seta r_subdivisions 3; seta cg_effectdetail 0.95; seta vss_maxcount 15; seta ter_error 7; seta ter_maxlod 5; " \
-    "seta r_texturemode gl_linear_mipmap_linear; seta cg_shadows 2; seta r_dynamiclight 1; seta cg_marks_add 1; seta com_blood 1"
+    "seta r_picmip 1; seta r_lodscale 1.1; seta r_lodcap 1.0; seta r_lodviewmodelcap 1.0; seta r_lodbias 0; " \
+    "seta r_subdivisions 3; seta cg_effectdetail 1.0; seta vss_maxcount 10; " \
+    "seta ter_error 4; seta ter_maxlod 6; seta ter_maxtris 24576; " \
+    "seta r_texturemode gl_linear_mipmap_linear; seta cg_shadows 2; seta r_dynamiclight 1; seta r_flares 1; " \
+    "seta cg_marks_add 1; seta com_blood 1"
 
 /* ---------- translations ----------
  * Every string the menu shows, in English and Brazilian Portuguese, plus a one-line
@@ -221,8 +224,8 @@ static const VitaMenuText g_vmTexts[] = {
       "Recommended: good image with smooth gameplay.",
       "Recomendado: boa imagem com jogo fluido." },
     { "Preset: Quality", "Predefinição: Qualidade",
-      "Most detail; lower frame rate in combat.",
-      "Mais detalhe; FPS menor em combate." },
+      "Every option at its highest; lower frame rate in combat.",
+      "Todas as opções no máximo; FPS menor em combate." },
     { "Texture Quality", "Qualidade das texturas",
       "Texture resolution. Higher uses more memory and loads slower.",
       "Resolução das texturas. Mais alto usa mais memória e carrega mais devagar." },
