@@ -1,6 +1,7 @@
 # OpenMoHAA for PlayStation Vita
 
-**Medal of Honor: Allied Assault** single-player, running natively on the PS Vita.
+**Medal of Honor: Allied Assault** single-player, running natively on the PS Vita:
+up to 60 FPS in lighter scenes, around 30-45 FPS in heavy combat.
 
 **Download:** [OpenMoHAA.vpk](https://github.com/HenryKun55/openmohaa/releases/latest)
 from the Releases page.

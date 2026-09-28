@@ -18,8 +18,8 @@ carries the source code of that exact build, as the GPL requires.
 - Dual-analog controls, touch-free menus (analog cursor, Cross clicks).
 - A render thread on its own CPU core, GPU skinning for characters, a world
   vertex buffer, and a performance menu to tune quality live.
-- Around 30-45 FPS in combat on m1l1 on a stock Vita (444 MHz), more in lighter
-  scenes.
+- Up to 60 FPS in lighter scenes and around 30-45 FPS in heavy combat on the first
+  mission, on a stock Vita (444 MHz).
 
 ## Install on the Vita
 
