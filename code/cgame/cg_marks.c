@@ -597,6 +597,75 @@ passed to the renderer.
 =================
 */
 
+#ifdef __vita__
+/*
+ * Shadow cache (Vita): entity shadows are temporary marks rebuilt every frame, i.e. the
+ * projected quad is clipped against the world's polygons for every shadowed entity every
+ * frame (14-29 ms of cgame time in m1l1 combat on hardware). An entity that doesn't move
+ * asks for the exact same mark as last frame, so reuse last frame's fragments. Only marks
+ * that land on the world or terrain (static) are cached; ones on inline models (doors,
+ * lifts) are rebuilt as before. Shadows are drawn without lighting, so nothing else in
+ * the result depends on the frame.
+ */
+#define SHADOW_CACHE_SIZE  256
+#define SHADOW_CACHE_FRAGS 8
+
+typedef struct {
+    qhandle_t markShader;
+    float     values[16];
+} shadowCacheKey_t;
+
+typedef struct {
+    shadowCacheKey_t key;
+    int              time;  // cg.time when last used; 0 = empty
+    int              numFragments;
+    int              iIndex[SHADOW_CACHE_FRAGS];
+    int              numPoints[SHADOW_CACHE_FRAGS];
+    polyVert_t       verts[SHADOW_CACHE_FRAGS][8];
+} shadowCacheEntry_t;
+
+static shadowCacheEntry_t s_shadowCache[SHADOW_CACHE_SIZE];
+
+static unsigned int CG_ShadowCacheHash(const shadowCacheKey_t *key)
+{
+    const unsigned char *p = (const unsigned char *)key;
+    unsigned int         h = 2166136261u;
+    size_t               i;
+
+    for (i = 0; i < sizeof(*key); i++) {
+        h = (h ^ p[i]) * 16777619u;
+    }
+    return h;
+}
+
+// Returns the entry for key: filled in (a hit) or claimed for the caller to fill.
+static shadowCacheEntry_t *CG_ShadowCacheLookup(const shadowCacheKey_t *key, qboolean *hit)
+{
+    unsigned int        h      = CG_ShadowCacheHash(key);
+    shadowCacheEntry_t *oldest = NULL;
+    int                 i;
+
+    for (i = 0; i < 4; i++) {
+        shadowCacheEntry_t *e = &s_shadowCache[(h + i) % SHADOW_CACHE_SIZE];
+
+        // stale: unused for a while, or from before a level restart
+        if (e->time && (e->time > cg.time || cg.time - e->time > 500)) {
+            e->time = 0;
+        }
+        if (e->time && !memcmp(&e->key, key, sizeof(*key))) {
+            e->time = cg.time;
+            *hit    = qtrue;
+            return e;
+        }
+        if (!oldest || e->time < oldest->time) {
+            oldest = e;
+        }
+    }
+    *hit = qfalse;
+    return oldest;
+}
+#endif
+
 void CG_ImpactMark(
     qhandle_t    markShader,
     const vec3_t origin,
@@ -655,6 +724,46 @@ void CG_ImpactMark(
     if (fTCenter < 0.0f || fTCenter > 1.0f) {
         fTCenter = 0.5f;
     }
+
+#ifdef __vita__
+    shadowCacheEntry_t *cacheEntry = NULL;
+    shadowCacheKey_t    cacheKey;
+
+    if (temporary && !dolighting
+        && (markShader == cgs.media.shadowMarkShader || markShader == cgs.media.footShadowMarkShader)) {
+        qboolean hit;
+
+        memset(&cacheKey, 0, sizeof(cacheKey));
+        cacheKey.markShader = markShader;
+        VectorCopy(origin, cacheKey.values);
+        VectorCopy(dir, cacheKey.values + 3);
+        cacheKey.values[6]  = orientation;
+        cacheKey.values[7]  = fSScale;
+        cacheKey.values[8]  = fTScale;
+        cacheKey.values[9]  = red;
+        cacheKey.values[10] = green;
+        cacheKey.values[11] = blue;
+        cacheKey.values[12] = alpha;
+        cacheKey.values[13] = fSCenter;
+        cacheKey.values[14] = fTCenter;
+        cacheKey.values[15] = fadein ? 1.0f : 0.0f;
+
+        cacheEntry = CG_ShadowCacheLookup(&cacheKey, &hit);
+        if (hit) {
+            polyVert_t verts[8];
+
+            cgp_acc[CGP_SHADOW_HIT]++;
+            for (i = 0; i < cacheEntry->numFragments; i++) {
+                memcpy(verts, cacheEntry->verts[i], sizeof(verts));
+                CG_AddFragmentToScene(cacheEntry->iIndex[i], markShader, cacheEntry->numPoints[i], verts);
+            }
+            return;
+        }
+        cgp_acc[CGP_SHADOW_MISS]++;
+        cacheEntry->time         = 0;  // filled below only if cacheable
+        cacheEntry->numFragments = 0;
+    }
+#endif
 
     fSScale2 = (fSCenter + fSCenter) * fSScale;
     fTScale2 = (fTCenter + fTCenter) * fTScale;
@@ -719,6 +828,9 @@ void CG_ImpactMark(
 
     if (temporary) {
         polyVert_t verts[8];
+#ifdef __vita__
+        qboolean cacheable = cacheEntry && numFragments <= SHADOW_CACHE_FRAGS;
+#endif
 
         for (i = 0, mf = markFragments; i < numFragments; i++, mf++) {
             if (mf->numPoints > 8) {
@@ -726,9 +838,27 @@ void CG_ImpactMark(
             }
 
             if (CG_ImpactMark_PerPolyCallback(markPoints, mf, verts, (void *)&info)) {
+#ifdef __vita__
+                if (cacheable) {
+                    if (mf->iIndex < 0) {
+                        cacheable = qfalse;  // on an inline model: moves, don't cache
+                    } else {
+                        int n = cacheEntry->numFragments++;
+                        cacheEntry->iIndex[n]    = mf->iIndex;
+                        cacheEntry->numPoints[n] = mf->numPoints;
+                        memcpy(cacheEntry->verts[n], verts, sizeof(verts));
+                    }
+                }
+#endif
                 CG_AddFragmentToScene(mf->iIndex, markShader, mf->numPoints, verts);
             }
         }
+#ifdef __vita__
+        if (cacheable) {
+            cacheEntry->key  = cacheKey;
+            cacheEntry->time = cg.time ? cg.time : 1;
+        }
+#endif
     } else {
         CG_AssembleFinalMarks(
             markPoints,
