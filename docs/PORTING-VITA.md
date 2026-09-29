@@ -161,7 +161,8 @@ close.
   at its highest) and texture, model, distant, curve, effect and terrain detail,
   texture filter, shadows (Off / Blob / Precise), dynamic lights, lens flares and
   decals.
-- **DISPLAY**: FPS counter, HUD, crosshair, weapon model, blood.
+- **DISPLAY**: FPS counter, HUD, crosshair, weapon model, blood, and the text
+  language of the game (see [TRANSLATING.md](TRANSLATING.md)).
 - **CONTROLS**: look sensitivity and crosshair, separately for hip and aim.
 - **SYSTEM**: restore the default settings, open the debug menu, close.
 

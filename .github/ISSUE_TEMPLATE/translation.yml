@@ -1,0 +1,31 @@
+name: Translation / Tradução
+description: Send a translation of the game text, or ask for a language. / Envie uma tradução do texto do jogo ou peça um idioma.
+labels: [vita, translation]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        How to translate: https://github.com/HenryKun55/openmohaa/blob/vita-port/docs/TRANSLATING.md
+        Only the text is translated, not the voices. / Só o texto é traduzido, não as vozes.
+  - type: input
+    id: language
+    attributes:
+      label: Language / Idioma
+      placeholder: Français, Español, Italiano...
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is this? / O que é?
+      options:
+        - I am sending a translation (file attached) / Estou enviando uma tradução (arquivo anexado)
+        - I am fixing an existing translation / Estou corrigindo uma tradução existente
+        - I would like this language / Gostaria deste idioma
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details / Detalhes
+      description: Attach your .txt file here, or describe the fix. / Anexe aqui o seu arquivo .txt ou descreva a correção.

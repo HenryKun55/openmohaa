@@ -68,8 +68,9 @@ In menus: left stick moves the cursor, Cross clicks, Circle goes back. Buttons c
 be changed in the game's Controls menu.
 
 **Vita settings** (tap Select twice, in game or in the menus): graphics presets
-and detail, HUD, crosshair, look sensitivity. English or Portuguese, following
-the Vita's language.
+and detail, HUD, crosshair, look sensitivity, and the **language of the game's
+text** (Portuguese so far; the voices stay as they are). Want your language?
+See [docs/TRANSLATING.md](docs/TRANSLATING.md).
 
 ## Limits
 
