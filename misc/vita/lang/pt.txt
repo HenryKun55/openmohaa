@@ -191,7 +191,7 @@
 { "was knocked out by" "foi nocauteado por" }
 { "was shot by" "foi baleado por" }
 { "was gunned down by" "foi metralhado por" }
-{ "was sniped by" "foi abatido por um sniper:" }
+{ "was sniped by" "foi abatido pelo sniper" }
 { "was rifled by" "foi fuzilado por" }
 { "was perforated by" "foi perfurado por" }
 { "'s SMG" " com a submetralhadora" }
@@ -531,6 +531,215 @@
 { "Got &&& Grenades" "Pegou &&& granadas" }
 { "Recovered &&& Health" "Recuperou &&& de vida" }
 { "Picked Up &&&" "Pegou: &&&" }
+
+// Mission objectives (maps/*.scr). &&& is the number the script fills in.
+{ "Check the door." "Verifique a porta." }
+{ "Continue on your mission." "Prossiga com a missão." }
+{ "Hold off the reinforcements." "Contenha os reforços." }
+{ "Infiltrate the German occupied village." "Infiltre-se na vila ocupada pelos alemães." }
+{ "Man the MG42 mounted machine gun." "Assuma a metralhadora fixa MG42." }
+{ "Find and rescue the SAS Agent." "Encontre e resgate o agente do SAS." }
+{ "Follow the SAS Agent." "Siga o agente do SAS." }
+{ "Meet Grillo by the gate and exfiltrate." "Encontre o Grillo no portão e faça a exfiltração." }
+{ "Steal explosives from the fortress" "Roube explosivos da fortaleza" }
+{ "Steal explosives from the fortress." "Roube explosivos da fortaleza." }
+{ "Use explosives to destroy a Flak88." "Use explosivos para destruir um Flak88." }
+{ "Use explosives to escape." "Use explosivos para escapar." }
+{ "Bomb munitions cache." "Exploda o depósito de munição." }
+{ "Bomb tanks. [&&& remaining]" "Exploda os tanques. [faltam &&&]" }
+{ "Bomb tanks." "Exploda os tanques." }
+{ "Disable Opel trucks. [&&& remaining]" "Inutilize os caminhões Opel. [faltam &&&]" }
+{ "Disable Opel trucks." "Inutilize os caminhões Opel." }
+{ "Exfiltrate the facility." "Saia da instalação." }
+{ "Reach the airfield." "Chegue ao aeródromo." }
+{ "Destroy all communications equipment." "Destrua todo o equipamento de comunicação." }
+{ "Make your way to the lighthouse." "Siga até o farol." }
+{ "Meet up with Major Grillo in the truck and escape." "Encontre o Major Grillo no caminhão e fuja." }
+{ "Signal the fleet with the lighthouse beacon." "Sinalize para a frota com o farol." }
+{ "Steal the research documents [&&& remaining]" "Roube os documentos de pesquisa [faltam &&&]" }
+{ "Steal the research documents. [&&& remaining]." "Roube os documentos de pesquisa. [faltam &&&]." }
+{ "Enter the complex with the assistance of Major Grillo." "Entre no complexo com a ajuda do Major Grillo." }
+{ "Enter the main facility." "Entre na instalação principal." }
+{ "Destroy the Naxos Prototype." "Destrua o protótipo Naxos." }
+{ "Enter the 2nd U-boat." "Entre no segundo submarino." }
+{ "Find a disguise." "Arranje um disfarce." }
+{ "Eliminate opposition and escape." "Elimine a resistência e fuja." }
+{ "Escape." "Fuja." }
+{ "Plant the bombs [&&& left]." "Plante as bombas [faltam &&&]." }
+{ "Plant the bombs." "Plante as bombas." }
+{ "Exfiltrate." "Saia daqui." }
+{ "Exfiltrate" "Saia daqui" }
+{ "Exfiltrate the base." "Saia da base." }
+{ "Meet up with allies at train station." "Encontre os aliados na estação de trem." }
+{ "Bring the bangalores back to the shingle." "Leve os bangalores de volta ao cascalho." }
+{ "Follow the Captain to the bunker." "Siga o Capitão até o bunker." }
+{ "Get the bangalores." "Pegue os bangalores." }
+{ "Get to the shingle." "Chegue ao cascalho." }
+{ "Get to the trench." "Chegue à trincheira." }
+{ "Infiltrate the bunker." "Infiltre-se no bunker." }
+{ "Meet up with the Captain." "Encontre o Capitão." }
+{ "Clear out the bunker." "Limpe o bunker." }
+{ "Destroy the 1 20mm Anti-Aircraft gun emplacement" "Destrua a 1 posição de canhão antiaéreo de 20mm" }
+{ "Destroy the 15cm Artillery emplacement" "Destrua a posição de artilharia de 15cm" }
+{ "Destroy the 2 20mm Anti-Aircraft gun emplacements" "Destrua as 2 posições de canhão antiaéreo de 20mm" }
+{ "Destroy the 20mm Anti-Aircraft gun emplacements" "Destrua as posições de canhão antiaéreo de 20mm" }
+{ "Destroy the FLAK 88 Artillery emplacement" "Destrua a posição de artilharia FLAK 88" }
+{ "Eliminate the MG42 machine gunners." "Elimine os atiradores das MG42." }
+{ "Exit the bunker." "Saia do bunker." }
+{ "Meet up at the rendevous point" "Vá até o ponto de encontro" }
+{ "Bypass the roadblock." "Contorne o bloqueio da estrada." }
+{ "Call an airstrike on the Flak 88." "Peça um ataque aéreo no Flak 88." }
+{ "Call an airstrike on the second Flak 88." "Peça um ataque aéreo no segundo Flak 88." }
+{ "Defend the back of the house." "Defenda os fundos da casa." }
+{ "Defend the front of the house." "Defenda a frente da casa." }
+{ "Destroy the anti-aircraft gun so air support can return." "Destrua o canhão antiaéreo para o apoio aéreo poder voltar." }
+{ "Find a radio to call an airstrike on the Flak 88 cannon." "Ache um rádio para pedir um ataque aéreo no canhão Flak 88." }
+{ "Find the radio near the silo and use it to call an airstrike on the Flak 88 cannon." "Ache o rádio perto do silo e use-o para pedir um ataque aéreo no canhão Flak 88." }
+{ "Locate any Flak 88's guarding the road." "Localize os Flak 88 que guardam a estrada." }
+{ "Search the house." "Reviste a casa." }
+{ "Locate and destroy the Nebelwerfers." "Localize e destrua os Nebelwerfers." }
+{ "Find allied soldiers." "Encontre soldados aliados." }
+{ "Take secret German documents." "Pegue os documentos secretos alemães." }
+{ "Escort the pilot to the Maquis hideout." "Escolte o piloto até o esconderijo da Resistência." }
+{ "Locate the downed G3 pilot." "Localize o piloto abatido do G3." }
+{ "Bomb Tiger tanks. [&&& remaining]" "Exploda os tanques Tiger. [faltam &&&]" }
+{ "Bomb Tiger tanks." "Exploda os tanques Tiger." }
+{ "Find a way into the train station." "Ache um jeito de entrar na estação de trem." }
+{ "Get into the back of the Opel truck." "Suba na traseira do caminhão Opel." }
+{ "Get to the control tower and switch the tracks." "Vá até a torre de controle e mude os trilhos." }
+{ "Infiltrate the tank park." "Infiltre-se no pátio de tanques." }
+{ "Plant explosives on the track barrier." "Plante explosivos na barreira dos trilhos." }
+{ "Switch the tracks at the first junction." "Mude os trilhos no primeiro entroncamento." }
+{ "Escape and meet up with Manon." "Fuja e encontre a Manon." }
+{ "Gather any intelligence on the new Tiger tank." "Reúna informações sobre o novo tanque Tiger." }
+{ "Infiltrate the perimeter." "Infiltre-se no perímetro." }
+{ "Send the false comminique." "Envie o comunicado falso." }
+{ "Steal the battle plans." "Roube os planos de batalha." }
+{ "Steal the troop manifest." "Roube o manifesto das tropas." }
+{ "Get past the gate into the rest of the town." "Passe pelo portão para o resto da cidade." }
+{ "Locate the bazooka team." "Localize a equipe de bazuca." }
+{ "Proceed to the south edge of town." "Siga até a borda sul da cidade." }
+{ "Bring reinforcements all the way through Sniper Town." "Leve os reforços através da Cidade dos Snipers." }
+{ "Defeat the Panzer tank." "Derrote o tanque Panzer." }
+{ "Find the tank crew." "Encontre a tripulação do tanque." }
+{ "Keep the tank crew alive and infiltrate city hall." "Mantenha a tripulação do tanque viva e infiltre-se na prefeitura." }
+{ "Steal the King Tiger with the tank crew." "Roube o King Tiger com a tripulação do tanque." }
+{ "Escape with the King Tiger tank." "Fuja com o tanque King Tiger." }
+{ "Destroy the enemy King Tiger." "Destrua o King Tiger inimigo." }
+{ "Sneak in and find a high position overlooking the bridge." "Entre escondido e ache uma posição alta com vista para a ponte." }
+{ "Snipe the Germans that try to blow up the bridge." "Abata com o fuzil de precisão os alemães que tentarem explodir a ponte." }
+{ "Use the high vantage point to call in artillery strikes. You may have to use multiple buildings to cover all the approaches to the bridge." "Use a posição elevada para pedir ataques de artilharia. Talvez você precise usar vários prédios para cobrir todos os acessos à ponte." }
+{ "Find and destroy the 20mm Flaks.         [&&& remaining]" "Encontre e destrua os Flaks de 20mm.         [faltam &&&]" }
+{ "Keep tracking towards the rally point." "Continue seguindo até o ponto de reunião." }
+{ "Find and destroy the 20mm Flak." "Encontre e destrua o Flak de 20mm." }
+{ "Keep tracking towards the rally point in the nearby town." "Continue seguindo até o ponto de reunião na cidade próxima." }
+{ "Destroy the weapons stockpile." "Destrua o estoque de armas." }
+{ "Infiltrate the base (Hint: find a disguise)." "Infiltre-se na base (dica: arranje um disfarce)." }
+{ "Steal an StG44." "Roube uma StG44." }
+{ "Steal blueprints for StG44." "Roube as plantas da StG44." }
+{ "Escape through the Commandant's residence on the south side of town." "Fuja pela residência do Comandante, no lado sul da cidade." }
+{ "Plant explosives in the radio command post, in the northeast corner of the town. [&&& remaining]" "Plante explosivos no posto de comando de rádio, no canto nordeste da cidade. [faltam &&&]" }
+{ "Plant explosives in the radio command post, in the northeast corner of the town." "Plante explosivos no posto de comando de rádio, no canto nordeste da cidade." }
+{ "Cut the electrical power to the fences." "Corte a energia elétrica das cercas." }
+{ "Find the train station." "Encontre a estação de trem." }
+{ "Send the radio transmission." "Envie a transmissão de rádio." }
+{ "Find a way to the inner facility. Check elevators for enemy reinforcements." "Ache um caminho para a instalação interna. Vigie os elevadores contra reforços inimigos." }
+{ "Open the main fuel line valve." "Abra a válvula principal da linha de combustível." }
+{ "Plant explosives on the fuel flow control units." "Plante explosivos nas unidades de controle do fluxo de combustível." }
+{ "Snipe the tower guards. Avoid excessive casualties." "Abata os guardas das torres com o fuzil de precisão. Evite baixas demais." }
+{ "Unlock the cellblock doors and free the POWs." "Destranque as portas das celas e liberte os prisioneiros." }
+{ "Acquire a gas mask." "Arranje uma máscara de gás." }
+{ "Make your way to the lower level." "Desça até o nível inferior." }
+{ "Escape Fort Schmerzen." "Fuja do Forte Schmerzen." }
+{ "Open the main gas valves. [&&& remaining]" "Abra as válvulas principais de gás. [faltam &&&]" }
+{ "Open the two main gas valves." "Abra as duas válvulas principais de gás." }
+{ "Plant the explosives." "Plante os explosivos." }
+{ "Return to the elevator." "Volte ao elevador." }
+{ "Approach the tower indicated by the arrow on the compass." "Vá até a torre indicada pela seta da bússola." }
+{ "Complete the rest of training." "Conclua o resto do treinamento." }
+{ "Find the explosives." "Encontre os explosivos." }
+{ "Get over the wall to the north." "Passe pelo muro ao norte." }
+{ "Look at all four towers [&&& remaining]." "Olhe para as quatro torres [faltam &&&]." }
+{ "Plant the explosives on the tank." "Plante os explosivos no tanque." }
+
+// Messages from the mission scripts.
+{ "Come back when you have them." "Volte quando tiver os documentos." }
+{ "You don't have the proper papers!" "Você não tem os documentos certos!" }
+{ "Here, take a High Standard. It's sneaky sneaky." "Tome, pegue uma High Standard. É bem silenciosa." }
+{ "I got the papers, now, let's find the explosives!" "Peguei os documentos, agora vamos achar os explosivos!" }
+{ "Quick, grab that sniper rifle" "Rápido, pegue aquele fuzil de precisão" }
+{ "Stay back, there's a sniper up there!" "Fiquem para trás, tem um sniper lá em cima!" }
+{ "Powell, stop him before he can blow the bridge!" "Powell, detenha ele antes que exploda a ponte!" }
+{ "By accidentally destroying the bridge, you have failed the mission" "Por destruir a ponte sem querer, você falhou na missão" }
+{ "The King Tiger was destroyed. You failed the mission." "O King Tiger foi destruído. Você falhou na missão." }
+{ "Health: " "Vida: " }
+
+// End of mission statistics (ui/statsscreen_*.urc).
+{ "Mission Statistics" "Estatísticas da missão" }
+{ "Mission Success" "Missão cumprida" }
+{ "Mission Failed" "Missão fracassada" }
+{ "Medal Awarded" "Medalha concedida" }
+{ "Enemies Killed:" "Inimigos abatidos:" }
+{ "Objectives Completed:" "Objetivos concluídos:" }
+{ "Shots Fired:" "Disparos:" }
+{ "Shots Hit:" "Acertos:" }
+{ "Accuracy:" "Precisão:" }
+{ "Preferred Weapon:" "Arma preferida:" }
+{ "Hits Taken:" "Ferimentos:" }
+{ "Hit Locations Percentage" "Onde você acertou (%)" }
+{ "Head:" "Cabeça:" }
+{ "Torso:" "Tronco:" }
+{ "Groin:" "Virilha:" }
+{ "Left Arm:" "Braço esquerdo:" }
+{ "Right Arm:" "Braço direito:" }
+{ "Left Leg:" "Perna esquerda:" }
+{ "Right Leg:" "Perna direita:" }
+{ "Press 'Fire' to Continue" "Aperte Atirar para continuar" }
+
+// Options menus (ui/*options*.urc).
+{ "Model detail" "Detalhe dos modelos" }
+{ "Shadows" "Sombras" }
+{ "Speaker Type" "Tipo de alto-falante" }
+{ "Sound Quality" "Qualidade do som" }
+{ "Texture Filter" "Filtro de texturas" }
+{ "Texture Quality" "Qualidade das texturas" }
+{ "Current Picmip" "Picmip atual" }
+{ "Current ColorDepth" "Profundidade de cor atual" }
+{ "New Resolution" "Nova resolução" }
+{ "Server Disconnected" "Desconectado do servidor" }
+{ "Connecting to Server..." "Conectando ao servidor..." }
+
+// Controls list (ui/bind.scr).
+{ "Action" "Ação" }
+{ "Primary" "Principal" }
+{ "Alternate" "Alternativa" }
+{ "Primary Attack" "Ataque principal" }
+{ "Secondary Attack" "Ataque secundário" }
+{ "Move Forward" "Andar para frente" }
+{ "Move Backward" "Andar para trás" }
+{ "Jump/Stand Up" "Pular/Levantar" }
+{ "Crouch" "Agachar" }
+{ "Turn Left" "Virar à esquerda" }
+{ "Turn Right" "Virar à direita" }
+{ "Look Up" "Olhar para cima" }
+{ "Look Down" "Olhar para baixo" }
+{ "Center View" "Centralizar visão" }
+{ "Strafe Left" "Passo à esquerda" }
+{ "Strafe Right" "Passo à direita" }
+{ "Run/Walk" "Correr/Andar" }
+{ "Always-Run Toggle" "Correr sempre (liga/desliga)" }
+{ "Use" "Usar" }
+{ "Reload" "Recarregar" }
+{ "Holster Weapon" "Guardar arma" }
+{ "Last Used Weapon" "Última arma usada" }
+{ "Next Weapon" "Próxima arma" }
+{ "Prev Weapon" "Arma anterior" }
+{ "SMG" "Submetralhadora" }
+{ "MG" "Metralhadora" }
+{ "Papers/Binoculars" "Documentos/Binóculo" }
+{ "Objectives/Scores" "Objetivos/Placar" }
+{ "QuickSave" "Salvamento rápido" }
+{ "Load QuickSave" "Carregar salvamento rápido" }
 
 // Subtitles: what the characters say (ubersound/uberdialog.scr), in the order of the
 // missions. The voices stay in English; Vita settings > Display > Subtitles chooses which
