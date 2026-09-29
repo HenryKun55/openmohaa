@@ -127,6 +127,265 @@ static qboolean DBCSIsLeadByte(const fontheader_t* font, unsigned short uch) {
     return false;
 }
 
+#if defined(__vita__) || defined(__SWITCH__)
+/*
+=================
+R_FontAddAccents
+
+The English game fonts only have ASCII glyphs, so translated text drew '?' for every
+accented letter. Build the Latin-1 accented letters from the font's own glyphs (base
+letter plus an accent made from ` ^ ~ . ,) into extra rows of the font page, at load
+time from the player's own game data, so they keep the game's look.
+=================
+*/
+enum { ACC_GRAVE, ACC_ACUTE, ACC_CIRC, ACC_TILDE, ACC_DIAER, ACC_CEDIL };
+
+static const struct {
+    unsigned char c, base, accent;
+} s_composedChars[] = {
+    { 0xC0, 'A', ACC_GRAVE }, { 0xC1, 'A', ACC_ACUTE }, { 0xC2, 'A', ACC_CIRC }, { 0xC3, 'A', ACC_TILDE },
+    { 0xC4, 'A', ACC_DIAER }, { 0xC7, 'C', ACC_CEDIL }, { 0xC8, 'E', ACC_GRAVE }, { 0xC9, 'E', ACC_ACUTE },
+    { 0xCA, 'E', ACC_CIRC },  { 0xCB, 'E', ACC_DIAER }, { 0xCC, 'I', ACC_GRAVE }, { 0xCD, 'I', ACC_ACUTE },
+    { 0xCE, 'I', ACC_CIRC },  { 0xCF, 'I', ACC_DIAER }, { 0xD1, 'N', ACC_TILDE }, { 0xD2, 'O', ACC_GRAVE },
+    { 0xD3, 'O', ACC_ACUTE }, { 0xD4, 'O', ACC_CIRC },  { 0xD5, 'O', ACC_TILDE }, { 0xD6, 'O', ACC_DIAER },
+    { 0xD9, 'U', ACC_GRAVE }, { 0xDA, 'U', ACC_ACUTE }, { 0xDB, 'U', ACC_CIRC },  { 0xDC, 'U', ACC_DIAER },
+    { 0xDD, 'Y', ACC_ACUTE }, { 0xE0, 'a', ACC_GRAVE }, { 0xE1, 'a', ACC_ACUTE }, { 0xE2, 'a', ACC_CIRC },
+    { 0xE3, 'a', ACC_TILDE }, { 0xE4, 'a', ACC_DIAER }, { 0xE7, 'c', ACC_CEDIL }, { 0xE8, 'e', ACC_GRAVE },
+    { 0xE9, 'e', ACC_ACUTE }, { 0xEA, 'e', ACC_CIRC },  { 0xEB, 'e', ACC_DIAER }, { 0xEC, 'i', ACC_GRAVE },
+    { 0xED, 'i', ACC_ACUTE }, { 0xEE, 'i', ACC_CIRC },  { 0xEF, 'i', ACC_DIAER }, { 0xF1, 'n', ACC_TILDE },
+    { 0xF2, 'o', ACC_GRAVE }, { 0xF3, 'o', ACC_ACUTE }, { 0xF4, 'o', ACC_CIRC },  { 0xF5, 'o', ACC_TILDE },
+    { 0xF6, 'o', ACC_DIAER }, { 0xF9, 'u', ACC_GRAVE }, { 0xFA, 'u', ACC_ACUTE }, { 0xFB, 'u', ACC_CIRC },
+    { 0xFC, 'u', ACC_DIAER }, { 0xFD, 'y', ACC_ACUTE }, { 0xFF, 'y', ACC_DIAER },
+};
+
+#define ACC_INK 40 // alpha above which a pixel counts as part of a glyph
+
+typedef struct {
+    int x, y, w, h; // cell in page pixels
+} fontCell_t;
+
+static qboolean FontCell(const fontheader_sgl_t *font, int c, int pageW, int pageH, fontCell_t *cell)
+{
+    int idx = font->indirection[c];
+
+    if (idx < 0) {
+        return qfalse;
+    }
+    // locations are fractions of the page
+    cell->x = (int)(font->locations[idx].pos[0] * pageW + 0.5f);
+    cell->y = (int)(font->locations[idx].pos[1] * pageH + 0.5f);
+    cell->w = (int)(font->locations[idx].size[0] * pageW + 0.5f);
+    cell->h = (int)(font->locations[idx].size[1] * pageH + 0.5f);
+    return cell->w > 0 && cell->h > 0 && cell->x + cell->w <= pageW && cell->y + cell->h <= pageH;
+}
+
+// Ink bounding box of a cell (inclusive); false if the cell is empty.
+static qboolean InkBox(const byte *pic, int pageW, const fontCell_t *cell, int *x0, int *y0, int *x1, int *y1)
+{
+    *x0 = cell->w;
+    *y0 = cell->h;
+    *x1 = -1;
+    *y1 = -1;
+    for (int y = 0; y < cell->h; y++) {
+        for (int x = 0; x < cell->w; x++) {
+            if (pic[((cell->y + y) * pageW + cell->x + x) * 4 + 3] > ACC_INK) {
+                if (x < *x0) *x0 = x;
+                if (x > *x1) *x1 = x;
+                if (y < *y0) *y0 = y;
+                if (y > *y1) *y1 = y;
+            }
+        }
+    }
+    return *x1 >= 0;
+}
+
+static void R_FontAddAccents(fontheader_sgl_t *font)
+{
+    shader_t      *shader = (shader_t *)font->shader;
+    image_t       *img;
+    byte          *pic = NULL, *out;
+    int            pageW, pageH, newH, used = 0, i, n;
+    fontCell_t     base, acc, dot;
+    int            rowX, rowY, cellH;
+    char           name[MAX_QPATH];
+    int            origUsed;
+
+    if (font->indirection[0xE9] != -1 || !shader || !shader->unfoggedStages[0]) {
+        return; // the font already has accented letters
+    }
+    img = shader->unfoggedStages[0]->bundle[0].image[0];
+    if (!img || !R_LoadRawImage(img->imgName, &pic, &pageW, &pageH)) {
+        return;
+    }
+    if (!FontCell(font, 'e', pageW, pageH, &base) || !FontCell(font, '`', pageW, pageH, &acc)) {
+        R_FreeRawImage(pic);
+        return;
+    }
+    cellH = base.h;
+    for (i = 0; i < 256; i++) {
+        if (font->indirection[i] >= used) {
+            used = font->indirection[i] + 1;
+        }
+    }
+    origUsed = used;
+
+    // Room for the new cells in extra rows below the page (power of two height).
+    {
+        int rows = 1, x = 0;
+        for (i = 0; i < (int)ARRAY_LEN(s_composedChars); i++) {
+            if (FontCell(font, s_composedChars[i].base, pageW, pageH, &base)) {
+                if (x + base.w + 1 > pageW) {
+                    rows++;
+                    x = 0;
+                }
+                x += base.w + 1;
+            }
+        }
+        for (newH = pageH; newH < pageH + rows * (cellH + 1); newH *= 2) {}
+    }
+    out = (byte *)ri.Malloc(pageW * newH * 4);
+    memset(out, 0, pageW * newH * 4);
+    memcpy(out, pic, pageW * pageH * 4);
+
+    rowX = 0;
+    rowY = pageH;
+    for (n = 0; n < (int)ARRAY_LEN(s_composedChars) && used < 256; n++) {
+        const int c = s_composedChars[n].c, accent = s_composedChars[n].accent;
+        int       bx0, by0, bx1, by1, ax0, ay0, ax1, ay1;
+        int       aw, ah, top, left, gap, x, y;
+        byte     *cellPix;
+        int       ok;
+
+        if (font->indirection[c] != -1 || !FontCell(font, s_composedChars[n].base, pageW, pageH, &base)
+            || !InkBox(pic, pageW, &base, &bx0, &by0, &bx1, &by1)) {
+            continue;
+        }
+        ok = FontCell(font, accent == ACC_CIRC ? '^' : accent == ACC_TILDE ? '~' : accent == ACC_DIAER ? '.'
+                            : accent == ACC_CEDIL ? ',' : '`', pageW, pageH, &acc)
+          && InkBox(pic, pageW, &acc, &ax0, &ay0, &ax1, &ay1);
+        if (!ok) {
+            continue;
+        }
+        if (rowX + base.w + 1 > pageW) {
+            rowX = 0;
+            rowY += cellH + 1;
+        }
+        if (rowY + cellH > newH) {
+            break;
+        }
+
+        // Base letter (a dotless i under an accent).
+        cellPix = (byte *)ri.Malloc(base.w * cellH * 4);
+        memset(cellPix, 0, base.w * cellH * 4);
+        for (y = 0; y < base.h && y < cellH; y++) {
+            memcpy(cellPix + y * base.w * 4, pic + ((base.y + y) * pageW + base.x) * 4, base.w * 4);
+        }
+        if (s_composedChars[n].base == 'i' && accent != ACC_CEDIL) {
+            int gapRow = -1;
+            for (y = by0; y <= by1 && gapRow < 0; y++) {
+                qboolean empty = qtrue;
+                for (x = 0; x < base.w; x++) {
+                    if (cellPix[(y * base.w + x) * 4 + 3] > ACC_INK) empty = qfalse;
+                }
+                if (empty) gapRow = y;
+            }
+            if (gapRow > 0) {
+                memset(cellPix, 0, gapRow * base.w * 4);
+                for (by0 = gapRow; by0 < by1; by0++) {
+                    qboolean ink = qfalse;
+                    for (x = 0; x < base.w; x++) {
+                        if (cellPix[(by0 * base.w + x) * 4 + 3] > ACC_INK) ink = qtrue;
+                    }
+                    if (ink) break;
+                }
+            }
+        }
+
+        aw  = ax1 - ax0 + 1;
+        ah  = ay1 - ay0 + 1;
+        gap = cellH >= 16 ? 2 : 1;
+        if (accent == ACC_DIAER) {
+            aw = aw * 2 + gap + 1;
+        }
+        left = (bx0 + bx1 + 1) / 2 - aw / 2;
+        if (left < 0) left = 0;
+        if (left + aw > base.w) left = base.w - aw > 0 ? base.w - aw : 0;
+
+        if (accent == ACC_CEDIL) {
+            top = by1 + 1 - ah / 3;
+        } else {
+            top = by0 - gap - ah;
+            if (top < 0) {
+                // A capital fills the cell: squeeze its ink down to make room.
+                const int newTop = ah + gap, oldH = by1 - by0 + 1, newHgt = by1 - newTop + 1;
+                byte     *tmp    = (byte *)ri.Malloc(base.w * cellH * 4);
+                memcpy(tmp, cellPix, base.w * cellH * 4);
+                memset(cellPix + by0 * base.w * 4, 0, (by1 - by0 + 1) * base.w * 4);
+                for (y = 0; y < newHgt && newHgt > 0; y++) {
+                    const int src = by0 + y * oldH / newHgt;
+                    memcpy(cellPix + (newTop + y) * base.w * 4, tmp + src * base.w * 4, base.w * 4);
+                }
+                ri.Free(tmp);
+                top = 0;
+            }
+        }
+
+        // Accent ink, mirrored for acute, doubled for diaeresis.
+        for (y = 0; y < ah; y++) {
+            const int dy = top + y;
+            if (dy < 0 || dy >= cellH) continue;
+            for (x = 0; x < aw; x++) {
+                int sx, dx = left + x;
+                const byte *s;
+                byte       *d;
+                if (dx < 0 || dx >= base.w) continue;
+                if (accent == ACC_DIAER) {
+                    const int dw = ax1 - ax0 + 1;
+                    if (x < dw) sx = x;
+                    else if (x >= dw + gap + 1) sx = x - dw - gap - 1;
+                    else continue;
+                } else if (accent == ACC_ACUTE) {
+                    sx = aw - 1 - x;
+                } else {
+                    sx = x;
+                }
+                s = pic + ((acc.y + ay0 + y) * pageW + acc.x + ax0 + sx) * 4;
+                d = cellPix + (dy * base.w + dx) * 4;
+                if (s[3] > d[3]) {
+                    memcpy(d, s, 4);
+                }
+            }
+        }
+
+        for (y = 0; y < cellH; y++) {
+            memcpy(out + ((rowY + y) * pageW + rowX) * 4, cellPix + y * base.w * 4, base.w * 4);
+        }
+        ri.Free(cellPix);
+
+        font->locations[used].pos[0]  = (float)rowX / pageW;
+        font->locations[used].pos[1]  = (float)rowY / newH;
+        font->locations[used].size[0] = (float)base.w / pageW;
+        font->locations[used].size[1] = (float)cellH / newH;
+        font->indirection[c]          = used++;
+        rowX += base.w + 1;
+    }
+
+    // Existing cells keep their pixels; only their share of the taller page changes.
+    for (i = 0; i < origUsed; i++) {
+        font->locations[i].pos[1] *= (float)pageH / newH;
+        font->locations[i].size[1] *= (float)pageH / newH;
+    }
+
+    Com_sprintf(name, sizeof(name), "%s_accents", img->imgName);
+    shader->unfoggedStages[0]->bundle[0].image[0] = R_CreateImageOld(
+        name, out, pageW, newH, 0, 0, qfalse, qtrue, qtrue, 0, img->wrapClampModeX, img->wrapClampModeY
+    );
+    ri.Printf(PRINT_DEVELOPER, "Font %s: built accented letters (%d glyphs)\n", font->name, used);
+    ri.Free(out);
+    R_FreeRawImage(pic);
+}
+#endif
+
 fontheader_sgl_t* R_LoadFont_sgl(const char* name)
 {
     int i;
@@ -281,6 +540,11 @@ fontheader_sgl_t* R_LoadFont_sgl(const char* name)
         // invalid height or aspect ratio
         error = qtrue;
     }
+#if defined(__vita__) || defined(__SWITCH__)
+    if (!error) {
+        R_FontAddAccents(header);
+    }
+#endif
 
     ri.FS_FreeFile(theFile);
     if (error)
