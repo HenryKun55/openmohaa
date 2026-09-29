@@ -70,22 +70,28 @@ straight from the discs: on the CDs they are packed inside the installer.
 
 **What to copy** from that `main` folder to `ux0:data/openmohaa/main/`:
 
-| From the PC's `main` | | |
+| Copy from the PC's `main` folder | Needed | Notes |
 |---|---|---|
-| **every** `.pk3` file: `Pak0.pk3` ... `Pak5.pk3`, plus any others your edition has (GOG also has `Pak6EnUk.pk3` and `pak7.pk3`; other languages have their own) | **required** | the game itself |
-| the whole `sound` folder, **as it is** (and a `music` folder, if your install has one) | recommended | music, dialogue and ambient sounds that are not in the paks |
-| the `video` folder | optional | intro videos |
-
-**Do not copy:** `mainta` / `maintt` (the expansions, not supported yet), the
-PC's `configs` folder or `.cfg` files (keyboard binds and PC video settings), or
-the game's `.exe` / `.dll` files.
+| `Pak0.pk3` | yes | |
+| `Pak1.pk3` | yes | |
+| `Pak2.pk3` | yes | |
+| `Pak3.pk3` | yes | |
+| `Pak4.pk3` | yes | from the 1.11 patch |
+| `Pak5.pk3` | yes | from the 1.11 patch |
+| `Pak6EnUk.pk3`, `pak7.pk3` | yes, if you have them | GOG only |
+| any other `.pk3` | yes, if you have it | e.g. a language pak |
+| `sound` folder | recommended | copy the whole folder as it is: music, dialogue, ambient |
+| `video` folder | optional | intro videos |
+| `mainta`, `maintt` | no | expansions, not supported yet |
+| `configs`, `.cfg`, `.exe`, `.dll` | no | PC settings and programs |
 
 The result:
 
 ```
 ux0:data/openmohaa/main/
-    Pak0.pk3  Pak1.pk3  Pak2.pk3  Pak3.pk3  Pak4.pk3  Pak5.pk3  (+ any other .pk3)
-    sound/    (music/, dialogue/, amb_stereo/, ... and some loose .wav files)
+    Pak0.pk3  Pak1.pk3  Pak2.pk3  Pak3.pk3  Pak4.pk3  Pak5.pk3
+    Pak6EnUk.pk3  pak7.pk3   (GOG only)
+    sound/    (music, dialogue, amb_stereo and other folders, plus some loose .wav files)
     video/    (optional)
 ```
 

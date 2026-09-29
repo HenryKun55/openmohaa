@@ -14,10 +14,29 @@ You need your own copy of the original game. No game data is included.
 2. From a computer, connect to the address it shows (for example with FileZilla)
    and copy `OpenMoHAA.vpk` to `ux0:/`.
 3. In VitaShell, press **Cross** on `OpenMoHAA.vpk` and choose **Install**.
-4. From the `main` folder of your game installed on a PC (GOG, or the discs with
-   the 1.11 patch), copy **every `.pk3` file** and the whole **`sound`** folder,
-   as it is, to `ux0:data/openmohaa/main/`.
+4. Copy the game files in the table below to `ux0:data/openmohaa/main/`.
 5. Start it from the LiveArea.
+
+The game files come from your game **installed on a PC**: the GOG edition (the only
+store that sells it; it is not on Steam) or the discs installed with the official
+1.11 patch. Take them from its `main` folder:
+
+| Copy from the PC's `main` folder | Needed | Notes |
+|---|---|---|
+| `Pak0.pk3` | yes | |
+| `Pak1.pk3` | yes | |
+| `Pak2.pk3` | yes | |
+| `Pak3.pk3` | yes | |
+| `Pak4.pk3` | yes | from the 1.11 patch |
+| `Pak5.pk3` | yes | from the 1.11 patch |
+| `Pak6EnUk.pk3`, `pak7.pk3` | yes, if you have them | GOG only |
+| any other `.pk3` | yes, if you have it | e.g. a language pak |
+| `sound` folder | recommended | copy the whole folder as it is: music, dialogue, ambient |
+| `video` folder | optional | intro videos |
+| `mainta`, `maintt` | no | expansions, not supported yet |
+| `configs`, `.cfg`, `.exe`, `.dll` | no | PC settings and programs |
+
+Each `.pk3` on the Vita must be the same size as on your PC.
 
 Step-by-step guide (which files, GOG or discs, USB, updating):
 [docs/PORTING-VITA.md](docs/PORTING-VITA.md#install-on-the-vita). Updating never
