@@ -975,6 +975,13 @@ image_t* R_CreateImageOld(
 
 	GL_Bind(image);
 
+#ifdef __vita__
+	if (glCompressMode) {
+		// qglCompressedTexImage2D is not wired on the Vita: never call it.
+		ri.Printf(PRINT_WARNING, "R_CreateImageOld: '%s' is compressed (0x%x), not supported on the Vita\n", name, glCompressMode);
+		glCompressMode = 0;
+	}
+#endif
 	if (glCompressMode) {
 		UploadCompressed(
 			(byte*)pic,
