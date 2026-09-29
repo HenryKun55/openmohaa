@@ -129,6 +129,12 @@ per level and the memory card's speed is the limit.
 Install the new `.vpk` the same way. Your settings and saves in
 `ux0:data/openmohaa/` are kept.
 
+### Tested with
+
+- Game: English discs with the 1.11 patch (`Pak0.pk3` to `Pak5.pk3`). The GOG
+  edition and other languages should work but are not tested yet.
+- Console: PS Vita 1000 (OLED). Vita 2000 and PS TV are not tested yet.
+
 ## Controls
 
 | Vita | Action |

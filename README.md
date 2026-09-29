@@ -46,6 +46,16 @@ Step-by-step guide (which files, GOG or discs, USB, updating):
 [docs/PORTING-VITA.md](docs/PORTING-VITA.md#install-on-the-vita). Updating never
 touches your settings or saves.
 
+## Tested with
+
+| | Tested | Should work, not tested yet |
+|---|---|---|
+| Game | English discs + 1.11 patch (`Pak0.pk3` to `Pak5.pk3`) | GOG War Chest, other languages (Spanish, French, German...) |
+| Console | PS Vita 1000 (OLED) | PS Vita 2000 (Slim), PS TV |
+
+Using another edition or model? Tell us how it goes in an
+[issue](https://github.com/HenryKun55/openmohaa/issues/new/choose), it helps everyone.
+
 ## Controls
 
 | Button | In game |
