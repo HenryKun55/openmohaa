@@ -298,7 +298,7 @@ function(package_vita_vpk)
                     --add ${VITA_ICON_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
                     ${VITA_SPLASH_ADD}
                     --add ${VITA_SCE_DIR}/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
-                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg=main/autoexec.cfg
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_autoexec.cfg=main/vita_autoexec.cfg
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg=main/vita_defaults.cfg
                     # Settings menu font with accented letters (misc/vita/make_font.py).
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont=main/fonts/vita-14.RitualFont
@@ -315,7 +315,7 @@ function(package_vita_vpk)
         DEPENDS ${EBOOT_FILE}
                 ${CMAKE_BINARY_DIR}/game_suprx
                 ${CMAKE_BINARY_DIR}/cgame_suprx
-                ${CMAKE_SOURCE_DIR}/misc/vita/main/autoexec.cfg
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_autoexec.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga

@@ -1540,6 +1540,10 @@ void Com_ExecuteCfg(void)
 		// skip the q3config.cfg and autoexec.cfg if "safe" is on the command line
 		Cbuf_ExecuteText(EXEC_NOW, "exec " Q3CONFIG_CFG "\n");
 		Cbuf_Execute(0);
+#ifdef __vita__
+		Cbuf_ExecuteText(EXEC_NOW, "exec vita_autoexec.cfg\n");
+		Cbuf_Execute(0);
+#endif
 		Cbuf_ExecuteText(EXEC_NOW, "exec autoexec.cfg\n");
 		Cbuf_Execute(0);
 	}
@@ -1939,6 +1943,11 @@ void Com_Init( char *commandLine ) {
 	}
 
 	Cbuf_AddText( "exec localized.cfg\n" );
+#ifdef __vita__
+	// The port's own start-up settings (pad, video mode, intro skip): always run,
+	// whatever autoexec.cfg the player's data folder has.
+	Cbuf_AddText( "exec vita_autoexec.cfg\n" );
+#endif
 	Cbuf_AddText( "exec autoexec.cfg\n" );
 	Cbuf_Execute( 0 );
 	Com_StartupVariable( NULL );

@@ -302,7 +302,7 @@ code/qcommon/net_vita.c             # net_ip.c stub
 code/sdl/vita_gl_stubs.c            # legacy GL entry points vitaGL omits
 code/gamespy/gamespy_vita_stub.c    # GameSpy SDK no-op layer
 misc/vita/sce_sys/                  # icon0, LiveArea bg, template.xml
-misc/vita/main/autoexec.cfg         # default bindings + render tuning
+misc/vita/main/vita_autoexec.cfg    # start-up settings (pad, video mode, intro skip), always run
 ```
 
 In-tree files patched with `#ifdef __vita__` guards:
