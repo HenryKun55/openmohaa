@@ -33,8 +33,26 @@ static char    global_buf[MAX_BUFFERS][MAX_LOCALIZATION_LENGTH];
 static char    szTemp[100];
 static size_t  buf_index = 0;
 
+#if defined(__vita__) || defined(__SWITCH__)
+static void Sys_ReloadLocalization_f(void)
+{
+    Sys_ShutLocalization();
+    g_localization = new cLocalization;
+}
+#endif
+
 void Sys_InitLocalization()
 {
+#if defined(__vita__) || defined(__SWITCH__)
+    static qboolean s_cmdAdded;
+    if (!s_cmdAdded) {
+        s_cmdAdded = qtrue;
+        // Text language chosen in the Vita settings menu (misc/vita/lang/<code>.txt),
+        // empty = the language of the player's own game data.
+        Cvar_Get("vita_language", "", CVAR_ARCHIVE);
+        Cmd_AddCommand("vita_reloadlanguage", Sys_ReloadLocalization_f);
+    }
+#endif
     g_localization = new cLocalization;
 }
 
@@ -80,6 +98,16 @@ cLocalization::cLocalization()
     char   szFilename[MAX_QPATH];
     size_t iBasePos;
 
+#if defined(__vita__) || defined(__SWITCH__)
+    {
+        // Loaded first so it wins: for an entry present in several files, the first
+        // one read is kept.
+        const char *lang = Cvar_VariableString("vita_language");
+        if (lang[0]) {
+            LoadFile(va("vita/lang/%s.txt", lang));
+        }
+    }
+#endif
     ppszFiles = FS_ListFilteredFiles("global", "txt", "localization*.txt", qfalse, &iFileCount, qtrue);
     Q_strncpyz(szFilename, "global/", sizeof(szFilename));
     memset(szFilename + 8, 0, sizeof(szFilename) - 8);

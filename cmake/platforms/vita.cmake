@@ -270,6 +270,25 @@ function(package_vita_vpk)
     # Packaging is its own target so the VPK is rebuilt when only game/cgame change
     # (as a POST_BUILD step of the client it only ran when the eboot relinked, and a
     # cgame-only fix silently shipped the old cgame.suprx).
+    # Text translations (misc/vita/lang/<code>.txt, UTF-8 so they are easy to edit) are
+    # packed as main/vita/lang/<code>.txt in Latin-1, the encoding of the game's fonts.
+    file(GLOB VITA_LANG_SOURCES ${CMAKE_SOURCE_DIR}/misc/vita/lang/*.txt)
+    set(VITA_LANG_ADD "")
+    set(VITA_LANG_FILES "")
+    foreach(LANG_SRC ${VITA_LANG_SOURCES})
+        get_filename_component(LANG_NAME ${LANG_SRC} NAME)
+        set(LANG_OUT ${CMAKE_BINARY_DIR}/vita_lang/${LANG_NAME})
+        add_custom_command(OUTPUT ${LANG_OUT}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/vita_lang
+            # Fails on a character the fonts cannot show (outside Latin-1).
+            COMMAND python3 -c "import sys; open(sys.argv[2], 'wb').write(open(sys.argv[1], encoding='utf-8').read().encode('latin-1'))" ${LANG_SRC} ${LANG_OUT}
+            DEPENDS ${LANG_SRC}
+            COMMENT "Converting ${LANG_NAME} to Latin-1"
+            VERBATIM)
+        list(APPEND VITA_LANG_ADD --add ${LANG_OUT}=main/vita/lang/${LANG_NAME})
+        list(APPEND VITA_LANG_FILES ${LANG_OUT})
+    endforeach()
+
     add_custom_command(OUTPUT ${VPK_FILE}
         COMMAND ${VITASDK}/bin/vita-pack-vpk
                     -s ${SFO_FILE}
@@ -286,6 +305,7 @@ function(package_vita_vpk)
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/DejaVu-LICENSE.txt=main/fonts/DejaVu-LICENSE.txt
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga=main/gfx/fonts/vita-14.tga
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader=main/scripts/vita.shader
+                    ${VITA_LANG_ADD}
                     # Game / cgame PRX modules at the VPK root so they
                     # sit next to eboot.bin and Sys_LoadDll finds them
                     # via Sys_BinaryPath = "app0:" (set in sys_vita.c).
@@ -300,6 +320,7 @@ function(package_vita_vpk)
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader
+                ${VITA_LANG_FILES}
                 ${VITA_ART_DEPENDS}
         COMMENT "Packaging ${VPK_FILE}"
         VERBATIM

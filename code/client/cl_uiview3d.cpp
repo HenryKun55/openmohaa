@@ -153,6 +153,11 @@ static const VitaPerfChoice g_pcSmpSerial[] = {
     { "rv:Ents",  "13", "set r_vita_smp_serial 13" },
     { "rv:Sort",  "14", "set r_vita_smp_serial 14" },
 };
+/* Game text language (misc/vita/lang/<code>.txt). "" = the player's own game data. */
+static const VitaPerfChoice g_pcLanguage[] = {
+    { "Game",      "",   "seta vita_language \"\"; vita_reloadlanguage" },
+    { "Português", "pt", "seta vita_language pt; vita_reloadlanguage" },
+};
 static const VitaPerfChoice g_pcWeapon[] = {
     { "None",     "0", "seta cg_drawviewmodel 0" },
     { "Gun Only", "1", "seta cg_drawviewmodel 1" },
@@ -214,7 +219,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "Lowest", "Mínimo" }, { "Low", "Baixo" }, { "Medium", "Médio" }, { "High", "Alto" },
     { "Higher", "Muito alto" }, { "Highest", "Máximo" }, { "Minimum", "Mínimo" }, { "Lower", "Mais baixo" },
     { "Max", "Máximo" }, { "Bilinear", "Bilinear" }, { "Trilinear", "Trilinear" }, { "Blob", "Simples" },
-    { "Precise", "Precisa" }, { "None", "Nenhum" }, { "Gun Only", "Só a arma" }, { "Full", "Completo" },
+    { "Game", "Do jogo" }, { "Precise", "Precisa" }, { "None", "Nenhum" }, { "Gun Only", "Só a arma" }, { "Full", "Completo" },
 
     /* SETTINGS: graphics */
     { "Preset: Performance", "Predefinição: Desempenho",
@@ -276,6 +281,9 @@ static const VitaMenuText g_vmTexts[] = {
     { "Blood / Gore", "Sangue",
       "Blood effects.",
       "Efeitos de sangue." },
+    { "Text Language", "Idioma do texto",
+      "Language of the game's text: menus, messages, HUD. Voices stay as they are.",
+      "Idioma dos textos do jogo: menus, mensagens, HUD. As vozes não mudam." },
 
     /* SETTINGS: controls */
     { "Look Sens (hip)", "Sensibilidade (normal)",
@@ -478,6 +486,7 @@ static VitaPerfMenuItem g_smDisplay[] = {
     { "Crosshair",        "ui_crosshair",    qfalse, 0 },
     { "Weapon Model",     "cg_drawviewmodel",qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcWeapon) },
     { "Blood / Gore",     "com_blood",       qfalse, 0 },
+    { "Text Language",    "vita_language",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcLanguage) },
 };
 
 static VitaPerfMenuItem g_smControls[] = {
