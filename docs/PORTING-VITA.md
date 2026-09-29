@@ -68,6 +68,19 @@ ux0:data/openmohaa/main/
 ```
 
 Copy every `Pak*.pk3` you have: `Pak2.pk3` alone holds most of the world textures.
+
+If the menu shows only white outlines, the textures did not load: a pak is missing,
+incomplete or from another edition. Compare with the base game (sizes as VitaShell
+shows them; file counts from the top of `boot.log`):
+
+| File | Size in VitaShell | Files (boot.log) |
+|---|---|---|
+| Pak0.pk3 | 94.10 MB | 11175 |
+| Pak1.pk3 | 180.03 MB | 1534 |
+| Pak2.pk3 | 503.22 MB | 8366 |
+| Pak3.pk3 | 83.50 MB | 669 |
+| Pak4.pk3 | 32.47 MB | 593 |
+| Pak5.pk3 | 83.66 MB | 259 |
 Folder and file names are case sensitive for loose files, so keep them as they are.
 
 Optional, faster loading: build a pre-resampled sound pack on a PC and copy it
