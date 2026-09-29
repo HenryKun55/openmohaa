@@ -373,6 +373,11 @@ static qboolean VitaMenu_IsPortuguese(void)
 {
 #ifdef __vita__
     static int s_lang = -1;
+    /* A Text Language chosen in the menu wins over the system language. */
+    const char *textLang = Cvar_VariableString("vita_language");
+    if (textLang[0]) {
+        return !Q_stricmp(textLang, "pt");
+    }
     if (s_lang < 0) {
         int lang = 0;
         s_lang = 0;

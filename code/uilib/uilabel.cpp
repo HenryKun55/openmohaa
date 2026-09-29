@@ -299,6 +299,13 @@ void UILabel::Draw(void)
         } else {
             string = "";
         }
+#if defined(__vita__) || defined(__SWITCH__)
+        // Label titles (HUD "Health", menu captions) were drawn as written in the
+        // .urc; translate them too so the Vita's Text Language covers them.
+        if (*string) {
+            string = Sys_LV_CL_ConvertString(string);
+        }
+#endif
     }
 
     if (*string) {
