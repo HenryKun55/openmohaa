@@ -2633,7 +2633,25 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 #ifdef __vita__
 	{
 		VP_BEGIN( lpT );
-		R_LoadImage(name, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
+		// Menu pictures with words on them can have a translated copy in
+		// lang/<code>/ (built by misc/vita/make_menu_text.py) for the Text Language
+		// chosen in the Vita settings. Only the menu folder is looked at, so level
+		// loads do not pay for the extra lookups.
+		{
+			const char *lang = ri.Cvar_Get("vita_language", "", CVAR_ARCHIVE)->string;
+			if (lang[0] && !Q_stricmpn(name, "textures/mohmenu/", 17)) {
+				char langName[MAX_QPATH];
+				Com_sprintf(langName, sizeof(langName), "lang/%s/%s", lang, name);
+				R_LoadImage(langName, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
+				if (!pic) {
+					numMipmaps = mipmap;
+					iMipmapsAvailable = 0;
+				}
+			}
+		}
+		if (!pic) {
+			R_LoadImage(name, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
+		}
 		lp_acc[LP_IMGLOAD] += VP_Now() - lpT;
 		lp_acc[LP_IMG_N]++;
 	}

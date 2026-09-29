@@ -502,7 +502,7 @@ static VitaPerfMenuItem g_smDisplay[] = {
     { "Weapon Model",     "cg_drawviewmodel",qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcWeapon) },
     { "Blood / Gore",     "com_blood",       qfalse, 0 },
     { "Subtitles",        "g_subtitle",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSubtitles) },
-    { "Text Language",    "vita_language",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcLanguage) },
+    { "Text Language",    "vita_language",   qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcLanguage) }, /* restart: menu pictures */
 };
 
 static VitaPerfMenuItem g_smControls[] = {
