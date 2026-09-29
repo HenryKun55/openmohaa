@@ -1121,9 +1121,18 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 
 	glConfig.textureCompression = TC_NONE;
 
+#ifdef __vita__
+	// No compressed textures on the Vita: vitaGL's compressed upload crashes on the
+	// hardware and qglCompressedTexImage2D is not wired. The first start reports the
+	// extension as missing, but a vid_restart found it, loaded the game's .dds files
+	// and called that NULL pointer.
+	ri.Printf( PRINT_ALL, "...compressed textures off on the Vita\n" );
+	if ( 0 )
+#else
 	// GL_EXT_texture_compression_s3tc
 	if ( ( QGLES_VERSION_ATLEAST( 2, 0 ) || SDL_GL_ExtensionSupported( "GL_ARB_texture_compression" ) ) &&
 	     SDL_GL_ExtensionSupported( "GL_EXT_texture_compression_s3tc" ) )
+#endif
 	{
 		if ( r_ext_compressed_textures->value )
 		{
@@ -1141,7 +1150,11 @@ static void GLimp_InitExtensions( qboolean fixedFunction )
 	}
 
 	// GL_S3_s3tc ... legacy extension before GL_EXT_texture_compression_s3tc.
+#ifdef __vita__
+	if ( 0 )
+#else
 	if (glConfig.textureCompression == TC_NONE)
+#endif
 	{
 		if ( SDL_GL_ExtensionSupported( "GL_S3_s3tc" ) )
 		{
