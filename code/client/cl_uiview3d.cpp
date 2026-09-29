@@ -153,6 +153,13 @@ static const VitaPerfChoice g_pcSmpSerial[] = {
     { "rv:Ents",  "13", "set r_vita_smp_serial 13" },
     { "rv:Sort",  "14", "set r_vita_smp_serial 14" },
 };
+/* g_subtitle (cgame): which speech gets a subtitle. */
+static const VitaPerfChoice g_pcSubtitles[] = {
+    { "German only", "0", "seta g_subtitle 0" }, /* the game's default */
+    { "Nearby",      "1", "seta g_subtitle 1" },
+    { "All",         "2", "seta g_subtitle 2" },
+};
+
 /* Game text language (misc/vita/lang/<code>.txt). "" = the player's own game data. */
 static const VitaPerfChoice g_pcLanguage[] = {
     { "Game",      "",   "seta vita_language \"\"; vita_reloadlanguage" },
@@ -219,7 +226,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "Lowest", "Mínimo" }, { "Low", "Baixo" }, { "Medium", "Médio" }, { "High", "Alto" },
     { "Higher", "Muito alto" }, { "Highest", "Máximo" }, { "Minimum", "Mínimo" }, { "Lower", "Mais baixo" },
     { "Max", "Máximo" }, { "Bilinear", "Bilinear" }, { "Trilinear", "Trilinear" }, { "Blob", "Simples" },
-    { "Game", "Do jogo" }, { "Precise", "Precisa" }, { "None", "Nenhum" }, { "Gun Only", "Só a arma" }, { "Full", "Completo" },
+    { "Game", "Do jogo" }, { "German only", "Só alemão" }, { "Nearby", "Próximas" }, { "All", "Todas" }, { "Precise", "Precisa" }, { "None", "Nenhum" }, { "Gun Only", "Só a arma" }, { "Full", "Completo" },
 
     /* SETTINGS: graphics */
     { "Preset: Performance", "Predefinição: Desempenho",
@@ -281,6 +288,9 @@ static const VitaMenuText g_vmTexts[] = {
     { "Blood / Gore", "Sangue",
       "Blood effects.",
       "Efeitos de sangue." },
+    { "Subtitles", "Legendas",
+      "Which speech gets subtitles: German only (game default), everyone nearby, or everyone.",
+      "Quais falas têm legenda: só alemão (padrão do jogo), todas por perto ou todas." },
     { "Text Language", "Idioma do texto",
       "Language of the game's text: menus, messages, HUD. Voices stay as they are.",
       "Idioma dos textos do jogo: menus, mensagens, HUD. As vozes não mudam." },
@@ -491,6 +501,7 @@ static VitaPerfMenuItem g_smDisplay[] = {
     { "Crosshair",        "ui_crosshair",    qfalse, 0 },
     { "Weapon Model",     "cg_drawviewmodel",qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcWeapon) },
     { "Blood / Gore",     "com_blood",       qfalse, 0 },
+    { "Subtitles",        "g_subtitle",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSubtitles) },
     { "Text Language",    "vita_language",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcLanguage) },
 };
 
@@ -2012,11 +2023,23 @@ void View3D::DrawSubtitleOverlay(void)
     line = 0;
 
     for (i = 0; i < MAX_SUBTITLES; i++) {
+        const char *subText;
+        char        subBuf[2048];
+
         if (fadeTime[i] <= 0) {
             continue;
         }
 
-        if (m_font->getWidth(subs[i]->string, sizeof(oldStrings[i])) > maxX) {
+#if defined(__vita__) || defined(__SWITCH__)
+        // Subtitles come from the sound aliases in English; show them in the
+        // Vita's text language (misc/vita/lang).
+        Q_strncpyz(subBuf, Sys_LV_CL_ConvertString(subs[i]->string), sizeof(subBuf));
+        subText = subBuf;
+#else
+        subText = subs[i]->string;
+#endif
+
+        if (m_font->getWidth(subText, sizeof(oldStrings[i])) > maxX) {
             char  buf[2048];
             char *c;
             char *end;
@@ -2025,7 +2048,7 @@ void View3D::DrawSubtitleOverlay(void)
             float width;
             int   blockcount;
 
-            c = subs[i]->string;
+            c = (char *)subText;
 
             total  = 0;
             end    = NULL;
@@ -2102,7 +2125,7 @@ void View3D::DrawSubtitleOverlay(void)
             m_font->Print(
                 18,
                 (m_font->getHeight(getHighResScale()) * line + minX + 1.f) / getHighResScale()[1],
-                subs[i]->string,
+                subText,
                 -1,
                 getHighResScale()
             );
@@ -2111,7 +2134,7 @@ void View3D::DrawSubtitleOverlay(void)
             m_font->Print(
                 20,
                 (m_font->getHeight(getHighResScale()) * line + minX) / getHighResScale()[1],
-                subs[i]->string,
+                subText,
                 -1,
                 getHighResScale()
             );
