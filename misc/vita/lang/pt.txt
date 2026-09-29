@@ -741,6 +741,13 @@
 { "QuickSave" "Salvamento rápido" }
 { "Load QuickSave" "Carregar salvamento rápido" }
 
+// Words drawn in menu pictures, used by misc/vita/make_menu_text.py (not by the game).
+{ "SELECT DIFFICULTY" "DIFICULDADE" }
+{ "EASY" "FÁCIL" }
+{ "MEDIUM" "MÉDIO" }
+{ "HARD" "DIFÍCIL" }
+{ "CANCEL" "CANCELAR" }
+
 // Subtitles: what the characters say (ubersound/uberdialog.scr), in the order of the
 // missions. The voices stay in English; Vita settings > Display > Subtitles chooses which
 // speech is subtitled.
