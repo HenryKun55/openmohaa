@@ -34,10 +34,46 @@ static char    szTemp[100];
 static size_t  buf_index = 0;
 
 #if defined(__vita__) || defined(__SWITCH__)
+// Every translation (vita/lang/<code>.txt, plus "" for the game's own text) is read
+// once, at start-up, and kept. Switching language in the Vita menu only points
+// g_localization at another table: nothing is parsed or freed while a level runs,
+// and strings handed out earlier stay valid.
+#define MAX_LOCALIZATION_LANGS 16
+
+static const char *s_buildLang; // language of the cLocalization being built
+static struct {
+    char           code[16];
+    cLocalization *loc;
+} s_langs[MAX_LOCALIZATION_LANGS];
+static int s_numLangs;
+
+static cLocalization *Sys_LocalizationFor(const char *code)
+{
+    cLocalization *loc;
+    int            i;
+
+    for (i = 0; i < s_numLangs; i++) {
+        if (!Q_stricmp(s_langs[i].code, code)) {
+            return s_langs[i].loc;
+        }
+    }
+    if (s_numLangs == MAX_LOCALIZATION_LANGS) {
+        return s_langs[0].loc;
+    }
+
+    s_buildLang = code;
+    loc         = new cLocalization;
+    s_buildLang = NULL;
+
+    Q_strncpyz(s_langs[s_numLangs].code, code, sizeof(s_langs[s_numLangs].code));
+    s_langs[s_numLangs].loc = loc;
+    s_numLangs++;
+    return loc;
+}
+
 static void Sys_ReloadLocalization_f(void)
 {
-    Sys_ShutLocalization();
-    g_localization = new cLocalization;
+    g_localization = Sys_LocalizationFor(Cvar_VariableString("vita_language"));
 }
 #endif
 
@@ -45,6 +81,9 @@ void Sys_InitLocalization()
 {
 #if defined(__vita__) || defined(__SWITCH__)
     static qboolean s_cmdAdded;
+    char          **files;
+    int             numFiles, i;
+
     if (!s_cmdAdded) {
         s_cmdAdded = qtrue;
         // Text language chosen in the Vita settings menu (misc/vita/lang/<code>.txt),
@@ -52,13 +91,32 @@ void Sys_InitLocalization()
         Cvar_Get("vita_language", "", CVAR_ARCHIVE);
         Cmd_AddCommand("vita_reloadlanguage", Sys_ReloadLocalization_f);
     }
-#endif
+
+    Sys_LocalizationFor("");
+    files = FS_ListFiles("vita/lang", "txt", qfalse, &numFiles);
+    for (i = 0; i < numFiles; i++) {
+        char code[16];
+        COM_StripExtension(files[i], code, sizeof(code));
+        Sys_LocalizationFor(code);
+    }
+    FS_FreeFileList(files);
+
+    Sys_ReloadLocalization_f();
+#else
     g_localization = new cLocalization;
+#endif
 }
 
 void Sys_ShutLocalization()
 {
+#if defined(__vita__) || defined(__SWITCH__)
+    for (int i = 0; i < s_numLangs; i++) {
+        delete s_langs[i].loc;
+    }
+    s_numLangs = 0;
+#else
     delete g_localization;
+#endif
     g_localization = NULL;
 }
 
@@ -102,7 +160,7 @@ cLocalization::cLocalization()
     {
         // Loaded first so it wins: for an entry present in several files, the first
         // one read is kept.
-        const char *lang = Cvar_VariableString("vita_language");
+        const char *lang = s_buildLang ? s_buildLang : Cvar_VariableString("vita_language");
         if (lang[0]) {
             LoadFile(va("vita/lang/%s.txt", lang));
         }
