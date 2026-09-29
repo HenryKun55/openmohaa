@@ -57,17 +57,40 @@ the memory card shows up on the computer as a drive (`ux0:` is its root).
 
 ### 3. Copy the game files
 
-Create the folder `ux0:data/openmohaa/main/` and copy into it, from your PC game's
-`main` folder:
+**Where they come from.** The files come from the game **installed on a PC**, not
+straight from the discs: on the CDs they are packed inside the installer.
+
+- **GOG or Steam** ("War Chest"): already installed and patched. Use its `main`
+  folder, e.g. `...\Medal of Honor Allied Assault War Chest\main`.
+- **Discs (CD1 + CD2)**: install the game on a Windows PC, then the official
+  **1.11 patch** (it adds `Pak4.pk3` and `Pak5.pk3`). Use the `main` folder of the
+  install, e.g. `C:\Program Files (x86)\EA GAMES\MOHAA\main`.
+
+**What to copy** from that `main` folder to `ux0:data/openmohaa/main/`:
+
+| From the PC's `main` | | |
+|---|---|---|
+| `Pak0.pk3` ... `Pak5.pk3` | **required** | the game itself |
+| any other `Pak*.pk3` (e.g. a language pak like `Pak6Uk.pk3`) | copy if present | |
+| the whole `sound` folder, **as it is** | recommended | music, dialogue and ambient sounds that are not in the paks |
+| the `video` folder | optional | intro videos |
+
+**Do not copy:** `mainta` / `maintt` (the expansions, not supported yet), the
+PC's `configs` folder or `.cfg` files (keyboard binds and PC video settings), or
+the game's `.exe` / `.dll` files.
+
+The result:
 
 ```
 ux0:data/openmohaa/main/
     Pak0.pk3  Pak1.pk3  Pak2.pk3  Pak3.pk3  Pak4.pk3  Pak5.pk3
-    sound/    (only if your install has a loose sound folder)
-    video/    (optional: the intro and cutscene videos)
+    sound/    (music/, dialogue/, amb_stereo/, ... and some loose .wav files)
+    video/    (optional)
 ```
 
-Copy every `Pak*.pk3` you have: `Pak2.pk3` alone holds most of the world textures.
+Keep `sound` exactly as the PC has it: do not rename or move files inside it. Some
+ambient sounds sit directly in `sound/` on the PC; the game finds them there
+(from v0.1.1; v0.1 missed them).
 
 If the menu shows only white outlines, the textures did not load: a pak is missing,
 incomplete or from another edition. Compare with the base game (sizes as VitaShell
@@ -81,9 +104,8 @@ shows them; file counts from the top of `boot.log`):
 | Pak3.pk3 | 83.50 MB | 669 |
 | Pak4.pk3 | 32.47 MB | 593 |
 | Pak5.pk3 | 83.66 MB | 259 |
-Folder and file names are case sensitive for loose files, so keep them as they are.
 
-Optional, faster loading: build a pre-resampled sound pack on a PC and copy it
+**Optional, faster loading:** build a pre-resampled sound pack on a PC and copy it
 next to the paks (saves several seconds per level load):
 ```sh
 tools/snd_pak.py /path/to/main/Pak*.pk3 -o snd_out   # needs ffmpeg

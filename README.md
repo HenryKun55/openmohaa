@@ -14,8 +14,9 @@ You need your own copy of the original game. No game data is included.
 2. From a computer, connect to the address it shows (for example with FileZilla)
    and copy `OpenMoHAA.vpk` to `ux0:/`.
 3. In VitaShell, press **Cross** on `OpenMoHAA.vpk` and choose **Install**.
-4. Copy `Pak0.pk3` ... `Pak5.pk3` from your PC game's `main` folder to
-   `ux0:data/openmohaa/main/`.
+4. From your PC game's `main` folder (GOG/Steam, or the discs installed on a PC
+   with the 1.11 patch), copy `Pak0.pk3` ... `Pak5.pk3` and the whole `sound`
+   folder, as it is, to `ux0:data/openmohaa/main/`.
 5. Start it from the LiveArea.
 
 Step-by-step guide (USB, optional files, updating):

@@ -97,7 +97,9 @@ fi
 # --------------------------------------------------------------------------
 case "$PLATFORM" in
   switch) AE="$REPO/misc/switch/main/autoexec.cfg" ;;
-  vita)   AE="$REPO/misc/vita/main/autoexec.cfg" ;;
+  # Vita: the .vpk ships its own autoexec.cfg; a copy in ux0:data would keep an
+  # old one in force after every update.
+  vita)   AE="" ;;
   *)      AE="" ; echo "   note: unknown platform '$PLATFORM', skipping autoexec.cfg" ;;
 esac
 if [ -n "$AE" ] && [ -f "$AE" ]; then
