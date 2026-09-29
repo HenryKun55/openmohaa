@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Version / Versão
-      description: The release you installed, e.g. v0.1-vita. / A versão que você instalou, ex.: v0.1-vita.
+      description: The release you installed, e.g. v0.1.1-vita. / A versão que você instalou, ex.: v0.1.1-vita.
     validations:
       required: true
   - type: dropdown
