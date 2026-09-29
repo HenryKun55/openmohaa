@@ -102,6 +102,13 @@ static int Sys_VitaClockProbe(void)
     return (int)(sceKernelGetProcessTimeWide() - t0);
 }
 
+/* vita-elf-create needs ~5 KB free between the end of the code segment and the data
+ * segment, which the linker puts at the next 64 KB boundary. When the code happens to
+ * end just before a boundary the eboot fails to build ("Cannot allocate N bytes for
+ * SCE data at end of segment 0; segment 1 overlaps"). This read-only block moves the
+ * end of the code past that boundary; resize it if the error ever comes back. */
+__attribute__((used)) const unsigned char g_vitaSegmentPad[8 * 1024] = { 1 };
+
 void Sys_PlatformInit(void)
 {
     sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
