@@ -1,0 +1,513 @@
+// OpenMoHAA Vita - game text in Portuguese (Brazil).
+//
+// Each line is { "original English text" "translation" }. The game looks up the
+// English text exactly as it is, spaces included, so never change the first string.
+// Many entries are pieces of one sentence with a key name in between, e.g.
+// "Press " + <key> + " to move forward.": keep the leading/trailing spaces and the
+// " ( " / " ) " parts so the joined sentence still reads well.
+//
+// Encoding: UTF-8. Only Latin-1 letters can be shown (no emoji, Cyrillic, CJK).
+// Double quotes cannot be used inside a string.
+// Chosen in game: Vita settings (tap Select twice) > Display > Text Language.
+// See docs/TRANSLATING.md to add a language.
+
+{ "That team is full" "Esse time está cheio" }
+{ "Game Auto Saved" "Jogo salvo automaticamente" }
+{ "Rounds" "Balas" }
+{ "Pistol" "Pistola" }
+{ "Got" "Pegou" }
+{ "Rifle" "Fuzil" }
+{ "Smg" "Submetralhadora" }
+{ "Mg" "Metralhadora" }
+{ "Heavy" "Pesada" }
+{ "Grenade" "Granada" }
+{ "Equipment Destroyed" "Equipamento destruído" }
+{ "An objective has been added!" "Um objetivo foi adicionado!" }
+{ "An objective has been completed!" "Um objetivo foi concluído!" }
+{ "Health" "Vida" }
+{ "Recovered" "Recuperado" }
+{ "Document taken." "Documento pego." }
+{ "in the head" "na cabeça" }
+{ "in the helmet" "no capacete" }
+{ "in the neck" "no pescoço" }
+{ "in the upper torso" "na parte de cima do tronco" }
+{ "in the middle torso" "no meio do tronco" }
+{ "in the lower torso" "na parte de baixo do tronco" }
+{ "in the pelvis" "na pélvis" }
+{ "in the upper right arm" "na parte de cima do braço direito" }
+{ "in the upper left arm" "na parte de cima do braço esquerdo" }
+{ "in the upper right leg" "na parte de cima da perna direita" }
+{ "in the upper left leg" "na parte de cima da perna esquerda" }
+{ "in the lower right arm" "na parte de baixo do braço direito" }
+{ "in the lower left arm" "na parte de baixo do braço esquerdo" }
+{ "in the lower right leg" "na parte de baixo da perna direita" }
+{ "in the lower left leg" "na parte de baixo da perna esquerda" }
+{ "in the right hand" "na mão direita" }
+{ "in the left hand" "na mão esquerda" }
+{ "in the right foot" "no pé direito" }
+{ "in the left foot" "no pé esquerdo" }
+{ "You need the" "Você precisa de" }
+{ "You will be kicked for inactivity in" "Você será expulso por inatividade em" }
+{ "You will be moved to spectator for inactivity in" "Você irá para espectador por inatividade em" }
+{ "seconds" "segundos" }
+{ "Press fire to join the battle!" "Aperte atirar para entrar na batalha!" }
+{ "You are not on a team" "Você não está em um time" }
+{ "You are already on a team" "Você já está em um time" }
+{ "Will switch to Axis model & weapons next time you respawn" "Vai trocar para o modelo e armas do Eixo quando renascer" }
+{ "Will switch to new weapon next time you respawn" "Vai trocar para a nova arma quando renascer" }
+{ "has joined the Allies" "entrou nos Aliados" }
+{ "has joined the Axis" "entrou no Eixo" }
+{ "Can not change teams again for another" "Não pode trocar de time de novo por mais" }
+{ "Voting not allowed here." "Votação não permitida aqui." }
+{ "A vote is already in progress" "Já tem uma votação em andamento" }
+{ "You have called the maximum number of votes" "Você já pediu o máximo de votações" }
+{ "Invalid vote string." "Votação inválida." }
+{ "Vote commands are:" "Os comandos de votação são:" }
+{ "called a vote" "pediu uma votação" }
+{ "No vote in progress." "Nenhuma votação em andamento." }
+{ "Vote already cast." "Voto já registrado." }
+{ "Usage" "Uso" }
+{ "Vote cast." "Voto registrado." }
+{ "Command" "Comando" }
+{ "not available from console" "não disponível pelo console" }
+{ "You must run the server with '+set cheats 1' to enable this command." "Você precisa rodar o servidor com '+set cheats 1' para ativar este comando." }
+{ "Bad filter address" "Endereço de filtro inválido" }
+{ "IP filter list is full" "A lista de filtros de IP está cheia" }
+{ "Removed" "Removido" }
+{ "Didn't find" "Não encontrado" }
+{ "Filter list" "Lista de filtros" }
+{ "Writing" "Gravando" }
+{ "Couldn't open" "Não foi possível abrir" }
+{ "Unknown server command" "Comando de servidor desconhecido" }
+{ "Wrote" "Gravado" }
+{ "You have not completed your objectives." "Você não concluiu seus objetivos." }
+{ "That's not a research document." "Isso não é um documento de pesquisa." }
+{ "You have not completed all your Objectives yet." "Você ainda não concluiu todos os seus objetivos." }
+{ "You have not completed all of your Objectives." "Você não concluiu todos os seus objetivos." }
+{ "You have acquired the spy camera!" "Você pegou a câmera espiã!" }
+{ "You have acquired the binoculars!" "Você pegou o binóculo!" }
+{ "You have acquired the bangalores!" "Você pegou os torpedos bangalore!" }
+{ "You have acquired the battery!" "Você pegou a bateria!" }
+{ "You have acquired the manifest!" "Você pegou o manifesto!" }
+{ "You have acquired the Naxos radar blueprints!" "Você pegou as plantas do radar Naxos!" }
+{ "You have acquired the Naxos radar research notes!" "Você pegou as anotações de pesquisa do radar Naxos!" }
+{ "You have acquired the Naxos uboat blueprints!" "Você pegou as plantas do submarino Naxos!" }
+{ "You have acquired the Naxos uboat research notes!" "Você pegou as anotações de pesquisa do submarino Naxos!" }
+{ "You have acquired explosives!" "Você pegou explosivos!" }
+{ "You have acquired the gasmask!" "Você pegou a máscara de gás!" }
+{ "You have acquired level 1 papers!" "Você pegou os documentos de nível 1!" }
+{ "You have acquired level 2 papers!" "Você pegou os documentos de nível 2!" }
+{ "You have acquired the wirecutters!" "Você pegou o alicate!" }
+{ "You have acquired the radio!" "Você pegou o rádio!" }
+{ "The King Tiger has been lost, you have failed." "O King Tiger foi perdido, você falhou." }
+{ "The King Tiger Tank has been lost, you have failed." "O tanque King Tiger foi perdido, você falhou." }
+{ "You hit" "Você acertou" }
+{ "You have not completed all of your objectives yet." "Você ainda não concluiu todos os seus objetivos." }
+{ "Shotgun" "Espingarda" }
+{ "The Allies have breached the perimeter!" "Os Aliados romperam o perímetro!" }
+{ "The Bomb has been planted!" "A bomba foi plantada!" }
+{ "Picked Up " "Pegou " }
+{ "MP44" "MP44" }
+{ "StG 44" "StG 44" }
+{ "BAR" "BAR" }
+{ "Bazooka" "Bazuca" }
+{ "Colt 45" "Colt 45" }
+{ "Mauser KAR 98K" "Mauser KAR 98K" }
+{ "KAR98 - Sniper" "KAR98 - Sniper" }
+{ "M1 Garand" "M1 Garand" }
+{ "Frag Grenade" "Granada de fragmentação" }
+{ "MP40" "MP40" }
+{ "Walther P38" "Walther P38" }
+{ "Panzerschreck" "Panzerschreck" }
+{ "Hi-Standard Silenced" "Hi-Standard com silenciador" }
+{ "Springfield '03 Sniper" "Springfield '03 Sniper" }
+{ "Stielhandgranate" "Stielhandgranate" }
+{ "Thompson" "Thompson" }
+{ "45 seconds to escape" "45 segundos para escapar" }
+{ "This door is locked." "Esta porta está trancada." }
+{ "15 seconds to clear the room" "15 segundos para limpar a sala" }
+{ "You have not completed the objective." "Você não concluiu o objetivo." }
+{ "Enigma machine" "Máquina Enigma" }
+{ "8!" "8!" }
+{ "9!" "9!" }
+{ "You got the Panzerschreck." "Você pegou a Panzerschreck." }
+{ "Binoculars" "Binóculo" }
+{ "Mission Failed: Not enough Rangers survived!" "Missão fracassada: poucos Rangers sobreviveram!" }
+{ "You have acquired a German officers uniform!" "Você pegou um uniforme de oficial alemão!" }
+{ "ALARM OFF" "ALARME DESLIGADO" }
+{ "Papers" "Documentos" }
+{ "Grenades" "Granadas" }
+{ "Enigma machine stolen" "Máquina Enigma roubada" }
+{ "You have no explosives." "Você não tem explosivos." }
+{ "You have acquired radio detonated explosives!" "Você pegou explosivos com detonador por rádio!" }
+{ "Hold use key to activate/deactivate bomb" "Segure a tecla de usar para ativar/desativar a bomba" }
+{ "Manifest stolen" "Manifesto roubado" }
+{ "Can't duck under water" "Não dá para agachar embaixo d'água" }
+{ "You got the KAR98D Sniper Rifle." "Você pegou o fuzil de precisão KAR98D." }
+{ "Press Forward to move out of the truck" "Aperte Frente para sair do caminhão" }
+{ "Press TAB to view your current objectives" "Aperte TAB para ver seus objetivos atuais" }
+{ "Use your compass to guide you to your next objective." "Use sua bússola para chegar ao próximo objetivo." }
+{ "Press USE to grab items off tables" "Aperte USAR para pegar itens das mesas" }
+{ "Press USE to use mounted weapons" "Aperte USAR para usar armas fixas" }
+{ "Press USE to open doors. If you can not open the door, you will be able to hear the handle rattle." "Aperte USAR para abrir portas. Se não conseguir abrir a porta, você vai ouvir a maçaneta chacoalhar." }
+{ "Follow me" "Siga-me" }
+{ "You have recieved 30 health" "Você recebeu 30 de vida" }
+{ "You lost too many of your tank crew" "Você perdeu tripulantes demais do seu tanque" }
+{ "Mission Objectives:" "Objetivos da missão:" }
+{ "The Bridge was Destroyed. You failed the mission." "A ponte foi destruída. Você falhou na missão." }
+{ "CHECKPOINT: Game AutoSaved" "CHECKPOINT: jogo salvo automaticamente" }
+{ "Game Saved" "Jogo salvo" }
+{ "Game AutoSaved" "Jogo salvo automaticamente" }
+{ "Game Loaded" "Jogo carregado" }
+{ "You have recieved health" "Você recebeu vida" }
+{ "Lt. Joe Baylor has been killed in action." "O Ten. Joe Baylor foi morto em combate." }
+{ "NOT ALL OBJECTIVES HAVE BEEN COMPLETED!" "NEM TODOS OS OBJETIVOS FORAM CONCLUÍDOS!" }
+{ "To call in air support switch to the binoculars. Then look at the target and press your Fire key." "Para pedir apoio aéreo, troque para o binóculo. Depois olhe para o alvo e aperte a tecla de atirar." }
+{ "Once you find a radio you will be able to call in air support." "Quando achar um rádio, você poderá pedir apoio aéreo." }
+{ "You have recieved health from a medic" "Você recebeu vida de um médico" }
+{ " seconds to escape" " segundos para escapar" }
+{ " seconds to get to train" " segundos para chegar ao trem" }
+{ "took himself out of commision" "se tirou de combate" }
+{ "was burned to a crisp" "virou churrasco" }
+{ "cratered" "virou cratera" }
+{ "tripped on his own grenade" "tropeçou na própria granada" }
+{ "played catch with himself" "brincou de pega-pega consigo mesmo" }
+{ "blew himself up" "se explodiu" }
+{ "rocketed himself" "se acertou com o próprio foguete" }
+{ "shot himself in the" "atirou em si mesmo" }
+{ "died" "morreu" }
+{ "was crushes by" "foi esmagado por" }
+{ "was telefragged by" "foi telefragado por" }
+{ "was burned up by" "foi queimado por" }
+{ "was pushed over the edge by" "foi empurrado do alto por" }
+{ "is picking" "está tirando os estilhaços de" }
+{ "'s shrapnel out of his teeth" "dos dentes" }
+{ "tripped on" "tropeçou na granada de" }
+{ "'s grenade" "!" }
+{ "was blown away by" "foi explodido por" }
+{ "took" "levou o foguete de" }
+{ "'s rocket in the face" "na cara" }
+{ "'s rocket right in the kisser" "bem na boca" }
+{ "was knocked out by" "foi nocauteado por" }
+{ "was shot by" "foi baleado por" }
+{ "was gunned down by" "foi metralhado por" }
+{ "was sniped by" "foi abatido por um sniper:" }
+{ "was rifled by" "foi fuzilado por" }
+{ "was perforated by" "foi perfurado por" }
+{ "'s SMG" "com a submetralhadora" }
+{ "was machine-gunned by" "foi metralhado por" }
+{ "was run over by" "foi atropelado por" }
+{ "was impaled by" "foi empalado por" }
+{ "was clubbed by" "foi espancado por" }
+{ "was bashed by" "foi derrubado por" }
+{ "was pumped full of buckshot by" "foi enchido de chumbo por" }
+{ "was hunted down by" "foi caçado por" }
+{ "was killed by" "foi morto por" }
+{ "caught some shrapnel" "pegou uns estilhaços" }
+{ "blew up" "explodiu" }
+{ "caught a rocket" "pegou um foguete" }
+{ "was shot in the" "foi baleado" }
+{ "was shot" "foi baleado" }
+{ "You killed yourself" "Você se matou" }
+{ "You killed" "Você matou" }
+{ "You have the Panzerschreck." "Você tem a Panzerschreck." }
+{ "TIGER TANK: " "TANQUE TIGER: " }
+{ " percent" " por cento" }
+{ "HINT: Switch to your Panzerschreck (rocket launcher) to destroy the halftrack." "DICA: troque para a Panzerschreck (lança-foguetes) para destruir o semilagarta." }
+{ "HINT: Switch to your Panzerschreck (rocket launcher) to destroy the tank." "DICA: troque para a Panzerschreck (lança-foguetes) para destruir o tanque." }
+{ "HINT: It will take several hits to destroy a tank." "DICA: são necessários vários tiros para destruir um tanque." }
+{ "Sergeant Harrison has been killed in action." "O Sargento Harrison foi morto em combate." }
+{ "Private Tomlin has been killed in action." "O Soldado Tomlin foi morto em combate." }
+{ "Captain Ramsey has been killed in action." "O Capitão Ramsey foi morto em combate." }
+{ "Tiger Tank destroyed." "Tanque Tiger destruído." }
+{ "Ranger Casualties: " "Baixas de Rangers: " }
+{ " of " " de " }
+{ "HINT: Use the wheel to open the doors." "DICA: use a roda para abrir as portas." }
+{ "HINT: Use the plunger to blow the door open." "DICA: use o detonador para explodir a porta." }
+{ "Move the tank with your Forward and Backward keys." "Mova o tanque com as teclas Frente e Trás." }
+{ "Use your Strafe keys to turn." "Use as teclas de passo lateral para virar." }
+{ "Turn the turret with the Mouse." "Gire a torre com o mouse." }
+{ "Hold your Jump key to align the base with the turret." "Segure a tecla de pular para alinhar a base com a torre." }
+{ "Align the balls to reach your current objective" "Alinhe as esferas para chegar ao objetivo atual" }
+{ "Use the mouse or keyboard to look up and around at the towers" "Use o mouse ou o teclado para olhar para cima e para as torres" }
+{ "Find a way through the gate" "Ache um caminho pelo portão" }
+{ "Hello Mike Powell. Welcome to training." "Olá, Mike Powell. Bem-vindo ao treinamento." }
+{ "Follow the arrow on your compass to reach your current objective." "Siga a seta da bússola para chegar ao objetivo atual." }
+{ "As you get closer, the balls will contract." "Conforme você se aproxima, as esferas se juntam." }
+{ "Press " "Aperte " }
+{ " to move forward." " para andar para frente." }
+{ "Use your mouse or " "Use o mouse ou " }
+{ " and " " e " }
+{ " to turn left and right." " para virar para a esquerda e para a direita." }
+{ "Use the mouse or keyboard to look up and around at the towers." "Use o mouse ou o teclado para olhar para cima e para as torres." }
+{ "Press your jump key ( " "Aperte a tecla de pular ( " }
+{ " ) and movement keys to surpass these crates." " ) e as de movimento para passar por cima dessas caixas." }
+{ "Press your duck key ( " "Aperte a tecla de agachar ( " }
+{ " ) and movement keys to pass under the barbwire." " ) e as de movimento para passar por baixo do arame farpado." }
+{ "Use the movement keys and look up to climb the ladder. You may also press your use button. " "Use as teclas de movimento e olhe para cima para subir a escada. Você também pode apertar usar. " }
+{ "Press your use key ( " "Aperte a tecla de usar ( " }
+{ " ) to open these doors." " ) para abrir estas portas." }
+{ "Some doors might not open. These doors will make a different sound." "Algumas portas podem não abrir. Essas portas fazem um som diferente." }
+{ "When you get close to health and ammunition you will use them automatically." "Quando chegar perto de vida e munição, você vai pegá-las automaticamente." }
+{ "You may have to press your use key ( " "Talvez você precise apertar a tecla de usar ( " }
+{ " ) to activate items that are farther away." " ) para ativar itens que estão mais longe." }
+{ "Approach the explosives and press your use key ( " "Chegue perto dos explosivos e aperte a tecla de usar ( " }
+{ " ) to pick them up." " ) para pegá-los." }
+{ "Find the red ghost image of the bomb and press your use key ( " "Ache a imagem vermelha transparente da bomba e aperte a tecla de usar ( " }
+{ " ) on it to plant explosives on the tank." " ) sobre ela para plantar explosivos no tanque." }
+{ " ) to control the targets on the firing range." " ) para controlar os alvos do estande de tiro." }
+{ "Continue on to the exit when you are done." "Siga para a saída quando terminar." }
+{ "Explore the firing range." "Explore o estande de tiro." }
+{ "Press the USE key ( " "Aperte a tecla USAR ( " }
+{ " ) to activate targets." " ) para ativar os alvos." }
+{ "Touch or press the USE key ( " "Toque ou aperte a tecla USAR ( " }
+{ " ) to get weapons and ammo to use on the firing range" " ) para pegar armas e munição para usar no estande de tiro" }
+{ "Continue on to the exit." "Siga para a saída." }
+{ "Take control of the MG42 by approaching it and pressing USE" "Assuma a MG42 chegando perto dela e apertando USAR" }
+{ "Officers uniform removed" "Uniforme de oficial retirado" }
+{ "Locate the missing Bazooka team" "Encontre a equipe de bazuca desaparecida" }
+{ "The OSS Agent was killed. You failed the mission" "O agente do OSS foi morto. Você falhou na missão" }
+{ "30 seconds to escape to elevator" "30 segundos para escapar até o elevador" }
+{ "You must first open the valves" "Primeiro você precisa abrir as válvulas" }
+{ "5 seconds to clear the room" "5 segundos para limpar a sala" }
+{ "You have received health from a medic." "Você recebeu vida de um médico." }
+{ "You did not complete all the objectives." "Você não concluiu todos os objetivos." }
+{ "A Bomb has been planted!" "Uma bomba foi plantada!" }
+{ "A Bomb has been defused!" "Uma bomba foi desarmada!" }
+{ "You have acquired the gas mask!" "Você pegou a máscara de gás!" }
+{ "The King Tiger has been lost, you have failed" "O King Tiger foi perdido, você falhou" }
+{ "The King Tiger was destroyed. You failed the mission" "O King Tiger foi destruído. Você falhou na missão" }
+{ "If your weapon is not holstered" "Se a sua arma não estiver guardada" }
+{ "your cover will be blown." "seu disfarce será descoberto." }
+{ "Be prepared to show your papers when asked." "Esteja pronto para mostrar seus documentos quando pedirem." }
+{ "Press the ( " "Aperte a tecla ( " }
+{ " ) key to holster your weapon." " ) para guardar sua arma." }
+{ " ) key to show your papers." " ) para mostrar seus documentos." }
+{ "Once you destroy the anti-aircraft gun, you will be able to call in air support." "Depois de destruir o canhão antiaéreo, você poderá pedir apoio aéreo." }
+{ "Press the FORWARD key  ( " "Aperte a tecla FRENTE ( " }
+{ " ) to move out of the truck" " ) para sair do caminhão" }
+{ "Press the OBJECTIVE key  ( " "Aperte a tecla OBJETIVOS ( " }
+{ " ) to see your objectives" " ) para ver seus objetivos" }
+{ "Find your way to the mounted machine gun and press the USE key  ( " "Vá até a metralhadora fixa e aperte a tecla USAR ( " }
+{ " ) to take control" " ) para assumir o controle" }
+{ "Press the USE key  ( " "Aperte a tecla USAR ( " }
+{ " ) to use mounted weapons" " ) para usar armas fixas" }
+{ "has entered the battle" "entrou na batalha" }
+{ "has left the battle" "saiu da batalha" }
+{ "Use beach obstacles as cover from enemy machine gun fire." "Use os obstáculos da praia como proteção contra as metralhadoras inimigas." }
+{ " ) to grab items off tables" " ) para pegar itens das mesas" }
+{ "You have acquired the King Tiger field manual!" "Você pegou o manual de campo do King Tiger!" }
+{ "You have acquired the German battle plans!" "Você pegou os planos de batalha alemães!" }
+{ "The SAS Agent was killed. You failed the mission." "O agente do SAS foi morto. Você falhou na missão." }
+{ "Allies win!" "Os Aliados venceram!" }
+{ "Axis win!" "O Eixo venceu!" }
+{ "It's a draw!" "Empate!" }
+{ "A bomb is still set!" "Ainda tem uma bomba armada!" }
+{ "Allies have destroyed the Southern Cannon!" "Os Aliados destruíram o canhão sul!" }
+{ "Allies have destroyed the Northern Cannon!" "Os Aliados destruíram o canhão norte!" }
+{ "Use your MOUSE and the movement keys to look at the towers." "Use o MOUSE e as teclas de movimento para olhar para as torres." }
+{ " ) to open doors." " ) para abrir portas." }
+{ "Touch the health and ammo to pick it up." "Toque na vida e na munição para pegá-las." }
+{ " ) to activate items that are far away." " ) para ativar itens que estão longe." }
+{ " ) to get the explosives." " ) para pegar os explosivos." }
+{ " ) to get weapons and ammo." " ) para pegar armas e munição." }
+{ "Use your MOUSE or " "Use o MOUSE ou " }
+{ "Good work Powell, get ready for your first mission" "Bom trabalho, Powell, prepare-se para sua primeira missão" }
+{ "Press your JUMP key ( " "Aperte a tecla PULAR ( " }
+{ "Press your DUCK key ( " "Aperte a tecla AGACHAR ( " }
+{ "Use the movement keys and look up to climb the ladder. You may also press your USE key." "Use as teclas de movimento e olhe para cima para subir a escada. Você também pode apertar a tecla USAR." }
+{ "Press your USE key ( " "Aperte a tecla USAR ( " }
+{ "Find the red ghost image of the bomb and press the USE key ( " "Ache a imagem vermelha transparente da bomba e aperte a tecla USAR ( " }
+{ " ) to plant explosives on the tank." " ) para plantar explosivos no tanque." }
+{ "75 seconds to escape the sub" "75 segundos para escapar do submarino" }
+{ "Use your MOUSE to turn and aim." "Use o MOUSE para virar e mirar." }
+{ "Your hard drive is full, unable to save game." "O cartão de memória está cheio, não foi possível salvar o jogo." }
+{ "Your hard drive is full. Unable to save game." "O cartão de memória está cheio. Não foi possível salvar o jogo." }
+{ "Error" "Erro" }
+{ "You have the KAR98 Sniper Rifle." "Você tem o fuzil de precisão KAR98." }
+{ "Pick up the explosives and plant them on the tank before opening this door." "Pegue os explosivos e plante-os no tanque antes de abrir esta porta." }
+{ "Make sure you pick up some health and ammo before progressing." "Pegue um pouco de vida e munição antes de continuar." }
+{ "Try several doors before you progress in your training." "Tente várias portas antes de continuar o treinamento." }
+{ "30 seconds to escape to elevator." "30 segundos para escapar até o elevador." }
+{ "You must first open the valves." "Primeiro você precisa abrir as válvulas." }
+{ "Will switch to Allies model & weapons next time you respawn" "Vai trocar para o modelo e armas dos Aliados quando renascer" }
+{ "Press USE to open doors. If you cannot open the door, you will be able to hear the handle rattle." "Aperte USAR para abrir portas. Se não conseguir abrir a porta, você vai ouvir a maçaneta chacoalhar." }
+{ "You have not completed all your objectives yet." "Você ainda não concluiu todos os seus objetivos." }
+{ "You must gather the entire tank crew before you can leave" "Você precisa reunir toda a tripulação do tanque antes de sair" }
+{ " to switch to the sniper rifle." " para trocar para o fuzil de precisão." }
+{ " to use the scope on the sniper rifle." " para usar a luneta do fuzil de precisão." }
+{ "You can only climb one side of a ladder." "Só dá para subir por um lado da escada." }
+{ "Approach this ladder from the west to climb it." "Chegue a esta escada pelo oeste para subir." }
+{ "Look up and press your forward key ( " "Olhe para cima e aperte a tecla de andar para frente ( " }
+{ " ) to climb a ladder." " ) para subir uma escada." }
+{ "Follow the arrow on your compass to reach your objectives." "Siga a seta da bússola para chegar aos seus objetivos." }
+{ "Press ( " "Aperte ( " }
+{ " ) to see your objectives." " ) para ver seus objetivos." }
+{ "Lieutenant Powell, it's time to commence field training." "Tenente Powell, é hora de começar o treinamento de campo." }
+{ "Pay attention and you might even stand a chance on the battlefield." "Preste atenção e talvez você até tenha chance no campo de batalha." }
+{ "First I want you to use your mouse to look at each of the four guard towers." "Primeiro, use o mouse para olhar para cada uma das quatro torres de vigia." }
+{ "Good. Press now press your FORWARDS key ( " "Bom. Agora aperte a tecla FRENTE ( " }
+{ " ) to move in the direction you are facing." " ) para andar na direção em que está olhando." }
+{ "Press your BACKWARDS key ( " "Aperte a tecla TRÁS ( " }
+{ " ) to move back." " ) para andar para trás." }
+{ "Press STRAFE LEFT ( " "Aperte PASSO À ESQUERDA ( " }
+{ " ) to move left and STRAFE RIGHT ( " " ) para ir para a esquerda e PASSO À DIREITA ( " }
+{ " ) to move right." " ) para ir para a direita." }
+{ "Using these four keys together with the mouse is critical to your success against the enemy." "Usar essas quatro teclas junto com o mouse é essencial para vencer o inimigo." }
+{ "Press your OBJECTIVES key ( " "Aperte a tecla OBJETIVOS ( " }
+{ " ) to see your list of current objectives." " ) para ver sua lista de objetivos atuais." }
+{ "When you complete an objective it is checked off on this list." "Quando você conclui um objetivo, ele é marcado nesta lista." }
+{ "Your current objective is highlighted in yellow." "Seu objetivo atual fica destacado em amarelo." }
+{ "The arrow points to your current objective." "A seta aponta para o seu objetivo atual." }
+{ "As you near your objective, the ball bearings on the compass will get closer together." "Conforme você se aproxima do objetivo, as esferas da bússola se juntam." }
+{ "Now notice that the arrow on your compass is pointing at one of the towers." "Repare que a seta da sua bússola está apontando para uma das torres." }
+{ "Approach the tower indicated by the arrow." "Vá até a torre indicada pela seta." }
+{ "Good. Now press your OBJECTIVES key ( " "Bom. Agora aperte a tecla OBJETIVOS ( " }
+{ " ) again." " ) de novo." }
+{ "You have a new objective. Complete this objective." "Você tem um novo objetivo. Conclua este objetivo." }
+{ "Press the JUMP ( " "Aperte as teclas PULAR ( " }
+{ " ) and FORWARD ( " " ) e FRENTE ( " }
+{ " ) keys to jump up this pile of crates." " ) para subir nesta pilha de caixas." }
+{ "Press the DUCK key ( " "Aperte a tecla AGACHAR ( " }
+{ " ) and then move FORWARD ( " " ) e depois ande para FRENTE ( " }
+{ " ) to pass under the barbed wire." " ) para passar por baixo do arame farpado." }
+{ " ) again to stand up." " ) de novo para levantar." }
+{ "Press the FORWARD key ( " "Aperte a tecla FRENTE ( " }
+{ " ) and look up and you will climb up the ladder." " ) e olhe para cima para subir a escada." }
+{ " ) to grab a ladder from above or below." " ) para agarrar uma escada por cima ou por baixo." }
+{ "Look down and Press the FORWARD key ( " "Olhe para baixo e aperte a tecla FRENTE ( " }
+{ " ) and you will descend the ladder." " ) e você vai descer a escada." }
+{ "Approach the explosives and press the USE key ( " "Chegue perto dos explosivos e aperte a tecla USAR ( " }
+{ "Notice that an image of the explosives has appeared in the upper right corner of your hud." "Repare que uma imagem dos explosivos apareceu no canto superior direito da tela." }
+{ "This is how you know what items you have in your inventory." "É assim que você sabe quais itens tem no inventário." }
+{ "The other image is of the radio which I am using to communicate with you." "A outra imagem é do rádio que estou usando para falar com você." }
+{ "A red transparent image of the explosives has appeared on the tank." "Uma imagem vermelha transparente dos explosivos apareceu no tanque." }
+{ " ) while near the image to plant explosives on the tank." " ) perto da imagem para plantar explosivos no tanque." }
+{ "Keep in mind that items you need to USE ( " "Lembre que os itens que você precisa USAR ( " }
+{ " ) or destroy to complete your mission will also pulse red." " ) ou destruir para concluir a missão também piscam em vermelho." }
+{ "Move away from the tank to avoid being injured." "Afaste-se do tanque para não se ferir." }
+{ "Some doors might be locked. The sound will clue you in." "Algumas portas podem estar trancadas. O som vai te dar a dica." }
+{ "You will automatically pick up first-aid supplies when your health is below 100%." "Você pega os primeiros socorros automaticamente quando sua vida está abaixo de 100%." }
+{ "Same for ammunition and weapons--but remember that each weapon has a maximum amount of ammo you can carry." "O mesmo vale para munição e armas, mas lembre que cada arma tem um limite de munição que você pode carregar." }
+{ "Sometimes items are too far to be automatically picked up. Press the USE key ( " "Às vezes os itens estão longe demais para serem pegos automaticamente. Aperte a tecla USAR ( " }
+{ " ) to grab these items." " ) para pegar esses itens." }
+{ "Select the Colt 45 by pressing the PISTOL key. ( " "Selecione a Colt 45 apertando a tecla PISTOLA. ( " }
+{ " )" " )" }
+{ "To neutralize an enemy without drawing undue attention, press the SECONDARY ATTACK key ( " "Para neutralizar um inimigo sem chamar atenção, aperte a tecla ATAQUE SECUNDÁRIO ( " }
+{ " ) to activate the pistol whip." " ) para dar uma coronhada com a pistola." }
+{ "Press the PRIMARY ATTACK key ( " "Aperte a tecla ATAQUE PRINCIPAL ( " }
+{ " ) to fire any of your weapons." " ) para atirar com qualquer arma." }
+{ "Note that you are more accurate with all weapons when firing in short bursts and while not moving." "Repare que você tem mais precisão com todas as armas atirando em rajadas curtas e parado." }
+{ "Shoot the target a couple of times with the pistol." "Atire no alvo algumas vezes com a pistola." }
+{ "Switch to the Thompson by pressing the SMG key. ( " "Troque para a Thompson apertando a tecla SUBMETRALHADORA. ( " }
+{ "You may reload any of your weapons at any time by pressing the RELOAD key. ( " "Você pode recarregar qualquer arma a qualquer hora apertando a tecla RECARREGAR. ( " }
+{ "You should always reload all of your weapons before going into combat." "Sempre recarregue todas as suas armas antes de entrar em combate." }
+{ "Shoot the target twenty times with the Thompson." "Atire no alvo vinte vezes com a Thompson." }
+{ "Switch to the Springfield '03 Sniper Rifle by pressing the RIFLE key. ( " "Troque para o fuzil de precisão Springfield '03 apertando a tecla FUZIL. ( " }
+{ "Press the SECONDARY ATTACK key ( " "Aperte a tecla ATAQUE SECUNDÁRIO ( " }
+{ " ) to toggle the sniper scope on and off." " ) para ligar e desligar a luneta." }
+{ "Use the scope and hit the farthest target on the red dot three times." "Use a luneta e acerte três vezes o alvo mais distante, no ponto vermelho." }
+{ "Select the Frag Grenades by pressing the GRENADE key. ( " "Selecione as granadas de fragmentação apertando a tecla GRANADA. ( " }
+{ "The PRIMARY ATTACK ( " "O ATAQUE PRINCIPAL ( " }
+{ " ) for the grenades is a long throw." " ) das granadas é um arremesso longo." }
+{ "Use the SECONDARY ATTACK ( " "Use o ATAQUE SECUNDÁRIO ( " }
+{ " ) for shorter tosses." " ) para arremessos mais curtos." }
+{ "How long you hold the SECONDARY ATTACK key ( " "Quanto tempo você segura a tecla ATAQUE SECUNDÁRIO ( " }
+{ " ) down affects how far you throw." " ) define a distância do arremesso." }
+{ "Use bank shots with the grenades to clear rooms where the enemy might be hiding." "Use as granadas ricocheteando nas paredes para limpar salas onde o inimigo pode estar escondido." }
+{ "Throw a grenade into each of the concrete boxes." "Jogue uma granada em cada uma das caixas de concreto." }
+{ "Approach the MG42 stationary machine gun and press the USE key ( " "Chegue perto da metralhadora fixa MG42 e aperte a tecla USAR ( " }
+{ " ) to activate it." " ) para ativá-la." }
+{ "Destroy the target with the machine gun." "Destrua o alvo com a metralhadora." }
+{ " ) on the red door at the end of the range to exit the firing range." " ) na porta vermelha no fim do estande para sair do estande de tiro." }
+{ "This training should help you keep your head under fire." "Este treinamento deve ajudar você a manter a cabeça no lugar sob fogo." }
+{ "You're dismissed, Lieutenant Powell. Good luck." "Dispensado, Tenente Powell. Boa sorte." }
+{ " ) on the red door at the end of the range to exit the firing range whenever you are ready.." " ) na porta vermelha no fim do estande para sair do estande de tiro quando estiver pronto." }
+{ "Your cover has been blown." "Seu disfarce foi descoberto." }
+{ " ) to walk. Walk when you want to sneak up on enemies." " ) para andar devagar. Ande devagar quando quiser surpreender inimigos." }
+{ "You need a new set of papers to procede past this point." "Você precisa de novos documentos para passar deste ponto." }
+{ " ) to move out of the truck." " ) para sair do caminhão." }
+{ " ) to grab items off tables." " ) para pegar itens das mesas." }
+{ "Climb the stairs and find the MG42 mounted machine gun." "Suba a escada e ache a metralhadora fixa MG42." }
+{ " ) to use mounted weapons." " ) para usar armas fixas." }
+{ "Move the tank with your Forward key ( " "Mova o tanque com a tecla Frente ( " }
+{ " ) and Backward key. ( " " ) e a tecla Trás. ( " }
+{ " ) to turn left and STRAFE RIGHT ( " " ) para virar para a esquerda e PASSO À DIREITA ( " }
+{ " ) to turn right." " ) para virar para a direita." }
+{ "Hold your Jump key ( " "Segure a tecla de pular ( " }
+{ " ) to align the base with the turret." " ) para alinhar a base com a torre." }
+{ "To call in air support switch to the binoculars. ( " "Para pedir apoio aéreo, troque para o binóculo. ( " }
+{ " ) Then look at the target and press your Fire key. ( " " ) Depois olhe para o alvo e aperte a tecla de atirar. ( " }
+{ "Private Durden has been killed in action." "O Soldado Durden foi morto em combate." }
+{ "Private Cobb has been killed in action." "O Soldado Cobb foi morto em combate." }
+{ "You have acquired the StG44 blueprints!" "Você pegou as plantas da StG44!" }
+{ "Sometimes an objective may be located directly above or below where the compass appears to indicate." "Às vezes um objetivo pode estar logo acima ou abaixo do lugar que a bússola parece indicar." }
+{ "You need a new set of papers to procede pass this point." "Você precisa de novos documentos para passar deste ponto." }
+{ "You have not completed all of the objectives." "Você não concluiu todos os objetivos." }
+{ "Holster your weapon by pressing the [" "Guarde sua arma apertando a tecla [" }
+{ "] key to avoid losing your cover" "] para não perder o disfarce" }
+{ "Scour the area for the missing Bazooka team" "Vasculhe a área atrás da equipe de bazuca desaparecida" }
+{ "The Bazooka team is missing, they must be found" "A equipe de bazuca está desaparecida, ela precisa ser encontrada" }
+{ "Find the Bazooka team, spare no expense!" "Encontre a equipe de bazuca, custe o que custar!" }
+{ "You must find them, before it's too late!" "Você precisa encontrá-los antes que seja tarde demais!" }
+{ "You know, Bazooka team. Probably carrying a long, tubular looking thing." "Sabe, equipe de bazuca. Provavelmente carregando uma coisa comprida em forma de tubo." }
+{ "Why are you banging away at this gate when you have yet to FIND THE BAZOOKA TEAM?!" "Por que você está batendo neste portão se ainda não ENCONTROU A EQUIPE DE BAZUCA?!" }
+{ "STOP POKING ME" "PARE DE ME CUTUCAR" }
+{ "By accidentally destroying The Bridge, you have failed the mission" "Por destruir a ponte sem querer, você falhou na missão" }
+{ "Once you find a radio, you will be able to call in air support." "Quando achar um rádio, você poderá pedir apoio aéreo." }
+{ "Captain Richards has been killed in action." "O Capitão Richards foi morto em combate." }
+{ "Private Wilson has been killed in action." "O Soldado Wilson foi morto em combate." }
+{ "Private Thomas has been killed in action." "O Soldado Thomas foi morto em combate." }
+{ "Private Allen has been killed in action." "O Soldado Allen foi morto em combate." }
+{ "Private Jury has been killed in action." "O Soldado Jury foi morto em combate." }
+{ "Major Grillo has been killed in action." "O Major Grillo foi morto em combate." }
+{ "T/4 Medic Glenn has been killed in action." "O Médico T/4 Glenn foi morto em combate." }
+{ "Sergeant Hammon has been killed in action." "O Sargento Hammon foi morto em combate." }
+{ "T/2 Engineer Campbell has been killed in action." "O Engenheiro T/2 Campbell foi morto em combate." }
+{ "Approach alarms and press the USE key ( " "Chegue perto dos alarmes e aperte a tecla USAR ( " }
+{ " ) to toggle them off or on." " ) para ligá-los ou desligá-los." }
+{ "Use your mouse to look at each of the four guard towers." "Use o mouse para olhar para cada uma das quatro torres de vigia." }
+{ " to move forwards." " para andar para frente." }
+{ " to move backwards." " para andar para trás." }
+{ " to move left and " " para ir para a esquerda e " }
+{ " to move right." " para ir para a direita." }
+{ " to see your list of objectives." " para ver sua lista de objetivos." }
+{ " to see your new objective." " para ver seu novo objetivo." }
+{ " to jump." " para pular." }
+{ " to duck." " para agachar." }
+{ " to stand up." " para levantar." }
+{ "  and look up to climb up the ladder." "  e olhe para cima para subir a escada." }
+{ " to get the explosives." " para pegar os explosivos." }
+{ " to plant the bomb on the tank." " para plantar a bomba no tanque." }
+{ " to open doors." " para abrir portas." }
+{ " to switch to a pistol." " para trocar para uma pistola." }
+{ " to pistol whip." " para dar uma coronhada." }
+{ " to fire." " para atirar." }
+{ "Shoot the target three times." "Atire no alvo três vezes." }
+{ " to switch to a submachine gun." " para trocar para uma submetralhadora." }
+{ " to reload." " para recarregar." }
+{ "Shoot the target twenty times." "Atire no alvo vinte vezes." }
+{ " to switch to a rifle." " para trocar para um fuzil." }
+{ " to use the scope." " para usar a luneta." }
+{ "Hit the farthest bulls eye three times." "Acerte o centro do alvo mais distante três vezes." }
+{ " to select a grenade." " para selecionar uma granada." }
+{ " for a long throw." " para um arremesso longo." }
+{ " for a short throw." " para um arremesso curto." }
+{ " to use the machine gun." " para usar a metralhadora." }
+{ "Destroy the target." "Destrua o alvo." }
+{ " on the red door to exit the firing range." " na porta vermelha para sair do estande de tiro." }
+{ " and look up to climb up the ladder." " e olhe para cima para subir a escada." }
+{ " to grab a ladder." " para agarrar uma escada." }
+{ "Look down and press " "Olhe para baixo e aperte " }
+{ " to descend the ladder." " para descer a escada." }
+{ "Pick up the pistol (press " "Pegue a pistola (aperte " }
+{ "Go to the next room and pick up the Thompson (press " "Vá para a próxima sala e pegue a Thompson (aperte " }
+{ " )." " )." }
+{ "Go to the next room and pick up the sniper rifle (press " "Vá para a próxima sala e pegue o fuzil de precisão (aperte " }
+{ "Go to the next room and pick up some grenades (press " "Vá para a próxima sala e pegue algumas granadas (aperte " }
+{ "Go to the next room and use the machine gun (press " "Vá para a próxima sala e use a metralhadora (aperte " }
+{ "Use beach obstacles as cover from enemy machinegun fire." "Use os obstáculos da praia como proteção contra as metralhadoras inimigas." }
+{ "You lost too many of your tank crew." "Você perdeu tripulantes demais do seu tanque." }
+{ "Allies have destroyed the Western Cannon!" "Os Aliados destruíram o canhão oeste!" }
+{ "Allies have destroyed the Eastern Cannon!" "Os Aliados destruíram o canhão leste!" }
+{ "The bridge was destroyed. You failed the mission." "A ponte foi destruída. Você falhou na missão." }
