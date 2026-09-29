@@ -181,20 +181,20 @@
 { "was burned up by" "foi queimado por" }
 { "was pushed over the edge by" "foi empurrado do alto por" }
 { "is picking" "está tirando os estilhaços de" }
-{ "'s shrapnel out of his teeth" "dos dentes" }
+{ "'s shrapnel out of his teeth" " dos dentes" }
 { "tripped on" "tropeçou na granada de" }
 { "'s grenade" "!" }
 { "was blown away by" "foi explodido por" }
 { "took" "levou o foguete de" }
-{ "'s rocket in the face" "na cara" }
-{ "'s rocket right in the kisser" "bem na boca" }
+{ "'s rocket in the face" " na cara" }
+{ "'s rocket right in the kisser" " bem na boca" }
 { "was knocked out by" "foi nocauteado por" }
 { "was shot by" "foi baleado por" }
 { "was gunned down by" "foi metralhado por" }
 { "was sniped by" "foi abatido por um sniper:" }
 { "was rifled by" "foi fuzilado por" }
 { "was perforated by" "foi perfurado por" }
-{ "'s SMG" "com a submetralhadora" }
+{ "'s SMG" " com a submetralhadora" }
 { "was machine-gunned by" "foi metralhado por" }
 { "was run over by" "foi atropelado por" }
 { "was impaled by" "foi empalado por" }
@@ -511,6 +511,26 @@
 { "Allies have destroyed the Western Cannon!" "Os Aliados destruíram o canhão oeste!" }
 { "Allies have destroyed the Eastern Cannon!" "Os Aliados destruíram o canhão leste!" }
 { "The bridge was destroyed. You failed the mission." "A ponte foi destruída. Você falhou na missão." }
+
+// Script hints missing from the game's table (maps/m1l1.scr).
+{ "Find your way to the MG42 mounted machine gun and press the USE key  ( " "Vá até a metralhadora fixa MG42 e aperte a tecla USAR ( " }
+{ " ) to take control." " ) para assumir o controle." }
+
+// Pickup messages built by the game with a number or a name in the middle: &&& stands
+// for that part (code/fgame/ammo.cpp, weapon.cpp, health.cpp). The first entry that
+// matches wins, so the more specific ones come first.
+{ "Got &&& Rifle Rounds" "Pegou &&& balas de fuzil" }
+{ "Got &&& Pistol Rounds" "Pegou &&& balas de pistola" }
+{ "Got &&& Smg Rounds" "Pegou &&& balas de submetralhadora" }
+{ "Got &&& Mg Rounds" "Pegou &&& balas de metralhadora" }
+{ "Got &&& Heavy Rounds" "Pegou &&& munições pesadas" }
+{ "Got &&& Shotgun Rounds" "Pegou &&& cartuchos de espingarda" }
+{ "Got 1 Rifle Grenade" "Pegou 1 granada de fuzil" }
+{ "Got &&& Rifle Grenades" "Pegou &&& granadas de fuzil" }
+{ "Got 1 Grenade" "Pegou 1 granada" }
+{ "Got &&& Grenades" "Pegou &&& granadas" }
+{ "Recovered &&& Health" "Recuperou &&& de vida" }
+{ "Picked Up &&&" "Pegou: &&&" }
 
 // Subtitles: what the characters say (ubersound/uberdialog.scr), in the order of the
 // missions. The voices stay in English; Vita settings > Display > Subtitles chooses which

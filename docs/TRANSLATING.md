@@ -1,7 +1,8 @@
 # Translating the game text (PS Vita)
 
 The Vita port can show the game's text in another language: in-game messages,
-weapon and item names, hints, the training level and multiplayer messages. The
+pickups, weapon and item names, hints, the training level, multiplayer messages and
+the subtitles of the dialogue. The
 voices and the text drawn inside pictures (like the briefing papers) stay as they
 are.
 
@@ -28,12 +29,17 @@ Players pick it in the Vita settings (tap Select twice) > **Display** >
    { "Press your use key ( " "Appuyez sur la touche utiliser ( " }
    { " ) to open these doors." " ) pour ouvrir ces portes." }
    ```
-4. Rules for the text:
+4. `&&&` stands for a part the game fills in, like a number or a weapon name. Keep it
+   in the translation, where it fits your language:
+   ```
+   { "Got &&& Rifle Rounds" "Munitions de fusil : &&&" }
+   ```
+5. Rules for the text:
    - UTF-8 file. Accented Latin letters are fine (é à ç ñ ü ...). Other scripts
      (Cyrillic, Greek, Chinese, Japanese, emoji) cannot be shown by the game's fonts.
    - No double quotes (`"`) inside a string.
    - Lines starting with `//` are comments.
-5. Send it:
+6. Send it:
    - with a pull request that adds the file, or
    - by opening an issue with the **Translation** form and attaching the file.
 
