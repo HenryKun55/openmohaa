@@ -34,10 +34,19 @@ static float s_fontHeightScale = 1.0;
 static float s_fontGeneralScale = 1.0;
 static float s_fontZ = 0.0;
 
+#if defined(__vita__) || defined(__SWITCH__)
+static void R_FontResetAccentPages(void);
+#endif
+
 void R_ShutdownFont() {
     int i;
     fontheader_t *header;
     fontheader_sgl_t *header_sgl;
+
+#if defined(__vita__) || defined(__SWITCH__)
+    // The fonts and their pages are rebuilt after this (vid_restart).
+    R_FontResetAccentPages();
+#endif
 
     for (i = 0; i < s_numLoadedFonts; i++)
     {
@@ -197,6 +206,31 @@ static qboolean InkBox(const byte *pic, int pageW, const fontCell_t *cell, int *
         }
     }
     return *x1 >= 0;
+}
+
+// The page built for a font. Level loads reload the font's shader, which points it
+// back at the original page, so R_LoadFontShader puts this one back each time.
+static struct {
+    const fontheader_sgl_t *font;
+    image_t                *image;
+} s_accentPages[64];
+static int s_numAccentPages;
+
+static void R_FontResetAccentPages(void)
+{
+    s_numAccentPages = 0;
+}
+
+static void R_FontApplyAccentPage(fontheader_sgl_t *font)
+{
+    shader_t *shader = (shader_t *)font->shader;
+
+    for (int i = 0; i < s_numAccentPages; i++) {
+        if (s_accentPages[i].font == font && shader && shader->unfoggedStages[0]) {
+            shader->unfoggedStages[0]->bundle[0].image[0] = s_accentPages[i].image;
+            return;
+        }
+    }
 }
 
 static void R_FontAddAccents(fontheader_sgl_t *font)
@@ -377,9 +411,18 @@ static void R_FontAddAccents(fontheader_sgl_t *font)
     }
 
     Com_sprintf(name, sizeof(name), "%s_accents", img->imgName);
-    shader->unfoggedStages[0]->bundle[0].image[0] = R_CreateImageOld(
-        name, out, pageW, newH, 0, 0, qfalse, qtrue, qtrue, 0, img->wrapClampModeX, img->wrapClampModeY
-    );
+    {
+        image_t *page = R_CreateImageOld(
+            name, out, pageW, newH, 0, 0, qfalse, qtrue, qtrue, 0, img->wrapClampModeX, img->wrapClampModeY
+        );
+        page->r_sequence = -1; // permanent, like the font's own page
+        if (s_numAccentPages < (int)ARRAY_LEN(s_accentPages)) {
+            s_accentPages[s_numAccentPages].font  = font;
+            s_accentPages[s_numAccentPages].image = page;
+            s_numAccentPages++;
+        }
+        shader->unfoggedStages[0]->bundle[0].image[0] = page;
+    }
     ri.Printf(PRINT_DEVELOPER, "Font %s: built accented letters (%d glyphs)\n", font->name, used);
     ri.Free(out);
     R_FreeRawImage(pic);
@@ -792,6 +835,9 @@ void R_LoadFontShader(fontheader_sgl_t* font)
         ri.Error(ERR_DROP, "Could not load font shader for %s\n", filename);
     }
 
+#if defined(__vita__) || defined(__SWITCH__)
+    R_FontApplyAccentPage(font);
+#endif
     fontshader = (shader_t*)font->shader;
     if (fontshader->numUnfoggedPasses > 0)
     {
