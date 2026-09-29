@@ -50,6 +50,7 @@ protected:
     void OnActivate(Event *ev);
     void OnDeactivate(Event *ev);
     void DrawSubtitleOverlay(void);
+    void DrawSubtitleLine(const char *text, int line, float minX, float a);
 
     // Added in 2.0
     void DrawNetProfile(void);

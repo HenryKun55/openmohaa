@@ -1979,6 +1979,43 @@ void View3D::InitSubtitle(void)
     avWidth = totalWidth / 26.0;
 }
 
+void View3D::DrawSubtitleLine(const char *text, int line, float minX, float a)
+{
+    const float *scale = getHighResScale();
+    const float  y     = (m_font->getHeight(scale) * line + minX) / scale[1];
+
+#if defined(__vita__) || defined(__SWITCH__)
+    {
+        // Dark band behind the line, then an outline, so the text reads on any scene.
+        const float  pad  = 4.0f;
+        const float  w    = m_font->getWidth(text, -1);
+        const float  h    = m_font->getHeight(scale) / scale[1];
+        const vec4_t band = {0.0f, 0.0f, 0.0f, 0.55f * a};
+        static const float offs[4][2] = {
+            {-1, 0},
+            {1,  0},
+            {0,  -1},
+            {0,  1}
+        };
+
+        re.SetColor(band);
+        re.DrawBox((20.0f - pad) * scale[0], (y - 1.0f) * scale[1], (w + pad * 2.0f) * scale[0], (h + 2.0f) * scale[1]);
+        re.SetColor(NULL);
+
+        m_font->setColor(UColor(0, 0, 0, a));
+        for (int k = 0; k < 4; k++) {
+            m_font->Print(20 + offs[k][0], y + offs[k][1], text, -1, scale);
+        }
+    }
+#else
+    m_font->setColor(UColor(0, 0, 0, a));
+    m_font->Print(18, (m_font->getHeight(scale) * line + minX + 1.f) / scale[1], text, -1, scale);
+#endif
+
+    m_font->setColor(UColor(1, 1, 1, a));
+    m_font->Print(20, y, text, -1, scale);
+}
+
 void View3D::DrawSubtitleOverlay(void)
 {
     cvar_t *subAlpha;
@@ -1986,7 +2023,13 @@ void View3D::DrawSubtitleOverlay(void)
     float   minX, maxX;
     int     line;
 
+#if defined(__vita__) || defined(__SWITCH__)
+    // Half-transparent text was hard to read on the small screen: full opacity, with a
+    // dark band behind each line (DrawSubtitleLine).
+    subAlpha = Cvar_Get("subAlpha", "1", 0);
+#else
     subAlpha = Cvar_Get("subAlpha", "0.5", 0);
+#endif
 
     setFont("facfont-20");
     m_font->setColor(URed);
@@ -2064,23 +2107,7 @@ void View3D::DrawSubtitleOverlay(void)
                 width = m_font->getWidth(c, blockcount);
 
                 if (total + width > maxX) {
-                    m_font->setColor(UColor(0, 0, 0, alpha[i] * subAlpha->value));
-                    m_font->Print(
-                        18,
-                        (m_font->getHeight(getHighResScale()) * line + minX + 1.f) / getHighResScale()[1],
-                        buf,
-                        -1,
-                        getHighResScale()
-                    );
-
-                    m_font->setColor(UColor(1, 1, 1, alpha[i] * subAlpha->value));
-                    m_font->Print(
-                        20,
-                        (m_font->getHeight(getHighResScale()) * line + minX) / getHighResScale()[1],
-                        buf,
-                        -1,
-                        getHighResScale()
-                    );
+                    DrawSubtitleLine(buf, line, minX, alpha[i] * subAlpha->value);
 
                     line++;
 
@@ -2102,42 +2129,10 @@ void View3D::DrawSubtitleOverlay(void)
                 c += blockcount;
             }
 
-            m_font->setColor(UColor(0, 0, 0, alpha[i] * subAlpha->value));
-            m_font->Print(
-                18,
-                (m_font->getHeight(getHighResScale()) * line + minX + 1.f) / getHighResScale()[1],
-                buf,
-                -1,
-                getHighResScale()
-            );
-
-            m_font->setColor(UColor(1, 1, 1, alpha[i] * subAlpha->value));
-            m_font->Print(
-                20,
-                (m_font->getHeight(getHighResScale()) * line + minX) / getHighResScale()[1],
-                buf,
-                -1,
-                getHighResScale()
-            );
+            DrawSubtitleLine(buf, line, minX, alpha[i] * subAlpha->value);
             line++;
         } else {
-            m_font->setColor(UColor(0, 0, 0, alpha[i] * subAlpha->value));
-            m_font->Print(
-                18,
-                (m_font->getHeight(getHighResScale()) * line + minX + 1.f) / getHighResScale()[1],
-                subText,
-                -1,
-                getHighResScale()
-            );
-
-            m_font->setColor(UColor(1, 1, 1, alpha[i] * subAlpha->value));
-            m_font->Print(
-                20,
-                (m_font->getHeight(getHighResScale()) * line + minX) / getHighResScale()[1],
-                subText,
-                -1,
-                getHighResScale()
-            );
+            DrawSubtitleLine(subText, line, minX, alpha[i] * subAlpha->value);
 
             line++;
         }
