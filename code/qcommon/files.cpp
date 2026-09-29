@@ -1898,7 +1898,22 @@ long FS_FOpenFileRead(const char *filename, fileHandle_t *file, qboolean uniqueF
 			FS_FCloseFile(*file);
 		}
 	}
-	
+
+#if defined(__vita__) || defined(__SWITCH__)
+	// The PC install leaves some loose sounds flat in sound/ (e.g. sound/Amb_RainInt_01.wav)
+	// while the game asks for them in a sub-folder (sound/amb/amb_rainint_01.wav). Look for
+	// the bare name in sound/ so players can copy the folder as it is; the card's file
+	// system ignores case. A looping ambient that is never found stalls the level.
+	if (!Q_stricmpn(filename, "sound/", 6) && strchr(filename + 6, '/')) {
+		const char *base = strrchr(filename, '/') + 1;
+
+		len = FS_FOpenFileRead(va("sound/%s", base), file, uniqueFILE, qtrue);
+		if (file == NULL ? len > 0 : *file != 0) {
+			return len;
+		}
+	}
+#endif
+
 #ifdef FS_MISSING
 	if(missingFiles)
 		fprintf(missingFiles, "%s\n", filename);
