@@ -239,7 +239,7 @@ static void R_FontAddAccents(fontheader_sgl_t *font)
     image_t       *img;
     byte          *pic = NULL, *out;
     int            pageW, pageH, newH, used = 0, i, n;
-    fontCell_t     base, acc, dot;
+    fontCell_t     base;
     int            rowX, rowY, cellH;
     char           name[MAX_QPATH];
     int            origUsed;
@@ -251,7 +251,7 @@ static void R_FontAddAccents(fontheader_sgl_t *font)
     if (!img || !R_LoadRawImage(img->imgName, &pic, &pageW, &pageH)) {
         return;
     }
-    if (!FontCell(font, 'e', pageW, pageH, &base) || !FontCell(font, '`', pageW, pageH, &acc)) {
+    if (!FontCell(font, 'e', pageW, pageH, &base)) {
         R_FreeRawImage(pic);
         return;
     }
@@ -285,19 +285,14 @@ static void R_FontAddAccents(fontheader_sgl_t *font)
     rowY = pageH;
     for (n = 0; n < (int)ARRAY_LEN(s_composedChars) && used < 256; n++) {
         const int c = s_composedChars[n].c, accent = s_composedChars[n].accent;
-        int       bx0, by0, bx1, by1, ax0, ay0, ax1, ay1;
-        int       aw, ah, top, left, gap, x, y;
+        int       bx0, by0, bx1, by1, bw;
+        int       aw, ah, top, left, t, x, y;
         byte     *cellPix;
-        int       ok;
+        byte      color[3] = {0, 0, 0};
+        byte      mask[64][64];
 
         if (font->indirection[c] != -1 || !FontCell(font, s_composedChars[n].base, pageW, pageH, &base)
             || !InkBox(pic, pageW, &base, &bx0, &by0, &bx1, &by1)) {
-            continue;
-        }
-        ok = FontCell(font, accent == ACC_CIRC ? '^' : accent == ACC_TILDE ? '~' : accent == ACC_DIAER ? '.'
-                            : accent == ACC_CEDIL ? ',' : '`', pageW, pageH, &acc)
-          && InkBox(pic, pageW, &acc, &ax0, &ay0, &ax1, &ay1);
-        if (!ok) {
             continue;
         }
         if (rowX + base.w + 1 > pageW) {
@@ -308,86 +303,137 @@ static void R_FontAddAccents(fontheader_sgl_t *font)
             break;
         }
 
-        // Base letter (a dotless i under an accent).
+        // The base letter, and its colour for the accent.
         cellPix = (byte *)ri.Malloc(base.w * cellH * 4);
         memset(cellPix, 0, base.w * cellH * 4);
         for (y = 0; y < base.h && y < cellH; y++) {
             memcpy(cellPix + y * base.w * 4, pic + ((base.y + y) * pageW + base.x) * 4, base.w * 4);
         }
-        if (s_composedChars[n].base == 'i' && accent != ACC_CEDIL) {
-            int gapRow = -1;
-            for (y = by0; y <= by1 && gapRow < 0; y++) {
-                qboolean empty = qtrue;
-                for (x = 0; x < base.w; x++) {
-                    if (cellPix[(y * base.w + x) * 4 + 3] > ACC_INK) empty = qfalse;
-                }
-                if (empty) gapRow = y;
-            }
-            if (gapRow > 0) {
-                memset(cellPix, 0, gapRow * base.w * 4);
-                for (by0 = gapRow; by0 < by1; by0++) {
-                    qboolean ink = qfalse;
-                    for (x = 0; x < base.w; x++) {
-                        if (cellPix[(by0 * base.w + x) * 4 + 3] > ACC_INK) ink = qtrue;
-                    }
-                    if (ink) break;
+        for (i = 0; i < base.w * cellH; i++) {
+            if (cellPix[i * 4 + 3] > ACC_INK) {
+                for (x = 0; x < 3; x++) {
+                    if (cellPix[i * 4 + x] > color[x]) color[x] = cellPix[i * 4 + x];
                 }
             }
         }
 
-        aw  = ax1 - ax0 + 1;
-        ah  = ay1 - ay0 + 1;
-        gap = cellH >= 16 ? 2 : 1;
-        if (accent == ACC_DIAER) {
-            aw = aw * 2 + gap + 1;
-        }
-        left = (bx0 + bx1 + 1) / 2 - aw / 2;
-        if (left < 0) left = 0;
-        if (left + aw > base.w) left = base.w - aw > 0 ? base.w - aw : 0;
-
+        // The accent is drawn, sized from the letter: taking it from the font's own
+        // ` ^ ~ glyphs picked up bits of the neighbouring letters in some fonts.
+        bw  = bx1 - bx0 + 1;
+        t   = cellH >= 22 ? 2 : 1;
+        memset(mask, 0, sizeof(mask));
         if (accent == ACC_CEDIL) {
-            top = by1 + 1 - ah / 3;
+            aw   = bw / 3 > 3 ? bw / 3 : 3;
+            ah   = cellH / 6 > 2 ? cellH / 6 : 2;
+            left = (bx0 + bx1) / 2 - 1;
+            top  = by1 + 1;
+            for (y = 0; y < (ah / 2 > 1 ? ah / 2 : 1); y++) {
+                for (x = 1; x < 1 + t && x < aw; x++) mask[y][x] = 1;
+            }
+            for (y = ah - t; y < ah; y++) {
+                for (x = 0; x < aw; x++) mask[y][x] = 1;
+            }
+            for (y = (ah / 2 > 1 ? ah / 2 : 1); y < ah; y++) {
+                for (x = aw - t; x < aw; x++) mask[y][x] = 1;
+            }
         } else {
-            top = by0 - gap - ah;
+            aw = (int)(bw * 0.7f + 0.5f);
+            if (aw > bw) aw = bw;
+            aw = (aw < 3 ? 3 : aw) | 1;
+            ah = (int)(cellH * 0.16f + 0.5f);
+            if (ah < 2) ah = 2;
+            if (accent == ACC_ACUTE || accent == ACC_GRAVE) {
+                ah = (int)(cellH * 0.2f + 0.5f);
+                if (ah < 3) ah = 3;
+                aw = ah - 1 > 2 ? ah - 1 : 2;
+            }
+            if (accent == ACC_DIAER) {
+                ah = t;
+            }
+            if (aw > 63) aw = 63;
+            if (ah > 63) ah = 63;
+            left = (bx0 + bx1 + 1) / 2 - aw / 2;
+            top  = by0 - 1 - ah;
             if (top < 0) {
-                // A capital fills the cell: squeeze its ink down to make room.
-                const int newTop = ah + gap, oldH = by1 - by0 + 1, newHgt = by1 - newTop + 1;
-                byte     *tmp    = (byte *)ri.Malloc(base.w * cellH * 4);
+                // A capital fills the cell: squeeze it down, never below half its height.
+                const int oldH = by1 - by0 + 1;
+                int       newHgt = by1 - (ah + 1) + 1;
+                byte     *tmp;
+                if (newHgt < oldH / 2) newHgt = oldH / 2;
+                if (newHgt < 1) newHgt = 1;
+                tmp = (byte *)ri.Malloc(base.w * cellH * 4);
                 memcpy(tmp, cellPix, base.w * cellH * 4);
-                memset(cellPix + by0 * base.w * 4, 0, (by1 - by0 + 1) * base.w * 4);
-                for (y = 0; y < newHgt && newHgt > 0; y++) {
+                memset(cellPix + by0 * base.w * 4, 0, oldH * base.w * 4);
+                for (y = 0; y < newHgt; y++) {
                     const int src = by0 + y * oldH / newHgt;
-                    memcpy(cellPix + (newTop + y) * base.w * 4, tmp + src * base.w * 4, base.w * 4);
+                    memcpy(cellPix + (by1 - newHgt + 1 + y) * base.w * 4, tmp + src * base.w * 4, base.w * 4);
                 }
                 ri.Free(tmp);
-                top = 0;
+                by0 = by1 - newHgt + 1;
+                top = by0 - 1 - ah;
+                if (top < 0) top = 0;
+            }
+            if (s_composedChars[n].base == 'i') {
+                // dotless i: clear the dot above the first empty row of the stem
+                for (y = by0; y <= by1; y++) {
+                    qboolean empty = qtrue;
+                    for (x = 0; x < base.w; x++) {
+                        if (cellPix[(y * base.w + x) * 4 + 3] > ACC_INK) empty = qfalse;
+                    }
+                    if (empty) {
+                        memset(cellPix, 0, y * base.w * 4);
+                        break;
+                    }
+                }
+            }
+            switch (accent) {
+            case ACC_ACUTE:
+            case ACC_GRAVE:
+                for (y = 0; y < ah; y++) {
+                    int px = ah > 1 ? (accent == ACC_ACUTE ? (ah - 1 - y) : y) * (aw - 1) * 2 / (ah - 1) : 0;
+                    px = (px + 1) / 2;
+                    for (x = px - t + 1; x <= px; x++) {
+                        if (x >= 0) mask[y][x] = 1;
+                    }
+                }
+                break;
+            case ACC_CIRC:
+                for (x = 0; x < aw; x++) {
+                    const float half = (aw - 1) * 0.5f;
+                    const int   py   = (int)(fabsf(x - half) / (half > 1 ? half : 1) * (ah - 1) + 0.5f);
+                    for (y = py; y < py + t && y < ah; y++) mask[y][x] = 1;
+                }
+                break;
+            case ACC_TILDE:
+                for (x = 0; x < aw; x++) {
+                    const float ph = aw > 1 ? (float)x / (aw - 1) * 2.0f * (float)M_PI : 0;
+                    const int   py = (int)((ah - 1) * 0.5f - sinf(ph) * (ah - 1) * 0.5f + 0.5f);
+                    for (y = py; y < py + t && y < ah; y++) {
+                        if (y >= 0) mask[y][x] = 1;
+                    }
+                }
+                break;
+            case ACC_DIAER:
+                for (y = 0; y < t; y++) {
+                    for (x = 0; x < t; x++) {
+                        mask[ah - 1 - y][x]          = 1;
+                        mask[ah - 1 - y][aw - 1 - x] = 1;
+                    }
+                }
+                break;
             }
         }
-
-        // Accent ink, mirrored for acute, doubled for diaeresis.
+        if (left > base.w - aw) left = base.w - aw;
+        if (left < 0) left = 0;
         for (y = 0; y < ah; y++) {
-            const int dy = top + y;
-            if (dy < 0 || dy >= cellH) continue;
             for (x = 0; x < aw; x++) {
-                int sx, dx = left + x;
-                const byte *s;
-                byte       *d;
-                if (dx < 0 || dx >= base.w) continue;
-                if (accent == ACC_DIAER) {
-                    const int dw = ax1 - ax0 + 1;
-                    if (x < dw) sx = x;
-                    else if (x >= dw + gap + 1) sx = x - dw - gap - 1;
-                    else continue;
-                } else if (accent == ACC_ACUTE) {
-                    sx = aw - 1 - x;
-                } else {
-                    sx = x;
-                }
-                s = pic + ((acc.y + ay0 + y) * pageW + acc.x + ax0 + sx) * 4;
-                d = cellPix + (dy * base.w + dx) * 4;
-                if (s[3] > d[3]) {
-                    memcpy(d, s, 4);
-                }
+                byte *d;
+                if (!mask[y][x] || top + y < 0 || top + y >= cellH || left + x >= base.w) continue;
+                d    = cellPix + ((top + y) * base.w + left + x) * 4;
+                d[0] = color[0];
+                d[1] = color[1];
+                d[2] = color[2];
+                d[3] = 255;
             }
         }
 
