@@ -2640,6 +2640,8 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 #ifdef __vita__
 	{
 		VP_BEGIN( lpT );
+		pic = NULL;
+		glCompressMode = 0;
 		// Menu pictures with words on them can have a translated copy in
 		// lang/<code>/ (built by misc/vita/make_menu_text.py) for the Text Language
 		// chosen in the Vita settings. Only the menu folder is looked at, so level
