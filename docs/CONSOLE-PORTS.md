@@ -31,14 +31,10 @@ game's **`main/` folder** and the files inside it.
 
 **Where it can come from:**
 
-- **GOG — "Medal of Honor: Allied Assault War Chest":** the easiest legit source
-  today. The bundle (base game + **Spearhead** + **Breakthrough**) is sold on
+- **GOG — "Medal of Honor: Allied Assault War Chest":** the only store that sells it
+  today (it is not on Steam). The bundle (base game + **Spearhead** + **Breakthrough**) is sold on
   GOG; after installing, the data sits in the game folder as
   `main/` + `mainta/` + `maintt/`.
-- **Steam — same "War Chest" bundle:** also distributed on Steam; the data lives
-  under `…\Steam\steamapps\common\Medal of Honor Allied Assault War Chest\`.
-  (Store availability has shifted over time — check your own library; the folder
-  layout is identical.)
 - **Retail discs (CD1 + CD2):** install on a Windows PC; the install folder
   (e.g. `…\EA GAMES\MOHAA\`) contains `main/` (+ `mainta/` / `maintt/` if the
   expansions are installed).

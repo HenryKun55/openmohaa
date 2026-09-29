@@ -28,10 +28,9 @@ carries the source code of that exact build, as the GPL requires.
 - A PS Vita (or PS TV) with custom firmware (HENkaku, h-encore or Enso) and
   **VitaShell** installed.
 - A Wi-Fi network shared by the Vita and a computer (or a USB cable).
-- Your own copy of **Medal of Honor: Allied Assault** on a PC: the GOG or Steam
-  "War Chest" edition or the retail discs. You need its `main` folder
-  (for example `C:\GOG Games\Medal of Honor Allied Assault War Chest\main`).
-- About 1.1 GB free on the memory card.
+- Your own copy of **Medal of Honor: Allied Assault**: the GOG "War Chest" edition
+  or the original discs. You need its `main` folder (see step 3).
+- About 1.5 GB free on the memory card.
 
 ### 1. Send the files to the Vita
 
@@ -60,8 +59,11 @@ the memory card shows up on the computer as a drive (`ux0:` is its root).
 **Where they come from.** The files come from the game **installed on a PC**, not
 straight from the discs: on the CDs they are packed inside the installer.
 
-- **GOG or Steam** ("War Chest"): already installed and patched. Use its `main`
-  folder, e.g. `...\Medal of Honor Allied Assault War Chest\main`.
+- **GOG** ("Medal of Honor: Allied Assault War Chest", the only store that sells it
+  today; it is not on Steam): install it and use its `main` folder, e.g.
+  `C:\GOG Games\Medal of Honor Allied Assault War Chest\main`. It is already
+  patched. The GOG installer is for Windows; on macOS or Linux you can unpack it
+  with [innoextract](https://constexpr.org/innoextract/).
 - **Discs (CD1 + CD2)**: install the game on a Windows PC, then the official
   **1.11 patch** (it adds `Pak4.pk3` and `Pak5.pk3`). Use the `main` folder of the
   install, e.g. `C:\Program Files (x86)\EA GAMES\MOHAA\main`.
@@ -70,9 +72,8 @@ straight from the discs: on the CDs they are packed inside the installer.
 
 | From the PC's `main` | | |
 |---|---|---|
-| `Pak0.pk3` ... `Pak5.pk3` | **required** | the game itself |
-| any other `Pak*.pk3` (e.g. a language pak like `Pak6Uk.pk3`) | copy if present | |
-| the whole `sound` folder, **as it is** | recommended | music, dialogue and ambient sounds that are not in the paks |
+| **every** `.pk3` file: `Pak0.pk3` ... `Pak5.pk3`, plus any others your edition has (GOG also has `Pak6EnUk.pk3` and `pak7.pk3`; other languages have their own) | **required** | the game itself |
+| the whole `sound` folder, **as it is** (and a `music` folder, if your install has one) | recommended | music, dialogue and ambient sounds that are not in the paks |
 | the `video` folder | optional | intro videos |
 
 **Do not copy:** `mainta` / `maintt` (the expansions, not supported yet), the
@@ -83,7 +84,7 @@ The result:
 
 ```
 ux0:data/openmohaa/main/
-    Pak0.pk3  Pak1.pk3  Pak2.pk3  Pak3.pk3  Pak4.pk3  Pak5.pk3
+    Pak0.pk3  Pak1.pk3  Pak2.pk3  Pak3.pk3  Pak4.pk3  Pak5.pk3  (+ any other .pk3)
     sound/    (music/, dialogue/, amb_stereo/, ... and some loose .wav files)
     video/    (optional)
 ```
@@ -92,18 +93,11 @@ Keep `sound` exactly as the PC has it: do not rename or move files inside it. So
 ambient sounds sit directly in `sound/` on the PC; the game finds them there
 (from v0.1.1; v0.1 missed them).
 
-If the menu shows only white outlines, the textures did not load: a pak is missing,
-incomplete or from another edition. Compare with the base game (sizes as VitaShell
-shows them; file counts from the top of `boot.log`):
-
-| File | Size in VitaShell | Files (boot.log) |
-|---|---|---|
-| Pak0.pk3 | 94.10 MB | 11175 |
-| Pak1.pk3 | 180.03 MB | 1534 |
-| Pak2.pk3 | 503.22 MB | 8366 |
-| Pak3.pk3 | 83.50 MB | 669 |
-| Pak4.pk3 | 32.47 MB | 593 |
-| Pak5.pk3 | 83.66 MB | 259 |
+**Check the copy.** Each `.pk3` on the Vita must have exactly the same size as on
+the PC (sizes differ between editions, so compare with your own PC files, not
+someone else's). A copy that stopped halfway is the usual reason for a menu that
+shows only white outlines: the textures did not load. `boot.log` also lists, near
+the top, every pak the game found and how many files it has.
 
 **Optional, faster loading:** build a pre-resampled sound pack on a PC and copy it
 next to the paks (saves several seconds per level load):
