@@ -10,12 +10,15 @@ You need your own copy of the original game. No game data is included.
 
 ## Install
 
-1. On the Vita, open **VitaShell** and press **SELECT** to start its FTP server.
-2. From a computer, connect to the address it shows (for example with FileZilla)
+1. Make sure the Vita has **libshacccg.suprx** (the shader compiler most Vita ports
+   need). If not, install and run [ShaRKF00D](https://github.com/Rinnegatamante/ShaRKF00D)
+   once: it extracts it for you.
+2. On the Vita, open **VitaShell** and press **SELECT** to start its FTP server.
+3. From a computer, connect to the address it shows (for example with FileZilla)
    and copy `OpenMoHAA.vpk` to `ux0:/`.
-3. In VitaShell, press **Cross** on `OpenMoHAA.vpk` and choose **Install**.
-4. Copy the game files in the table below to `ux0:data/openmohaa/main/`.
-5. Start it from the LiveArea.
+4. In VitaShell, press **Cross** on `OpenMoHAA.vpk` and choose **Install**.
+5. Copy the game files in the table below to `ux0:data/openmohaa/main/`.
+6. Start it from the LiveArea.
 
 The game files come from your game **installed on a PC**: the GOG edition (the only
 store that sells it; it is not on Steam) or the discs installed with the official
@@ -36,7 +39,8 @@ store that sells it; it is not on Steam) or the discs installed with the officia
 | `mainta`, `maintt` | no | expansions, not supported yet |
 | `configs`, `.cfg`, `.exe`, `.dll` | no | PC settings and programs |
 
-Each `.pk3` on the Vita must be the same size as on your PC.
+Each `.pk3` on the Vita must be the same size as on your PC. A menu with only white
+outlines means a missing `libshacccg.suprx` or a pak that did not copy completely.
 
 Step-by-step guide (which files, GOG or discs, USB, updating):
 [docs/PORTING-VITA.md](docs/PORTING-VITA.md#install-on-the-vita). Updating never

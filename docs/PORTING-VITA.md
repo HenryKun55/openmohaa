@@ -27,6 +27,11 @@ carries the source code of that exact build, as the GPL requires.
 
 - A PS Vita (or PS TV) with custom firmware (HENkaku, h-encore or Enso) and
   **VitaShell** installed.
+- **libshacccg.suprx**, the Vita's shader compiler, extracted on the console. The
+  game needs it to draw. Most Vita ports need it too, so you may already have it.
+  If not: install [ShaRKF00D](https://github.com/Rinnegatamante/ShaRKF00D) (also on
+  VitaDB), open it and let it extract and decrypt the file; it saves it to
+  `ur0:data/libshacccg.suprx`.
 - A Wi-Fi network shared by the Vita and a computer (or a USB cable).
 - Your own copy of **Medal of Honor: Allied Assault**: the GOG "War Chest" edition
   or the original discs. You need its `main` folder (see step 3).
@@ -101,8 +106,9 @@ ambient sounds sit directly in `sound/` on the PC; the game finds them there
 
 **Check the copy.** Each `.pk3` on the Vita must have exactly the same size as on
 the PC (sizes differ between editions, so compare with your own PC files, not
-someone else's). A copy that stopped halfway is the usual reason for a menu that
-shows only white outlines: the textures did not load. `boot.log` also lists, near
+someone else's). A menu that shows only white outlines means the game cannot draw
+properly: check first that `ur0:data/libshacccg.suprx` exists (see "What you need"),
+then that no pak stopped copying halfway. `boot.log` also lists, near
 the top, every pak the game found and how many files it has.
 
 **Optional, faster loading:** build a pre-resampled sound pack on a PC and copy it
