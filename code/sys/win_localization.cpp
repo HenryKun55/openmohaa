@@ -122,12 +122,23 @@ void Sys_ShutLocalization()
 
 const char *Sys_LV_ConvertString(const char *var)
 {
+#if defined(__vita__) || defined(__SWITCH__)
+    // The console ports only play the single-player campaign, where the game and the
+    // client share this table: translate here too. Script hints (loc_convert_string
+    // + iprintlnbold_noloc) and the pickup messages ("Got 10 Rifle Rounds") are only
+    // ever converted on this side.
+    if (g_localization) {
+        return g_localization->ConvertString(var);
+    }
+    return var;
+#else
     //
     // Changed in 2.0
     //  Don't localize messages from fgame.
     //  The client already localize messages it receives
     //
     return var;
+#endif
 }
 
 const char *Sys_LV_CL_ConvertString(const char *var)
