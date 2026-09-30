@@ -71,6 +71,16 @@ static cLocalization *Sys_LocalizationFor(const char *code)
     return loc;
 }
 
+const char *Sys_LV_ConvertStringFor(const char *code, const char *var)
+{
+    for (int i = 0; i < s_numLangs; i++) {
+        if (!Q_stricmp(s_langs[i].code, code)) {
+            return s_langs[i].loc->ConvertString(var);
+        }
+    }
+    return var;
+}
+
 static void Sys_ReloadLocalization_f(void)
 {
     g_localization = Sys_LocalizationFor(Cvar_VariableString("vita_language"));
