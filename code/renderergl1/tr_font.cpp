@@ -143,11 +143,12 @@ R_FontAddAccents
 
 The English game fonts only have ASCII glyphs, so translated text drew '?' for every
 accented letter. Build the Latin-1 accented letters from the font's own glyphs (base
-letter plus an accent made from ` ^ ~ . ,) into extra rows of the font page, at load
-time from the player's own game data, so they keep the game's look.
+letter plus an accent made from ` ^ ~ . ,, and the Spanish marks from ? and ! turned
+upside down) into extra rows of the font page, at load time from the player's own game
+data, so they keep the game's look.
 =================
 */
-enum { ACC_GRAVE, ACC_ACUTE, ACC_CIRC, ACC_TILDE, ACC_DIAER, ACC_CEDIL };
+enum { ACC_GRAVE, ACC_ACUTE, ACC_CIRC, ACC_TILDE, ACC_DIAER, ACC_CEDIL, ACC_FLIP };
 
 static const struct {
     unsigned char c, base, accent;
@@ -165,6 +166,8 @@ static const struct {
     { 0xF2, 'o', ACC_GRAVE }, { 0xF3, 'o', ACC_ACUTE }, { 0xF4, 'o', ACC_CIRC },  { 0xF5, 'o', ACC_TILDE },
     { 0xF6, 'o', ACC_DIAER }, { 0xF9, 'u', ACC_GRAVE }, { 0xFA, 'u', ACC_ACUTE }, { 0xFB, 'u', ACC_CIRC },
     { 0xFC, 'u', ACC_DIAER }, { 0xFD, 'y', ACC_ACUTE }, { 0xFF, 'y', ACC_DIAER },
+    // Spanish opening marks: the ? and ! turned upside down
+    { 0xBF, '?', ACC_FLIP },  { 0xA1, '!', ACC_FLIP },
 };
 
 #define ACC_INK 40 // alpha above which a pixel counts as part of a glyph
@@ -322,7 +325,19 @@ static void R_FontAddAccents(fontheader_sgl_t *font)
         bw  = bx1 - bx0 + 1;
         t   = cellH >= 22 ? 2 : 1;
         memset(mask, 0, sizeof(mask));
-        if (accent == ACC_CEDIL) {
+        if (accent == ACC_FLIP) {
+            // turned half a circle within its own ink box
+            byte *tmp = (byte *)ri.Malloc(base.w * cellH * 4);
+            memcpy(tmp, cellPix, base.w * cellH * 4);
+            for (y = by0; y <= by1; y++) {
+                for (x = bx0; x <= bx1; x++) {
+                    memcpy(cellPix + (y * base.w + x) * 4, tmp + ((by0 + by1 - y) * base.w + bx0 + bx1 - x) * 4, 4);
+                }
+            }
+            ri.Free(tmp);
+            aw = ah = 0;
+            left = top = 0;
+        } else if (accent == ACC_CEDIL) {
             aw   = bw / 3 > 3 ? bw / 3 : 3;
             ah   = cellH / 6 > 2 ? cellH / 6 : 2;
             left = (bx0 + bx1) / 2 - 1;
