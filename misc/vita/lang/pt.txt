@@ -877,6 +877,55 @@
 { "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign." "As expansões Spearhead e Breakthrough também ainda não estão disponíveis: esta versão roda a campanha de Allied Assault." }
 { "Press any button to go back." "Aperte qualquer botão para voltar." }
 
+// Update check (Vita settings > System, code/sys/vita_update.c, misc/vita/updater).
+// %s is filled in by the game (a version number): keep it, in the same order.
+{ "Check for updates" "Verificar atualizações" }
+{ "When the game starts, look for a new version on GitHub." "Ao abrir o jogo, procura uma versão nova no GitHub." }
+{ "Check now" "Verificar agora" }
+{ "Look for a new version on GitHub now." "Procura agora uma versão nova no GitHub." }
+{ "UPDATE" "ATUALIZAÇÃO" }
+{ "OpenMoHAA %s is installed. Your settings and saves were kept." "OpenMoHAA %s instalado. Suas configurações e saves foram mantidos." }
+{ "The installed game still works. Details: ux0:data/openmohaa/update/update.log" "O jogo instalado continua funcionando. Detalhes: ux0:data/openmohaa/update/update.log" }
+{ "Looking for a new version..." "Procurando uma versão nova..." }
+{ "You have the latest version (%s)." "Você já tem a versão mais nova (%s)." }
+{ "Version %s is available (you have %s)." "A versão %s está disponível (você tem a %s)." }
+{ "It is downloaded now and installed when you confirm. Settings and saves are kept." "Ela é baixada agora e instalada quando você confirmar. Configurações e saves continuam." }
+{ "X: download   O: later" "X: baixar   O: depois" }
+{ "Downloading version %s..." "Baixando a versão %s..." }
+{ "O: cancel" "O: cancelar" }
+{ "Version %s is downloaded and checked." "A versão %s foi baixada e conferida." }
+{ "To install it the game closes and the installer opens; then start the game again." "Para instalar, o jogo fecha e o instalador abre; depois abra o jogo de novo." }
+{ "X: install now   O: later" "X: instalar agora   O: depois" }
+{ "Details: ux0:data/openmohaa/update/update.log" "Detalhes: ux0:data/openmohaa/update/update.log" }
+{ "X: try again   O: close" "X: tentar de novo   O: fechar" }
+{ "The Vita's network could not start." "A rede do Vita não iniciou." }
+{ "Out of memory." "Memória insuficiente." }
+{ "The Vita is not connected to Wi-Fi." "O Vita não está conectado ao Wi-Fi." }
+{ "Could not find GitHub: check that the Wi-Fi has internet access." "Não achou o GitHub: veja se o Wi-Fi tem acesso à internet." }
+{ "Could not connect to GitHub." "Não conseguiu conectar ao GitHub." }
+{ "GitHub did not answer in time. Try again." "O GitHub não respondeu a tempo. Tente de novo." }
+{ "The secure connection was refused. Check that the Vita's date and time are right." "A conexão segura foi recusada. Confira se a data e a hora do Vita estão certas." }
+{ "GitHub's certificate could not be verified." "Não deu para verificar o certificado do GitHub." }
+{ "The game's certificate list (cacert.pem) is missing or damaged: reinstall the .vpk." "A lista de certificados do jogo (cacert.pem) está faltando ou danificada: reinstale o .vpk." }
+{ "The secure connection to GitHub failed." "A conexão segura com o GitHub falhou." }
+{ "The download was cut off. Try again." "O download foi interrompido. Tente de novo." }
+{ "Could not write the download to the memory card." "Não conseguiu gravar o download no cartão de memória." }
+{ "Download cancelled." "Download cancelado." }
+{ "The connection to GitHub failed." "A conexão com o GitHub falhou." }
+{ "GitHub's answer could not be read." "Não deu para ler a resposta do GitHub." }
+{ "The latest release has no OpenMoHAA.vpk." "A release mais nova não tem o OpenMoHAA.vpk." }
+{ "GitHub is limiting update checks from this network for a while. Try again later." "O GitHub está limitando as verificações desta rede por um tempo. Tente mais tarde." }
+{ "No release was found on GitHub." "Nenhuma release foi encontrada no GitHub." }
+{ "GitHub answered with an error. Try again later." "O GitHub respondeu com erro. Tente mais tarde." }
+{ "The download is damaged (its SHA-256 does not match). Try again." "O download veio corrompido (o SHA-256 não bate). Tente de novo." }
+{ "There is not enough free space on the memory card." "Não há espaço livre suficiente no cartão de memória." }
+{ "The installer could not start. Enable Unsafe Homebrew in Settings > HENkaku Settings and try again." "O instalador não abriu. Ative o Unsafe Homebrew em Configurações > HENkaku Settings e tente de novo." }
+{ "The installer found nothing to install." "O instalador não achou nada para instalar." }
+{ "The installer could not unpack the new version." "O instalador não conseguiu descompactar a versão nova." }
+{ "The installer could not prepare the new version." "O instalador não conseguiu preparar a versão nova." }
+{ "The game was updated, but its language pack could not be replaced." "O jogo foi atualizado, mas o pacote de idioma não pôde ser trocado." }
+{ "The Vita's installer rejected the new version." "O instalador do Vita recusou a versão nova." }
+
 // Words drawn in menu pictures, used by misc/vita/make_menu_text.py (not by the game).
 { "SELECT DIFFICULTY" "DIFICULDADE" }
 { "EASY" "FÁCIL" }

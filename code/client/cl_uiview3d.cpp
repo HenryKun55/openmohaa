@@ -27,6 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #ifdef __vita__
 #include <psp2/apputil.h>
 #include <psp2/system_param.h>
+#include "../sys/vita_update.h"
+extern "C" void Com_WriteConfiguration(void);
 #endif
 
 CLASS_DECLARATION(UIWidget, View3D, NULL) {
@@ -259,6 +261,8 @@ static const VitaMenuText g_vmTexts[] = {
     { "Crosshair (aim)", "Show the crosshair while aiming." },
 
     /* SETTINGS: system */
+    { "Check for updates", "When the game starts, look for a new version on GitHub." },
+    { "Check now", "Look for a new version on GitHub now." },
     { "Restore defaults", "Back to the port's recommended settings." },
     { "Debug menu", "Renderer switches, level select, cheats and diagnostics." },
     { "Close" },
@@ -437,7 +441,11 @@ static VitaPerfMenuItem g_smControls[] = {
 #define VPM_ACTION_SETTINGS "@settings"
 #define VPM_ACTION_CLOSE    "@close"
 
+#define VPM_ACTION_UPDATE   "@update"
+
 static VitaPerfMenuItem g_smSystem[] = {
+    { "Check for updates", "vita_update_check", qfalse, 0 },
+    { "Check now",         NULL, qfalse, 0, VPM_ACTION_UPDATE },
     { "Restore defaults", NULL, qfalse, 0, VPM_ACTION_DEFAULTS },
     { "Debug menu",       NULL, qfalse, 0, VPM_ACTION_DEBUG },
     { "Close",            NULL, qfalse, 0, VPM_ACTION_CLOSE },
@@ -726,8 +734,28 @@ void CL_VitaNotice_Multiplayer(void)
     g_vnOpenTime = Sys_Milliseconds();
 }
 
+#ifdef __vita__
+static qboolean g_vuActive;   /* the update window is open */
+static int      g_vuOpenTime;
+static qboolean g_vuManual;   /* opened from "Check now": also tells "up to date" */
+static int      g_vuResult;   /* 1/-1: updater.bin's report of the last install */
+static char     g_vuResultVersion[32], g_vuResultError[256], g_vuResultDetail[400];
+
+static void VitaUpdate_Open(qboolean manual)
+{
+    g_vuActive   = qtrue;
+    g_vuManual   = manual;
+    g_vuOpenTime = Sys_Milliseconds();
+}
+#endif
+
 qboolean CL_VitaPerfMenu_IsActive(void)
 {
+#ifdef __vita__
+    if (g_vuActive) {
+        return qtrue;
+    }
+#endif
     return g_pmActive || g_vnActive;
 }
 
@@ -744,12 +772,55 @@ static void VitaPerfMenu_Action(const char *action)
         VitaPerfMenu_SetScreen(qfalse);
     } else if (!strcmp(action, VPM_ACTION_CLOSE)) {
         VitaPerfMenu_Close();
+#ifdef __vita__
+    } else if (!strcmp(action, VPM_ACTION_UPDATE)) {
+        VitaPerfMenu_Close();
+        VitaUpdate_Check(Cvar_VariableString("vita_language"));
+        VitaUpdate_Open(qtrue);
+#endif
     }
 }
 
 /* Called from CL_KeyEvent. Returns true if the key was consumed. */
 qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
 {
+#ifdef __vita__
+    if (g_vuActive) {
+        const vitaUpdateState_t st    = VitaUpdate_State();
+        const qboolean          cross = key == Key_StringToKeynum("PAD0_A") || key == K_ENTER || key == K_MOUSE1;
+        const qboolean          circle = key == Key_StringToKeynum("PAD0_B") || key == K_ESCAPE;
+
+        if (!down || Sys_Milliseconds() - g_vuOpenTime < 400) {
+            return qtrue;
+        }
+        if (g_vuResult) {
+            g_vuResult = 0; /* the report of the last install: any button closes it */
+            g_vuActive = qfalse;
+        } else if (st == VU_AVAILABLE) {
+            if (cross) {
+                VitaUpdate_Download();
+            } else if (circle) {
+                g_vuActive = qfalse;
+            }
+        } else if (st == VU_DOWNLOADING) {
+            if (circle) {
+                VitaUpdate_Cancel();
+            }
+        } else if (st == VU_READY) {
+            if (cross) {
+                Com_WriteConfiguration(); /* the updater replaces the game: keep the settings */
+                VitaUpdate_Launch();      /* returns only if the Vita refused */
+            } else if (circle) {
+                g_vuActive = qfalse;
+            }
+        } else if (st == VU_ERROR && cross && VitaUpdate_NewVersion()[0]) {
+            VitaUpdate_Download(); /* try the download again */
+        } else if (st != VU_CHECKING) {
+            g_vuActive = qfalse;
+        }
+        return qtrue;
+    }
+#endif
     if (g_vnActive) {
         if (down && Sys_Milliseconds() - g_vnOpenTime >= 400) {
             g_vnActive = qfalse;
@@ -930,8 +1001,170 @@ static void VitaNotice_Draw(class UIFont *menuFont, float screenW, float screenH
     menuFont->setColor(UWhite);
 }
 
+/* Prints text wrapped at about maxChars characters per line; returns the next y. */
+static float VitaMenu_PrintWrapped(class UIFont *font, float x, float y, const char *text, int maxChars)
+{
+    const char *p = VitaMenu_Latin1(text);
+
+    while (*p) {
+        char line[128];
+        int  len = (int)strlen(p), cut = len;
+        if (len > maxChars) {
+            for (cut = maxChars; cut > 0 && p[cut] != ' '; cut--) {
+            }
+            if (cut == 0) {
+                cut = maxChars;
+            }
+        }
+        Q_strncpyz(line, p, cut + 1 < (int)sizeof(line) ? cut + 1 : (int)sizeof(line));
+        font->Print(x, y, line, -1, NULL);
+        y += 20.0f;
+        p += cut;
+        while (*p == ' ') {
+            p++;
+        }
+    }
+    return y;
+}
+
+#ifdef __vita__
+/* Once per start, in the main menu: report the last install, then look for a new
+ * version (Vita settings > System > Check for updates). A check started here stays
+ * silent unless it finds one or fails for another reason than the Wi-Fi being off. */
+void CL_VitaUpdate_Frame(void)
+{
+    static qboolean s_resultRead, s_checked;
+    static int      s_menuSince;
+    static int      s_lastState = VU_IDLE;
+    const int       st          = VitaUpdate_State();
+
+    if (clc.state != CA_DISCONNECTED) {
+        s_menuSince = 0;
+        return;
+    }
+    if (!s_menuSince) {
+        s_menuSince = Sys_Milliseconds();
+    }
+    if (!s_resultRead) {
+        s_resultRead = qtrue;
+        g_vuResult   = VitaUpdate_TakeInstallResult(g_vuResultVersion, sizeof(g_vuResultVersion), g_vuResultError,
+                                                  sizeof(g_vuResultError), g_vuResultDetail,
+                                                  sizeof(g_vuResultDetail));
+        if (g_vuResult) {
+            VitaUpdate_Open(qfalse);
+        }
+    }
+    if (!s_checked && !g_vuResult && Sys_Milliseconds() - s_menuSince > 2000) {
+        s_checked = qtrue;
+        if (Cvar_Get("vita_update_check", "1", CVAR_ARCHIVE)->integer) {
+            VitaUpdate_Check(Cvar_VariableString("vita_language"));
+        }
+    }
+    if (st != s_lastState) {
+        if (!g_vuActive && st == VU_AVAILABLE) {
+            VitaUpdate_Open(qfalse);
+        } else if (!g_vuActive && st == VU_ERROR && s_lastState == VU_CHECKING
+                   && strcmp(VitaUpdate_Error(), "The Vita is not connected to Wi-Fi.")) {
+            VitaUpdate_Open(qfalse);
+        }
+        s_lastState = st;
+    }
+}
+
+static void VitaUpdate_Draw(class UIFont *font, float screenW, float screenH)
+{
+    const vec4_t bg    = {0.02f, 0.03f, 0.02f, 0.92f};
+    const vec4_t band  = {0.30f, 0.26f, 0.12f, 0.95f};
+    const vec4_t barBg = {0.15f, 0.15f, 0.15f, 1.0f};
+    const vec4_t barFg = {0.45f, 0.62f, 0.25f, 1.0f};
+    const float  boxW  = screenW < 580.0f ? screenW - 20.0f : 560.0f;
+    const float  boxH  = 240.0f;
+    const float  boxX  = (screenW - boxW) * 0.5f;
+    const float  boxY  = (screenH - boxH) * 0.5f;
+    const float  textX = boxX + 16.0f;
+    const int    wrap  = 54;
+    const int    st    = VitaUpdate_State();
+    const char  *hint  = "Press any button to go back.";
+    float        y;
+
+    re.SetColor(bg);
+    re.DrawBox(boxX, boxY, boxW, boxH);
+    re.SetColor(band);
+    re.DrawBox(boxX, boxY, boxW, 30.0f);
+    re.SetColor(NULL);
+    if (!font) {
+        return;
+    }
+    font->setColor(UWhite);
+    font->Print(boxX + 12.0f, boxY + 7.0f, VitaMenu_Latin1(VT("UPDATE")), -1, NULL);
+    y = boxY + 44.0f;
+
+    if (g_vuResult > 0) {
+        y = VitaMenu_PrintWrapped(font, textX, y, va(VT("OpenMoHAA %s is installed. Your settings and saves were kept."),
+                                                     g_vuResultVersion), wrap);
+    } else if (g_vuResult < 0) {
+        font->setColor(URed);
+        y = VitaMenu_PrintWrapped(font, textX, y, VT(g_vuResultError), wrap);
+        font->setColor(UWhite);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, g_vuResultDetail, wrap + 6);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VT("The installed game still works. Details: ux0:data/openmohaa/update/update.log"), wrap);
+    } else if (st == VU_CHECKING) {
+        y = VitaMenu_PrintWrapped(font, textX, y, VT("Looking for a new version..."), wrap);
+        hint = "";
+    } else if (st == VU_UPTODATE) {
+        y = VitaMenu_PrintWrapped(font, textX, y, va(VT("You have the latest version (%s)."), VitaUpdate_CurrentVersion()), wrap);
+    } else if (st == VU_AVAILABLE) {
+        y = VitaMenu_PrintWrapped(font, textX, y, va(VT("Version %s is available (you have %s)."), VitaUpdate_NewVersion(),
+                                                     VitaUpdate_CurrentVersion()), wrap);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VT("It is downloaded now and installed when you confirm. Settings and saves are kept."), wrap);
+        hint = "X: download   O: later";
+    } else if (st == VU_DOWNLOADING) {
+        long long done, total;
+        float     frac;
+        VitaUpdate_Progress(&done, &total);
+        frac = total > 0 ? (float)done / (float)total : 0.0f;
+        if (frac > 1.0f) {
+            frac = 1.0f;
+        }
+        y = VitaMenu_PrintWrapped(font, textX, y, va(VT("Downloading version %s..."), VitaUpdate_NewVersion()), wrap);
+        re.SetColor(barBg);
+        re.DrawBox(textX, y + 8.0f, boxW - 32.0f, 16.0f);
+        re.SetColor(barFg);
+        re.DrawBox(textX, y + 8.0f, (boxW - 32.0f) * frac, 16.0f);
+        re.SetColor(NULL);
+        y += 32.0f;
+        font->Print(textX, y, va("%d%%   %.1f / %.1f MB", (int)(frac * 100.0f), done / 1048576.0, total / 1048576.0), -1, NULL);
+        hint = "O: cancel";
+    } else if (st == VU_READY) {
+        y = VitaMenu_PrintWrapped(font, textX, y, va(VT("Version %s is downloaded and checked."), VitaUpdate_NewVersion()), wrap);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VT("To install it the game closes and the installer opens; then start the game again."), wrap);
+        hint = "X: install now   O: later";
+    } else if (st == VU_ERROR) {
+        font->setColor(URed);
+        y = VitaMenu_PrintWrapped(font, textX, y, VT(VitaUpdate_Error()), wrap);
+        font->setColor(UWhite);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VitaUpdate_ErrorDetail(), wrap + 6);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VT("Details: ux0:data/openmohaa/update/update.log"), wrap);
+        if (VitaUpdate_NewVersion()[0] && strcmp(VitaUpdate_Error(), "Download cancelled.")) {
+            hint = "X: try again   O: close";
+        }
+    }
+    if (hint[0]) {
+        font->setColor(UYellow);
+        font->Print(textX, boxY + boxH - 28.0f, VitaMenu_Latin1(VT(hint)), -1, NULL);
+    }
+    font->setColor(UWhite);
+}
+#endif
+
 void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
 {
+#ifdef __vita__
+    if (g_vuActive) {
+        VitaUpdate_Draw(menuFont, screenW, screenH);
+        return;
+    }
+#endif
     if (g_vnActive) {
         VitaNotice_Draw(menuFont, screenW, screenH);
         return;

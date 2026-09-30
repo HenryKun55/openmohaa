@@ -2401,6 +2401,10 @@ void UI_Update(void)
     {
         extern qboolean CL_VitaPerfMenu_IsActive(void);
         extern void     CL_VitaPerfMenu_Draw(class UIFont * menuFont, float screenW, float screenH);
+#ifdef __vita__
+        extern void CL_VitaUpdate_Frame(void);
+        CL_VitaUpdate_Frame(); // new version check in the main menu
+#endif
         if (CL_VitaPerfMenu_IsActive() && !(view3d && view3d->IsVisible())) {
             static UIFont *s_menuFont;
             if (!s_menuFont) {
