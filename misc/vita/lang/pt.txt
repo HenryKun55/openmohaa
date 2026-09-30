@@ -747,6 +747,55 @@
 { "MEDIUM" "MÉDIO" }
 { "HARD" "DIFÍCIL" }
 { "CANCEL" "CANCELAR" }
+{ "ARE YOU SURE YOU WANT TO DELETE?" "TEM CERTEZA QUE QUER APAGAR?" }
+{ "YES" "SIM" }
+{ "NO" "NÃO" }
+{ "NEW GAME" "NOVO JOGO" }
+{ "OPTIONS" "OPÇÕES" }
+{ "BRIEFING ROOM" "SALA DE BRIEFING" }
+{ "CREDITS" "CRÉDITOS" }
+{ "MULTIPLAYER" "MULTIJOGADOR" }
+{ "MAPLIST" "MAPAS" }
+{ "CONTINUE GAME" "CONTINUAR JOGO" }
+{ "LOAD DEMO" "CARREGAR DEMO" }
+{ "LOAD/SAVE & MEDAL CASE" "CARREGAR/SALVAR|E MEDALHAS" }
+{ "MAP ROOM" "SALA DE MAPAS" }
+{ "START GAME" "INICIAR JOGO" }
+{ "JOIN GAME" "ENTRAR NO JOGO" }
+{ "MULTIPLAYER OPTIONS" "OPÇÕES DO|MULTIJOGADOR" }
+{ "ADVANCED" "AVANÇADO" }
+{ "AUDIO" "ÁUDIO" }
+{ "CONTROLS" "CONTROLES" }
+{ "VIDEO" "VÍDEO" }
+{ "LOAD/SAVE GAME" "JOGOS|SALVOS" }
+{ "PERSONAL RECORDS" "FICHA|PESSOAL" }
+{ "TRAINING COURSE" "CAMPO DE|TREINO" }
+{ "MISSION 1:" "MISSÃO 1:" }
+{ "MISSION 2:" "MISSÃO 2:" }
+{ "MISSION 3:" "MISSÃO 3:" }
+{ "MISSION 4:" "MISSÃO 4:" }
+{ "MISSION 5:" "MISSÃO 5:" }
+{ "MISSION 6:" "MISSÃO 6:" }
+{ "Lighting The Torch" "Acendendo a Tocha" }
+{ "Scuttling The U-529" "Afundando o U-529" }
+{ "Operation Overlord" "Operação Overlord" }
+{ "Behind Enemy Lines" "Atrás das Linhas Inimigas" }
+{ "The Day Of The Tiger" "O Dia do Tiger" }
+{ "Return To Schmerzen" "Retorno a Schmerzen" }
+{ "APPLY" "APLICAR" }
+{ "BACK" "VOLTAR" }
+{ "BACK TO GAME" "VOLTAR AO JOGO" }
+{ "CONTINUE" "CONTINUAR" }
+{ "DEFAULT" "PADRÃO" }
+{ "QUIT" "SAIR" }
+{ "LOAD" "CARREGAR" }
+{ "SAVE" "SALVAR" }
+{ "DELETE" "APAGAR" }
+{ "PAUSED" "PAUSADO" }
+{ "LOADING" "CARREGANDO" }
+{ "CLICK FIRE TO SKIP BRIEFING" "ATIRE PARA PULAR O BRIEFING" }
+{ "GAME SAVED" "JOGO SALVO" }
+{ "REFRESH" "ATUALIZAR" }
 
 // Subtitles: what the characters say (ubersound/uberdialog.scr), in the order of the
 // missions. The voices stay in English; Vita settings > Display > Subtitles chooses which
