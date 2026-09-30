@@ -21,6 +21,8 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
     ${SOURCE_DIR}/sys/new/sys_unix_new.c
     ${SOURCE_DIR}/sys/con_passive.c
     ${SOURCE_DIR}/sys/sys_vita.c
+    # New version check / download (the install is done by misc/vita/updater).
+    ${SOURCE_DIR}/sys/vita_update.c
     ${SOURCE_DIR}/sys/vita_corepp_shims.cpp
     # Custom dlopen wrapping sceKernelLoadStartModule for .suprx — used
     # by sys_loadlib.h on Vita (SDL_LoadObject is stubbed in SDL2-Vita).
@@ -168,6 +170,7 @@ list(APPEND COMMON_LIBRARIES
     ssl
     crypto
     z
+    zstd # used by curl
     bz2
     png
     jpeg
@@ -211,6 +214,11 @@ set(LIB_INSTALL_SUBDIR "")
 # unique on the device. OMHA00001 is unused on the public title-id list.
 set(VITA_TITLEID "OMHA00001" CACHE STRING "Vita title id (9 chars)")
 set(VITA_VERSION "01.00" CACHE STRING "Vita app version")
+# The port's release (the GitHub tags are v<this>-vita). The update check installs a
+# release only when its version is higher: raise it for every release.
+set(VITA_PORT_VERSION "0.3" CACHE STRING "Vita port release (GitHub tag v<this>-vita)")
+set_source_files_properties(${SOURCE_DIR}/sys/vita_update.c PROPERTIES
+    COMPILE_DEFINITIONS VITA_PORT_VERSION="${VITA_PORT_VERSION}")
 set(VITA_APP_NAME "OpenMoHAA" CACHE STRING "LiveArea app name")
 
 list(APPEND POST_CONFIGURE_FUNCTIONS package_vita_vpk)
@@ -289,6 +297,24 @@ function(package_vita_vpk)
         list(APPEND VITA_LANG_FILES ${LANG_OUT})
     endforeach()
 
+    # updater.bin: installs a downloaded release over the game (misc/vita/updater). A
+    # separate program, because an app cannot install over itself while it runs; not a
+    # "safe" self (-s), as the Vita's installer is only open to unsafe homebrew.
+    set(UPDATER_DIR ${CMAKE_SOURCE_DIR}/misc/vita/updater)
+    add_executable(vita_updater ${UPDATER_DIR}/updater.c ${UPDATER_DIR}/debugScreen.c)
+    target_link_libraries(vita_updater
+        crypto z
+        SceDisplay_stub SceCtrl_stub SceSysmodule_stub ScePromoterUtil_stub SceAppMgr_stub
+        ScePower_stub SceLibKernel_stub SceKernelThreadMgr_stub SceIofilemgr_stub SceProcessmgr_stub)
+    set(UPDATER_BIN ${CMAKE_BINARY_DIR}/updater.bin)
+    add_custom_command(TARGET vita_updater POST_BUILD
+        COMMAND ${CMAKE_STRIP} -g $<TARGET_FILE:vita_updater>
+        COMMAND ${VITA_ELF_CREATE} $<TARGET_FILE:vita_updater> ${CMAKE_BINARY_DIR}/vita_updater.velf
+        COMMAND ${VITA_MAKE_FSELF} ${CMAKE_BINARY_DIR}/vita_updater.velf ${UPDATER_BIN}
+        COMMENT "Creating ${UPDATER_BIN}"
+        VERBATIM
+    )
+
     add_custom_command(OUTPUT ${VPK_FILE}
         COMMAND ${VITASDK}/bin/vita-pack-vpk
                     -s ${SFO_FILE}
@@ -311,10 +337,15 @@ function(package_vita_vpk)
                     # via Sys_BinaryPath = "app0:" (set in sys_vita.c).
                     --add ${CMAKE_BINARY_DIR}/game_suprx=game.suprx
                     --add ${CMAKE_BINARY_DIR}/cgame_suprx=cgame.suprx
+                    --add ${UPDATER_BIN}=updater.bin
+                    # CA certificates for the update check's HTTPS (curl.se/ca, MPL 2.0)
+                    --add ${UPDATER_DIR}/cacert.pem=cacert.pem
                     ${VPK_FILE}
         DEPENDS ${EBOOT_FILE}
                 ${CMAKE_BINARY_DIR}/game_suprx
                 ${CMAKE_BINARY_DIR}/cgame_suprx
+                vita_updater
+                ${UPDATER_DIR}/cacert.pem
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_autoexec.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont
