@@ -824,7 +824,7 @@
 { "He's buying it, just hold on." "Ele está acreditando, aguenta aí." }
 { "He's not taking them Captain." "Ele não está aceitando, Capitão." }
 { "Come on." "Vamos." }
-{ "Thanks.  They would've killed me for certain.  Stick close to me at all times." "Obrigada. Eles teriam me matado, com certeza. Fique perto de mim o tempo todo." }
+{ "Thanks.  They would've killed me for certain.  Stick close to me at all times." "Obrigado. Eles teriam me matado, com certeza. Fique perto de mim o tempo todo." }
 { "Let's get going Lieutenant." "Vamos andando, Tenente." }
 { "The documents and explosives I had were confiscated." "Os documentos e os explosivos que eu tinha foram confiscados." }
 { "We've got to recover them, or this mission is lost." "Precisamos recuperá-los, ou esta missão está perdida." }
