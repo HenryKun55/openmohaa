@@ -1080,10 +1080,15 @@ int         vp_cpuskinCount;
 void RB_SkelMesh(skelSurfaceGame_t *sf)
 {
     extern int         vita_skin_fail, vita_skin_failsub;
-    const unsigned int t0 = VP_Now();
-    unsigned int       dt;
+    extern cvar_t     *r_vita_perflog;
+    unsigned int       t0, dt;
     int                reason, i;
 
+    if (!r_vita_perflog || !r_vita_perflog->integer) {
+        RB_SkelMesh_Body(sf); /* the timing costs a clock read per surface: only for the perf log */
+        return;
+    }
+    t0                = VP_Now();
     s_skelMeshGpu     = qfalse;
     vita_skin_fail    = 1;
     vita_skin_failsub = 0;

@@ -1559,6 +1559,7 @@ extern cvar_t *r_vita_gpu_skinning;
 void     R_VitaGpuSkin_Init(void);
 void     R_VitaGpuSkin_Shutdown(void);
 void     R_VitaGpuSkin_LevelReset(void);
+void     R_VitaGpuSkin_EndFrame(void);	// render thread, end of frame: next morph ring buffer
 void     R_VitaGpuSkin_Unbind(void);	// program 0 back before fixed-function draws
 qboolean R_VitaGpuSkin_IsReady(void);
 /* Phase 2b: GPU-skin a TIKI surface. void* params dodge a tiki_shared.h

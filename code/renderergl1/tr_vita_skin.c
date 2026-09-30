@@ -161,6 +161,7 @@ static const char *s_skin_vert_src =
     "attribute vec4 a_idx;\n"       /* 4 bone-slot indices (as floats) */
     "attribute vec2 a_texcoord;\n"
     "attribute vec3 a_normal;\n"    /* bind-pose normal (bone-0 frame) */
+    "attribute vec4 a_morph;\n"     /* face animation: xyz = offset, w = the weight it moves (9 = none) */
     /* Must fit the Vita's vertex uniform budget (GL_MAX_VERTEX_UNIFORM_VECTORS, logged
      * at init; the 424-vector version crashed at link on hardware): 4 + 96 + 4 + 12 = 116. */
     "uniform   mat4 u_mvp;\n"
@@ -210,10 +211,15 @@ static const char *s_skin_vert_src =
     "}\n"
     "void main(void) {\n"
     "    int s0 = int(a_idx.x); int s1 = int(a_idx.y); int s2 = int(a_idx.z); int s3 = int(a_idx.w);\n"
-    "    vec3 sk = a_w0.w * skinOne(s0, a_w0.xyz)\n"
-    "            + a_w1.w * skinOne(s1, a_w1.xyz)\n"
-    "            + a_w2.w * skinOne(s2, a_w2.xyz)\n"
-    "            + a_w3.w * skinOne(s3, a_w3.xyz);\n"
+    /* The CPU path adds the morph offset to the vertex's first weight only. */
+    "    vec3 m0 = a_morph.w < 0.5 ? a_morph.xyz : vec3(0.0);\n"
+    "    vec3 m1 = (a_morph.w > 0.5 && a_morph.w < 1.5) ? a_morph.xyz : vec3(0.0);\n"
+    "    vec3 m2 = (a_morph.w > 1.5 && a_morph.w < 2.5) ? a_morph.xyz : vec3(0.0);\n"
+    "    vec3 m3 = (a_morph.w > 2.5 && a_morph.w < 3.5) ? a_morph.xyz : vec3(0.0);\n"
+    "    vec3 sk = a_w0.w * skinOne(s0, a_w0.xyz + m0)\n"
+    "            + a_w1.w * skinOne(s1, a_w1.xyz + m1)\n"
+    "            + a_w2.w * skinOne(s2, a_w2.xyz + m2)\n"
+    "            + a_w3.w * skinOne(s3, a_w3.xyz + m3);\n"
     "    gl_Position = u_mvp * vec4(sk, 1.0);\n"
     "    v_tc.xy = a_texcoord;\n"
     "    vec3 n = normalize(rotOne(s0, a_normal));\n"
@@ -263,13 +269,22 @@ static const char *s_skin_frag_src =
 #define ATTR_IDX      4
 #define ATTR_TEXCOORD 5
 #define ATTR_NORMAL   6
-#define ATTR_COUNT    7
+#define ATTR_COUNT    7   /* built per surface; ATTR_MORPH comes from the buffers below */
+#define ATTR_MORPH    7
 
 #define VITA_SKIN_MAX_WEIGHTS      4
 #define VITA_SKIN_MAX_BONESLOTS    32   /* u_boneMat[96]; more → CPU path */
 #define VITA_SKIN_MAX_LIGHTS       4    /* u_lDir/u_lOrg/u_lCol[4]; more → CPU path */
 
 #define VITA_SKIN_CACHE_CAP   1024
+
+/* Face animation (morphs) on the GPU: the offsets of each animating face are written per
+ * frame into a ring of VITA_SKIN_MORPH_FRAMES buffers (a buffer is reused only once the
+ * GPU is done with its frame); everything else reads a buffer of zeros. Batches are cut
+ * at VITA_SKIN_MAX_BATCH_VERTS vertices so the zeros cover any of them. */
+#define VITA_SKIN_MAX_BATCH_VERTS  4096
+#define VITA_SKIN_MORPH_FRAMES     4
+#define VITA_SKIN_MORPH_VERTS      12288  /* per frame (vec4 each): ~20 faces */
 #define VITA_SKIN_HASH_SIZE   2048   /* power of two */
 
 /* Per-attribute component counts (all GL_FLOAT), in ATTR_* order. The mapped
@@ -295,8 +310,10 @@ typedef struct {
      * split into batches of triangles that each use at most that many; they are chained
      * through 'next' (a slot, 0 = last). */
     int                next;
-    /* The surface vertex behind each batch vertex (malloc'd, morph surfaces only). */
+    /* The surface vertex behind each batch vertex and the weight slot its morph offset
+     * goes to, 9 = none (malloc'd, morph surfaces only). */
     unsigned short    *orig;
+    unsigned char     *morphSlot;
 } vitaSkinCacheEntry_t;
 
 static vitaSkinCacheEntry_t s_skin_cache[VITA_SKIN_CACHE_CAP];
@@ -352,6 +369,29 @@ static unsigned int VitaSkin_CompileStage(unsigned int type, const char *src, co
     return sh;
 }
 
+static float *s_morphZero;                              /* vec4 zeros, VITA_SKIN_MAX_BATCH_VERTS */
+static float *s_morphRing[VITA_SKIN_MORPH_FRAMES];      /* vec4, VITA_SKIN_MORPH_VERTS each */
+static int    s_morphFrame, s_morphUsed;
+
+static qboolean VitaSkin_AllocMorphBuffers(void)
+{
+    int i;
+    s_morphZero = (float *)vglAlloc(sizeof(float) * 4 * VITA_SKIN_MAX_BATCH_VERTS, VGL_MEM_RAM_TYPE);
+    if (!s_morphZero) return qfalse;
+    Com_Memset(s_morphZero, 0, sizeof(float) * 4 * VITA_SKIN_MAX_BATCH_VERTS);
+    for (i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
+        s_morphRing[i] = (float *)vglAlloc(sizeof(float) * 4 * VITA_SKIN_MORPH_VERTS, VGL_MEM_RAM_TYPE);
+    }
+    return qtrue;
+}
+
+/* End of a frame on the render thread: the next frame writes the next ring buffer. */
+void R_VitaGpuSkin_EndFrame(void)
+{
+    s_morphFrame = (s_morphFrame + 1) % VITA_SKIN_MORPH_FRAMES;
+    s_morphUsed  = 0;
+}
+
 void R_VitaGpuSkin_Init(void)
 {
     r_vita_gpu_skinning = ri.Cvar_Get("r_vita_gpu_skinning", "0", CVAR_ARCHIVE);
@@ -396,6 +436,7 @@ void R_VitaGpuSkin_Init(void)
     vglBindAttribLocation(prog, ATTR_IDX,      "a_idx",      4, GL_FLOAT);
     vglBindAttribLocation(prog, ATTR_TEXCOORD, "a_texcoord", 2, GL_FLOAT);
     vglBindAttribLocation(prog, ATTR_NORMAL,   "a_normal",   3, GL_FLOAT);
+    vglBindAttribLocation(prog, ATTR_MORPH,    "a_morph",    4, GL_FLOAT);
 
     glLinkProgram(prog);
     vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM);
@@ -429,6 +470,10 @@ void R_VitaGpuSkin_Init(void)
     s_loc_lDir       = glGetUniformLocation(prog, "u_lDir");
     s_loc_lOrg       = glGetUniformLocation(prog, "u_lOrg");
     s_loc_lCol       = glGetUniformLocation(prog, "u_lCol");
+    if (!VitaSkin_AllocMorphBuffers()) {
+        ri.Printf(PRINT_WARNING, "[VITA-SKIN] no memory for the morph buffers: GPU skinning off\n");
+        return;
+    }
     s_skin_ready     = qtrue;
 
     ri.Printf(PRINT_ALL,
@@ -443,6 +488,12 @@ void R_VitaGpuSkin_Shutdown(void)
     if (s_skin_program) {
         glDeleteProgram(s_skin_program);
         s_skin_program = 0;
+    }
+    if (s_morphZero) vglFree(s_morphZero);
+    s_morphZero = NULL;
+    for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
+        if (s_morphRing[i]) vglFree(s_morphRing[i]);
+        s_morphRing[i] = NULL;
     }
     s_skin_ready = qfalse;
 }
@@ -463,6 +514,8 @@ static void VitaSkin_FreeEntry(vitaSkinCacheEntry_t *e)
     e->ibuf = NULL;
     if (e->orig) free(e->orig);
     e->orig = NULL;
+    if (e->morphSlot) free(e->morphSlot);
+    e->morphSlot = NULL;
 }
 
 /* Free all per-surface caches + clear the registry. Called at level load
@@ -614,13 +667,23 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
                                        + sizeof(skelWeight_t) * v->numWeights);
     }
 
-    /* Triangles in order, a new batch whenever the bones would overflow the palette. */
+    /* Triangles in order, a new batch whenever the bones would overflow the palette or
+     * the vertices the zero morph buffer covers (remap marks the current batch's). */
     numBatches = 1;
     setCount   = 0;
+    for (i = 0; i < sf->numVerts; i++) remap[i] = -1;
+    {
+    int batchVerts = 0;
     for (t = 0; t < sf->numTriangles; t++) {
         int added[3 * VITA_SKIN_MAX_WEIGHTS];
         int n = VitaSkin_NewChannels(vtx, &sf->pTriangles[t * 3], set, setCount, added);
-        if (setCount + n > VITA_SKIN_MAX_BONESLOTS) {
+        int newVerts = 0;
+        for (j = 0; j < 3; j++) {
+            const int vi = sf->pTriangles[t * 3 + j];
+            if (remap[vi] != numBatches - 1) newVerts++;
+        }
+        if (setCount + n > VITA_SKIN_MAX_BONESLOTS || batchVerts + newVerts > VITA_SKIN_MAX_BATCH_VERTS) {
+            batchVerts = 0;
             numBatches++;
             setCount = 0;
             n        = VitaSkin_NewChannels(vtx, &sf->pTriangles[t * 3], set, 0, added);
@@ -630,7 +693,15 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
             }
         }
         for (j = 0; j < n; j++) set[setCount++] = added[j];
+        for (j = 0; j < 3; j++) {
+            const int vi = sf->pTriangles[t * 3 + j];
+            if (remap[vi] != numBatches - 1) {
+                remap[vi] = (short)(numBatches - 1);
+                batchVerts++;
+            }
+        }
         batchOf[t] = numBatches - 1;
+    }
     }
 
     for (int b = 0; b < numBatches; b++) {
@@ -674,8 +745,9 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
             goto fail;
         }
         if (hasMorphs) {
-            entry->orig = (unsigned short *)malloc(sizeof(unsigned short) * numBV);
-            if (!entry->orig) {
+            entry->orig      = (unsigned short *)malloc(sizeof(unsigned short) * numBV);
+            entry->morphSlot = (unsigned char *)malloc(numBV);
+            if (!entry->orig || !entry->morphSlot) {
                 result = -9;
                 goto fail;
             }
@@ -685,7 +757,13 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
             const vitaSkinVert_t *vi = &vtx[i];
             const int             o  = remap[i];
             if (o < 0) continue;
-            if (entry->orig) entry->orig[o] = (unsigned short)i;
+            if (entry->orig) {
+                entry->orig[o]      = (unsigned short)i;
+                entry->morphSlot[o] = 9;
+                for (j = 0; j < vi->numPick; j++) {
+                    if (vi->pick[j] == 0) entry->morphSlot[o] = (unsigned char)j; /* the file's first weight */
+                }
+            }
             for (j = 0; j < VITA_SKIN_MAX_WEIGHTS; j++) {
                 float *wo = entry->attr[ATTR_W0 + j] + o * 4;
                 if (j < vi->numPick) {
@@ -880,9 +958,55 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     if (slot >= s_skin_cache_count) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
     e = &s_skin_cache[slot];
     if (e->sf != sf || !e->ibuf) { vita_skin_fail = 4; return qfalse; }       /* stale guard */
+    /* Face animating this frame: its offsets go to this frame's ring buffer (all of the
+     * surface's batches, or none: then the CPU path draws it). */
+    const float *morphData = NULL;
     if (e->hasMorphs && backEnd.currentEntity->e.hasMorph) {
-        vita_skin_fail = 0;                         /* face animating this frame → CPU morphs */
-        return qfalse;
+        static float tmp[VITA_SKIN_MAX_BATCH_VERTS * 3];
+        const int   *weights = &backEnd.data->morphCache[backEnd.currentEntity->e.morphstart];
+        int          need = 0;
+        float       *dst;
+        const skeletorVertex_t *v;
+
+        for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+            need += be->numVerts;
+            if (!be->next || be->next >= s_skin_cache_count) break;
+        }
+        if (sf->numVerts > VITA_SKIN_MAX_BATCH_VERTS || !s_morphRing[s_morphFrame]
+            || s_morphUsed + need > VITA_SKIN_MORPH_VERTS) {
+            vita_skin_fail = 0;                     /* no room this frame → CPU morphs */
+            return qfalse;
+        }
+        v = sf->pVerts;
+        for (i = 0; i < sf->numVerts; i++) {
+            const skeletorMorph_t *m = (const skeletorMorph_t *)((const byte *)v + sizeof(skeletorVertex_t));
+            float                 *t = &tmp[i * 3];
+            t[0] = t[1] = t[2] = 0.0f;
+            for (int k = 0; k < v->numMorphs; k++, m++) {
+                const int w = weights[m->morphIndex];
+                if (w) {
+                    t[0] += w * m->offset[0];
+                    t[1] += w * m->offset[1];
+                    t[2] += w * m->offset[2];
+                }
+            }
+            v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                           + sizeof(skeletorMorph_t) * v->numMorphs
+                                           + sizeof(skelWeight_t) * v->numWeights);
+        }
+        dst       = s_morphRing[s_morphFrame] + s_morphUsed * 4;
+        morphData = dst;
+        for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+            for (i = 0; i < be->numVerts; i++, dst += 4) {
+                const float *t = &tmp[be->orig[i] * 3];
+                dst[0] = t[0];
+                dst[1] = t[1];
+                dst[2] = t[2];
+                dst[3] = (float)be->morphSlot[i];
+            }
+            if (!be->next || be->next >= s_skin_cache_count) break;
+        }
+        s_morphUsed += need;
     }
 
     /* Every batch needs all its bones on this model: checked before drawing any of them. */
@@ -1048,7 +1172,12 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         glUniform4fv(s_loc_boneMatrix, be->numBoneSlots * 3, boneMatrixData); SKIN_GLCHK("uniform boneMat");
         for (a = 0; a < ATTR_COUNT; a++) {
             vglVertexAttribPointerMapped(a, be->attr[a]);
-        }                                                            SKIN_GLCHK("vglVertexAttribPointerMapped");
+        }
+        vglVertexAttribPointerMapped(ATTR_MORPH, morphData ? morphData : s_morphZero);
+                                                                     SKIN_GLCHK("vglVertexAttribPointerMapped");
+        if (morphData) {
+            morphData += be->numVerts * 4;
+        }
         vglIndexPointerMapped(be->ibuf);                             SKIN_GLCHK("vglIndexPointerMapped");
         vglDrawObjects(GL_TRIANGLES, be->numIndexes, 0 /* shader does mvp */); SKIN_GLCHK("vglDrawObjects");
         if (!be->next || be->next >= s_skin_cache_count) break;

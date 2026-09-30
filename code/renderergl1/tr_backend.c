@@ -1577,6 +1577,10 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 	backEnd.in2D = qfalse;
 
+#ifdef __vita__
+	R_VitaGpuSkin_EndFrame();
+#endif
+
 	return (const void *)(cmd + 1);
 }
 
