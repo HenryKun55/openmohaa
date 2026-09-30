@@ -86,7 +86,7 @@ struct VitaPerfMenuItem {
 static const VitaPerfChoice g_pcTextures[] = {
     { "Lowest", "3", "seta r_picmip 3" },
     { "Low",    "2", "seta r_picmip 2" },
-    { "Medium", "1", "seta r_picmip 1" },
+    { "Max",    "1", "seta r_picmip 1" },  /* half size: the most the Vita holds */
 };
 static const VitaPerfChoice g_pcModels[] = {
     { "Lowest",  "0.25", "seta r_lodscale 0.25; seta r_lodcap 0.25; seta r_lodviewmodelcap 0.25" },
@@ -192,209 +192,132 @@ static const VitaPerfChoice g_pcWeapon[] = {
     "seta cg_marks_add 1; seta com_blood 1"
 
 /* ---------- translations ----------
- * Every string the menu shows, in English and Brazilian Portuguese, plus a one-line
- * description for items. Looked up by the English text; the Portuguese one is used
- * when the Vita's system language is Portuguese. Strings are UTF-8 here and converted
- * to the game fonts' Latin-1 when drawn. */
+ * Every string the menu shows, plus a one-line description for items. The translations
+ * are in the Text Language files (misc/vita/lang/<code>.txt, "Vita settings menu"),
+ * looked up by the English text. The language is the Text Language chosen here, or the
+ * Vita's system language when that is "Game". Strings are UTF-8 here and converted to
+ * the game fonts' Latin-1 when drawn. */
 struct VitaMenuText {
     const char *en;
-    const char *pt;
     const char *descEn;
-    const char *descPt;
 };
 
 static const VitaMenuText g_vmTexts[] = {
     /* screens, tabs, hints */
-    { "VITA SETTINGS", "CONFIGURAÇÕES DO VITA" },
-    { "DEBUG", "DEBUG" },
-    { "GRAPHICS", "GRÁFICOS" },
-    { "DISPLAY", "TELA" },
-    { "CONTROLS", "CONTROLES" },
-    { "SYSTEM", "SISTEMA" },
-    { "RENDER", "RENDER" },
-    { "WORLD", "MUNDO" },
-    { "GAME", "JOGO" },
-    { "LEVELS", "FASES" },
-    { "DIAG", "DIAG" },
-    { "L/R: tab   D-pad: select   X: change   O: close",
-      "L/R: aba   D-pad: escolher   X: alterar   O: fechar" },
-    { "* applied when the menu closes (video restart)",
-      "* aplicado ao fechar o menu (reinicia o vídeo)" },
-    { "* changed: applied when the menu closes",
-      "* alterado: aplicado ao fechar o menu" },
-    { "Custom", "Personalizado" },
-    { "On", "Sim" },
-    { "Off", "Não" },
+    { "VITA SETTINGS" },
+    { "DEBUG" },
+    { "GRAPHICS" },
+    { "DISPLAY" },
+    { "CONTROLS" },
+    { "SYSTEM" },
+    { "RENDER" },
+    { "WORLD" },
+    { "GAME" },
+    { "LEVELS" },
+    { "DIAG" },
+    { "L/R: tab   D-pad: select   X: change   O: close" },
+    { "* applied when the menu closes (video restart)" },
+    { "* changed: applied when the menu closes" },
+    { "Custom" },
+    { "On" },
+    { "Off" },
 
     /* choice names */
-    { "Lowest", "Mínimo" }, { "Low", "Baixo" }, { "Medium", "Médio" }, { "High", "Alto" },
-    { "Higher", "Muito alto" }, { "Highest", "Máximo" }, { "Minimum", "Mínimo" }, { "Lower", "Mais baixo" },
-    { "Max", "Máximo" }, { "Bilinear", "Bilinear" }, { "Trilinear", "Trilinear" }, { "Blob", "Simples" },
-    { "Game", "Do jogo" }, { "German only", "Só alemão" }, { "Nearby", "Próximas" }, { "All", "Todas" }, { "Precise", "Precisa" }, { "None", "Nenhum" }, { "Gun Only", "Só a arma" }, { "Full", "Completo" },
+    { "Lowest" }, { "Low" }, { "Medium" }, { "High" },
+    { "Higher" }, { "Highest" }, { "Minimum" }, { "Lower" },
+    { "Max" }, { "Bilinear" }, { "Trilinear" }, { "Blob" },
+    { "Game" }, { "German only" }, { "Nearby" }, { "All" }, { "Precise" }, { "None" }, { "Gun Only" }, { "Full" },
 
     /* SETTINGS: graphics */
-    { "Preset: Performance", "Predefinição: Desempenho",
-      "Lowest detail for the highest frame rate.",
-      "Menos detalhe para o maior FPS." },
-    { "Preset: Balanced", "Predefinição: Equilibrado",
-      "Recommended: good image with smooth gameplay.",
-      "Recomendado: boa imagem com jogo fluido." },
-    { "Preset: Quality", "Predefinição: Qualidade",
-      "Every option at its highest; lower frame rate in combat.",
-      "Todas as opções no máximo; FPS menor em combate." },
-    { "Texture Quality", "Qualidade das texturas",
-      "Texture resolution. Higher uses more memory and loads slower.",
-      "Resolução das texturas. Mais alto usa mais memória e carrega mais devagar." },
-    { "Model Detail", "Detalhe dos modelos",
-      "Polygon detail of soldiers and objects.",
-      "Detalhe dos polígonos de soldados e objetos." },
-    { "Distant Detail", "Detalhe à distância",
-      "How early far models lose detail.",
-      "Quão cedo os modelos distantes perdem detalhe." },
-    { "Curve Detail", "Detalhe das curvas",
-      "Smoothness of curved walls and arches.",
-      "Suavidade de paredes curvas e arcos." },
-    { "Effect Detail", "Detalhe dos efeitos",
-      "Amount of smoke, debris and particles.",
-      "Quantidade de fumaça, destroços e partículas." },
-    { "Terrain Detail", "Detalhe do terreno",
-      "Detail of outdoor terrain.",
-      "Detalhe do terreno em áreas abertas." },
-    { "Texture Filter", "Filtro de texturas",
-      "Trilinear blends texture detail levels more smoothly.",
-      "Trilinear suaviza a transição entre níveis de detalhe das texturas." },
-    { "Shadows", "Sombras",
-      "Precise: shadows cast by the lights. Blob: a simple shadow. Off is fastest.",
-      "Precisa: sombras projetadas pelas luzes. Simples: uma sombra só. Desligada é mais rápida." },
-    { "Dynamic Lights", "Luzes dinâmicas",
-      "Light from muzzle flashes, explosions and fires.",
-      "Luz de tiros, explosões e fogo." },
-    { "Lens Flares", "Reflexos de luz",
-      "Glare from the sun and bright lights.",
-      "Brilho do sol e de luzes fortes." },
-    { "Decals (Marks)", "Marcas",
-      "Bullet holes, blood and scorch marks on walls.",
-      "Buracos de bala, sangue e marcas de explosão nas paredes." },
+    { "Preset: Performance", "Lowest detail for the highest frame rate." },
+    { "Preset: Balanced", "Recommended: good image with smooth gameplay." },
+    { "Preset: Quality", "Every option at its highest; lower frame rate in combat." },
+    { "Texture Quality", "Texture resolution. Max is the most the Vita's video memory holds." },
+    { "Model Detail", "Polygon detail of soldiers and objects." },
+    { "Distant Detail", "How early far models lose detail." },
+    { "Curve Detail", "Smoothness of curved walls and arches." },
+    { "Effect Detail", "Amount of smoke, debris and particles." },
+    { "Terrain Detail", "Detail of outdoor terrain." },
+    { "Texture Filter", "Trilinear blends texture detail levels more smoothly." },
+    { "Shadows", "Precise: shadows cast by the lights. Blob: a simple shadow. Off is fastest." },
+    { "Dynamic Lights", "Light from muzzle flashes, explosions and fires." },
+    { "Lens Flares", "Glare from the sun and bright lights." },
+    { "Decals (Marks)", "Bullet holes, blood and scorch marks on walls." },
 
     /* SETTINGS: display */
-    { "Show FPS", "Mostrar FPS",
-      "Frame rate counter in the corner of the screen.",
-      "Contador de quadros por segundo no canto da tela." },
-    { "HUD", "HUD",
-      "Health, ammo and compass on screen.",
-      "Vida, munição e bússola na tela." },
-    { "Crosshair", "Mira",
-      "Show the crosshair.",
-      "Mostra a mira." },
-    { "Weapon Model", "Modelo da arma",
-      "Show the weapon (and hands) in first person.",
-      "Mostra a arma (e as mãos) em primeira pessoa." },
-    { "Blood / Gore", "Sangue",
-      "Blood effects.",
-      "Efeitos de sangue." },
-    { "Subtitles", "Legendas",
-      "Which speech gets subtitles: German only (game default), everyone nearby, or everyone.",
-      "Quais falas têm legenda: só alemão (padrão do jogo), todas por perto ou todas." },
-    { "Text Language", "Idioma do texto",
-      "Language of the game's text: menus, messages, HUD. Voices stay as they are.",
-      "Idioma dos textos do jogo: menus, mensagens, HUD. As vozes não mudam." },
+    { "Show FPS", "Frame rate counter in the corner of the screen." },
+    { "HUD", "Health, ammo and compass on screen." },
+    { "Crosshair", "Show the crosshair." },
+    { "Weapon Model", "Show the weapon (and hands) in first person." },
+    { "Blood / Gore", "Blood effects." },
+    { "Subtitles", "Which speech gets subtitles: German only (game default), everyone nearby, or everyone." },
+    { "Text Language", "Language of the game's text: menus, messages, HUD. Voices stay as they are." },
 
     /* SETTINGS: controls */
-    { "Look Sens (hip)", "Sensibilidade (normal)",
-      "Right stick look speed when not aiming.",
-      "Velocidade do analógico direito sem mirar." },
-    { "Look Sens (aim)", "Sensibilidade (mirando)",
-      "Right stick look speed while aiming down the sights.",
-      "Velocidade do analógico direito mirando." },
-    { "Crosshair (hip)", "Mira (normal)",
-      "Show the crosshair when not aiming.",
-      "Mostra a mira sem mirar." },
-    { "Crosshair (aim)", "Mira (mirando)",
-      "Show the crosshair while aiming.",
-      "Mostra a mira mirando." },
+    { "Look Sens (hip)", "Right stick look speed when not aiming." },
+    { "Look Sens (aim)", "Right stick look speed while aiming down the sights." },
+    { "Crosshair (hip)", "Show the crosshair when not aiming." },
+    { "Crosshair (aim)", "Show the crosshair while aiming." },
 
     /* SETTINGS: system */
-    { "Restore defaults", "Restaurar padrão",
-      "Back to the port's recommended settings.",
-      "Volta às configurações recomendadas do port." },
-    { "Debug menu", "Menu de debug",
-      "Renderer switches, level select, cheats and diagnostics.",
-      "Opções do renderer, seleção de fases, trapaças e diagnóstico." },
-    { "Close", "Fechar", "", "" },
+    { "Restore defaults", "Back to the port's recommended settings." },
+    { "Debug menu", "Renderer switches, level select, cheats and diagnostics." },
+    { "Close" },
 
     /* DEBUG: render */
-    { "Render thread", "Render thread",
-      "Draws on its own CPU core. Off is slower.",
-      "Desenha num núcleo próprio da CPU. Desligado é mais lento." },
-    { "GPU skinning", "GPU skinning",
-      "Animates characters on the GPU. Off is slower.",
-      "Anima os personagens na GPU. Desligado é mais lento." },
-    { "World VBO", "VBO do mapa",
-      "Keeps the map geometry on the GPU.",
-      "Mantém a geometria do mapa na GPU." },
-    { "Force multitexture", "Forçar multitextura",
-      "Draws walls and their lighting in one pass.",
-      "Desenha paredes e iluminação numa passada só." },
-    { "Render thr. serial", "Render thread serial",
-      "Diagnostic: limits the render thread's overlap with the game.",
-      "Diagnóstico: limita a sobreposição da render thread com o jogo." },
-    { "Engine 2D Pass", "Passo 2D",
-      "Diagnostic: turns all 2D drawing off.",
-      "Diagnóstico: desliga todo o desenho 2D." },
-    { "Server thread", "Thread do servidor",
-      "Experimental: game logic on its own CPU core.",
-      "Experimental: lógica do jogo num núcleo próprio." },
+    { "Render thread", "Draws on its own CPU core. Off is slower." },
+    { "GPU skinning", "Animates characters on the GPU. Off is slower." },
+    { "World VBO", "Keeps the map geometry on the GPU." },
+    { "Force multitexture", "Draws walls and their lighting in one pass." },
+    { "Render thr. serial", "Diagnostic: limits the render thread's overlap with the game." },
+    { "Engine 2D Pass", "Diagnostic: turns all 2D drawing off." },
+    { "Server thread", "Experimental: game logic on its own CPU core." },
 
     /* DEBUG: world */
-    { "BSP World", "Mapa (BSP)", "", "" },
-    { "Brush Models", "Brush models", "", "" },
-    { "Static Models", "Modelos estáticos", "", "" },
-    { "Static Polys", "Polígonos estáticos", "", "" },
-    { "Entity Polys", "Polígonos de entidades", "", "" },
-    { "Curves", "Curvas", "", "" },
-    { "Fast Sky", "Céu simples", "", "" },
-    { "Sky Box", "Skybox", "", "" },
-    { "DLight Backfaces", "Luzes nas costas", "", "" },
+    { "BSP World" },
+    { "Brush Models" },
+    { "Static Models" },
+    { "Static Polys" },
+    { "Entity Polys" },
+    { "Curves" },
+    { "Fast Sky" },
+    { "Sky Box" },
+    { "DLight Backfaces" },
 
     /* DEBUG: game */
-    { "Main Menu", "Menu principal", "", "" },
-    { "Restart Level", "Reiniciar fase", "", "" },
-    { "Suicide (kill)", "Suicídio", "", "" },
-    { "Cheats ON", "Trapaças ligadas", "", "" },
-    { "Cheats OFF", "Trapaças desligadas", "", "" },
-    { "God Mode", "Modo deus", "", "" },
-    { "Noclip", "Atravessar paredes", "", "" },
-    { "Notarget", "Invisível para a IA", "", "" },
-    { "Give All", "Dar tudo", "", "" },
-    { "Give Ammo", "Dar munição", "", "" },
-    { "Give Health", "Dar vida", "", "" },
+    { "Main Menu" },
+    { "Restart Level" },
+    { "Suicide (kill)" },
+    { "Cheats ON" },
+    { "Cheats OFF" },
+    { "God Mode" },
+    { "Noclip" },
+    { "Notarget" },
+    { "Give All" },
+    { "Give Ammo" },
+    { "Give Health" },
 
     /* DEBUG: diagnostics */
-    { "NO REFRESH (perf test)", "SEM DESENHO (teste)",
-      "Skips all rendering, to measure CPU cost alone.",
-      "Pula todo o desenho, para medir só a CPU." },
-    { "Show Tris", "Mostrar triângulos", "", "" },
-    { "Show Normals", "Mostrar normais", "", "" },
-    { "r_speeds Print", "r_speeds", "", "" },
-    { "com_speeds Print", "com_speeds", "", "" },
-    { "Perf log", "Log de desempenho",
-      "Timing lines in boot.log every second.",
-      "Linhas de tempo no boot.log a cada segundo." },
-    { "Back to settings", "Voltar às configurações", "", "" },
+    { "NO REFRESH (perf test)", "Skips all rendering, to measure CPU cost alone." },
+    { "Show Tris" },
+    { "Show Normals" },
+    { "r_speeds Print" },
+    { "com_speeds Print" },
+    { "Perf log", "Timing lines in boot.log every second." },
+    { "Back to settings" },
 };
 
-static qboolean VitaMenu_IsPortuguese(void)
+/* The language the menu is shown in: a lang/<code>.txt code, or "" for English. */
+static const char *VitaMenu_Lang(void)
 {
-#ifdef __vita__
-    static int s_lang = -1;
-    /* A Text Language chosen in the menu wins over the system language. */
     const char *textLang = Cvar_VariableString("vita_language");
     if (textLang[0]) {
-        return !Q_stricmp(textLang, "pt");
+        return textLang;
     }
-    if (s_lang < 0) {
-        int lang = 0;
-        s_lang = 0;
+#ifdef __vita__
+    static const char *s_sysLang;
+    if (!s_sysLang) {
+        int lang = -1;
         if (sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang) < 0) {
             /* AppUtil not initialised yet by anyone else: do it and ask again. */
             SceAppUtilInitParam initParam;
@@ -405,14 +328,19 @@ static qboolean VitaMenu_IsPortuguese(void)
             lang = -1;
             sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang);
         }
-        if (lang >= 0
-            && (lang == SCE_SYSTEM_PARAM_LANG_PORTUGUESE_PT || lang == SCE_SYSTEM_PARAM_LANG_PORTUGUESE_BR)) {
-            s_lang = 1;
+        switch (lang) {
+        case SCE_SYSTEM_PARAM_LANG_PORTUGUESE_PT:
+        case SCE_SYSTEM_PARAM_LANG_PORTUGUESE_BR: s_sysLang = "pt"; break;
+        case SCE_SYSTEM_PARAM_LANG_SPANISH: s_sysLang = "es"; break;
+        case SCE_SYSTEM_PARAM_LANG_FRENCH: s_sysLang = "fr"; break;
+        case SCE_SYSTEM_PARAM_LANG_GERMAN: s_sysLang = "de"; break;
+        case SCE_SYSTEM_PARAM_LANG_ITALIAN: s_sysLang = "it"; break;
+        default: s_sysLang = ""; break;
         }
     }
-    return s_lang == 1;
+    return s_sysLang;
 #else
-    return qfalse;
+    return "";
 #endif
 }
 
@@ -426,28 +354,47 @@ static const VitaMenuText *VitaMenu_FindText(const char *en)
     return NULL;
 }
 
-/* The text in the system language (English when there is no translation). */
+/* The text in the menu's language (English when there is no translation), UTF-8. */
 static const char *VT(const char *en)
 {
-    const VitaMenuText *t;
-    if (!en || !VitaMenu_IsPortuguese()) {
+#if defined(__vita__) || defined(__SWITCH__)
+    static char buf[16][512];
+    static int  which;
+    const char *lang = VitaMenu_Lang();
+    const char *tr;
+    char       *out;
+    int         n = 0;
+
+    if (!en || !en[0] || !lang[0]) {
         return en;
     }
-    t = VitaMenu_FindText(en);
-    return (t && t->pt) ? t->pt : en;
+    tr = Sys_LV_ConvertStringFor(lang, en);
+    if (tr == en) {
+        return en;
+    }
+    /* the language tables are Latin-1 */
+    out = buf[which++ & 15];
+    for (; *tr && n < (int)sizeof(buf[0]) - 2; tr++) {
+        const unsigned char c = (unsigned char)*tr;
+        if (c < 0x80) {
+            out[n++] = (char)c;
+        } else {
+            out[n++] = (char)(0xC0 | (c >> 6));
+            out[n++] = (char)(0x80 | (c & 0x3F));
+        }
+    }
+    out[n] = 0;
+    return out;
+#else
+    return en;
+#endif
 }
 
-/* The item's description in the system language ("" if none). */
+/* The item's description in the menu's language ("" if none). */
 static const char *VD(const char *en)
 {
     const VitaMenuText *t = VitaMenu_FindText(en);
-    if (!t) {
-        return "";
-    }
-    if (VitaMenu_IsPortuguese()) {
-        return t->descPt ? t->descPt : "";
-    }
-    return t->descEn ? t->descEn : "";
+    return (t && t->descEn) ? VT(t->descEn) : "";
 }
 
 /* UTF-8 -> Latin-1 for the game fonts (characters beyond Latin-1 become '?'). */
@@ -963,24 +910,12 @@ static void VitaPerfMenu_Wrap(const char *text, int maxChars, char *line1, char 
 /* Draw the menu overlay: in game from View3D::Draw2D, elsewhere from UI_Update. */
 static void VitaNotice_Draw(class UIFont *menuFont, float screenW, float screenH)
 {
-    static const char *const s_en[] = {
+    static const char *const s_text[] = {
         "Multiplayer is not available on this version.",
-        "",
-        "The Spearhead and Breakthrough expansions are not",
-        "available yet either: this version plays the",
-        "Allied Assault campaign.",
-    };
-    static const char *const s_pt[] = {
-        "O multiplayer não está disponível nesta versão.",
-        "",
-        "As expansões Spearhead e Breakthrough também ainda",
-        "não estão disponíveis: esta versão roda a campanha",
-        "de Allied Assault.",
+        "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign.",
     };
     const vec4_t       bg   = {0.02f, 0.03f, 0.02f, 0.92f};
     const vec4_t       band = {0.30f, 0.26f, 0.12f, 0.95f};
-    const qboolean     pt   = VitaMenu_IsPortuguese();
-    const char *const *text = pt ? s_pt : s_en;
     const float        boxW = screenW < 540.0f ? screenW - 20.0f : 520.0f;
     const float        boxH = 200.0f;
     const float        boxX = (screenW - boxW) * 0.5f;
@@ -999,13 +934,31 @@ static void VitaNotice_Draw(class UIFont *menuFont, float screenW, float screenH
     menuFont->setColor(UWhite);
     menuFont->Print(boxX + 12.0f, boxY + 7.0f, "MULTIPLAYER", -1, NULL);
     y = boxY + 44.0f;
-    for (size_t i = 0; i < ARRAY_LEN(s_en); i++) {
-        menuFont->Print(boxX + 16.0f, y, VitaMenu_Latin1(text[i]), -1, NULL);
+    for (size_t i = 0; i < ARRAY_LEN(s_text); i++) {
+        /* each paragraph wrapped at about 50 characters, a blank line between them */
+        const char *p = VitaMenu_Latin1(VT(s_text[i]));
+        while (*p) {
+            char line[64];
+            int  len = (int)strlen(p), cut = len;
+            if (len > 50) {
+                for (cut = 50; cut > 0 && p[cut] != ' '; cut--) {
+                }
+                if (cut == 0) {
+                    cut = 50;
+                }
+            }
+            Q_strncpyz(line, p, cut + 1);
+            menuFont->Print(boxX + 16.0f, y, line, -1, NULL);
+            y += 20.0f;
+            p += cut;
+            while (*p == ' ') {
+                p++;
+            }
+        }
         y += 20.0f;
     }
     menuFont->setColor(UYellow);
-    menuFont->Print(boxX + 16.0f, boxY + boxH - 28.0f,
-                    VitaMenu_Latin1(pt ? "Aperte qualquer botão para voltar." : "Press any button to go back."), -1, NULL);
+    menuFont->Print(boxX + 16.0f, boxY + boxH - 28.0f, VitaMenu_Latin1(VT("Press any button to go back.")), -1, NULL);
     menuFont->setColor(UWhite);
 }
 
