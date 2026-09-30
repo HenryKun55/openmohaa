@@ -31,6 +31,7 @@ import io
 import os
 import re
 import sys
+import unicodedata
 import zipfile
 
 import numpy as np
@@ -648,17 +649,23 @@ def font_letter(ch, asc, colour, halo_on, style):
             "lead": 2, "ink": a.shape[1] - 4}
 
 
-ACCENTS = {"Á": "A/", "É": "E/", "Í": "I/", "Ó": "O/", "Ú": "U/", "À": "A\\", "Â": "A^", "Ê": "E^",
-           "Ô": "O^", "Ã": "A~", "Õ": "O~", "Ç": "C,", "Ü": "U:",
-           "á": "a/", "é": "e/", "ó": "o/", "ú": "u/", "à": "a\\", "â": "a^", "ê": "e^",
-           "ô": "o^", "ã": "a~", "õ": "o~", "ç": "c,", "ü": "u:"}
+# Accented letters: the base letter and its accent, for every Latin-1 letter the game's fonts
+# can show (/ acute, \\ grave, ^ circumflex, ~ tilde, : diaeresis, , cedilla).
+MARKS = {"\u0300": "\\", "\u0301": "/", "\u0302": "^", "\u0303": "~", "\u0308": ":", "\u0327": ","}
+ACCENTS = {}
+for _code in range(0xC0, 0x100):
+    _parts = unicodedata.normalize("NFD", chr(_code))
+    if len(_parts) == 2 and _parts[1] in MARKS:
+        ACCENTS[chr(_code)] = _parts[0] + MARKS[_parts[1]]
+# The Spanish opening marks are the closing ones turned upside down.
+TURNED = {"¿": "?", "¡": "!"}
 
 
 def draw_accent(out, kind, cx, top, cap, stem, colour, glyph_bottom, halo_strength):
     """An accent as thick as the letters' stems, antialiased, with the same dark halo."""
     ss = 4
     h = max(4, round(cap * 0.28))
-    w = h * 0.8 if kind in "/\\" else h * 1.4
+    w = h * 0.8 if kind in "/\\" else h * 2.0 if kind == ":" else h * 1.4
     cw, ch = int((w + stem + 6) * ss), int((h + 6) * ss)
     shape = Image.new("L", (cw, ch), 0)
     d = ImageDraw.Draw(shape)
@@ -675,7 +682,7 @@ def draw_accent(out, kind, cx, top, cap, stem, colour, glyph_bottom, halo_streng
         pts = [(x0 + (x1 + t - x0) * k / 20, (y0 + y1) / 2 - np.sin(k / 20 * 2 * np.pi) * (y1 - y0) / 3) for k in range(21)]
         d.line(pts, fill=255, width=int(t))
     elif kind == ":":
-        r = t / 2 + ss
+        r = t * 0.6    # two dots, each a little wider than a stroke
         for px in (x0 + r, x1 + t - r):
             d.ellipse([px - r, y1 - 2 * r, px + r, y1], fill=255)
     elif kind == ",":
@@ -692,6 +699,13 @@ def draw_accent(out, kind, cx, top, cap, stem, colour, glyph_bottom, halo_streng
     ax = int(round(cx - mask.shape[1] / 2))
     ay = glyph_bottom - 2 if kind == "," else top - mask.shape[0] + 3
     paste(out, ax, ay, mask, halo * halo_strength, np.broadcast_to(np.array(colour, np.float32), mask.shape + (3,)))
+
+
+def turned(g):
+    """A letter turned half a circle, still standing on the line."""
+    h, w = g["a"].shape
+    return dict(g, a=g["a"][::-1, ::-1].copy(), halo=g["halo"][::-1, ::-1].copy(), col=g["col"][::-1, ::-1].copy(),
+                base=h - 1 - g["base"] + g["asc"], lead=w - g["lead"] - g["ink"])
 
 
 def paste(out, x, y, a, halo, col):
@@ -726,7 +740,7 @@ def set_line(out, line, words, pool, pic, opts, colour):
         if ch == " ":
             parts.append(None)
             continue
-        base, accent = (ACCENTS[ch][0], ACCENTS[ch][1]) if ch in ACCENTS else (ch, None)
+        base, accent = (ACCENTS[ch][0], ACCENTS[ch][1]) if ch in ACCENTS else (TURNED.get(ch, ch), None)
         g = pick(pool, base, pic, line.asc)
         if g is None:
             style = style or lettering(pool)
@@ -734,6 +748,8 @@ def set_line(out, line, words, pool, pic, opts, colour):
             fonted.append(base)
         elif g["pic"] != pic:
             g = recoloured(g, colour)     # another sign's letter, in this sign's colour
+        if ch in TURNED:
+            g = turned(g)
         parts.append((scaled(g, line.asc / g["asc"], line.asc / g["asc"]), accent))
     widths = [line.space if p is None else p[0]["ink"] for p in parts]
     total = sum(widths) + line.gap * (len(parts) - 1)
