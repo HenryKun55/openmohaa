@@ -160,9 +160,9 @@ static const VitaPerfChoice g_pcSubtitles[] = {
     { "All",         "2", "seta g_subtitle 2" },
 };
 
-/* Game text language (misc/vita/lang/<code>.txt). "" = the player's own game data. */
+/* Game text language (misc/vita/lang/<code>.txt). "en" = the player's own game data. */
 static const VitaPerfChoice g_pcLanguage[] = {
-    { "Game",      "",   "seta vita_language \"\"; vita_reloadlanguage" },
+    { "English",   "en", "seta vita_language en; vita_reloadlanguage" }, /* the game's own text */
     { "Português", "pt", "seta vita_language pt; vita_reloadlanguage" },
     { "Español",   "es", "seta vita_language es; vita_reloadlanguage" },
     { "Français",  "fr", "seta vita_language fr; vita_reloadlanguage" },
@@ -194,9 +194,8 @@ static const VitaPerfChoice g_pcWeapon[] = {
 /* ---------- translations ----------
  * Every string the menu shows, plus a one-line description for items. The translations
  * are in the Text Language files (misc/vita/lang/<code>.txt, "Vita settings menu"),
- * looked up by the English text. The language is the Text Language chosen here, or the
- * Vita's system language when that is "Game". Strings are UTF-8 here and converted to
- * the game fonts' Latin-1 when drawn. */
+ * looked up by the English text, in the Text Language chosen here (English when none).
+ * Strings are UTF-8 here and converted to the game fonts' Latin-1 when drawn. */
 struct VitaMenuText {
     const char *en;
     const char *descEn;
@@ -226,7 +225,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "Lowest" }, { "Low" }, { "Medium" }, { "High" },
     { "Higher" }, { "Highest" }, { "Minimum" }, { "Lower" },
     { "Max" }, { "Bilinear" }, { "Trilinear" }, { "Blob" },
-    { "Game" }, { "German only" }, { "Nearby" }, { "All" }, { "Precise" }, { "None" }, { "Gun Only" }, { "Full" },
+    { "German only" }, { "Nearby" }, { "All" }, { "Precise" }, { "None" }, { "Gun Only" }, { "Full" },
 
     /* SETTINGS: graphics */
     { "Preset: Performance", "Lowest detail for the highest frame rate." },
@@ -307,41 +306,10 @@ static const VitaMenuText g_vmTexts[] = {
     { "Back to settings" },
 };
 
-/* The language the menu is shown in: a lang/<code>.txt code, or "" for English. */
+/* The language the menu is shown in: a lang/<code>.txt code; English has none. */
 static const char *VitaMenu_Lang(void)
 {
-    const char *textLang = Cvar_VariableString("vita_language");
-    if (textLang[0]) {
-        return textLang;
-    }
-#ifdef __vita__
-    static const char *s_sysLang;
-    if (!s_sysLang) {
-        int lang = -1;
-        if (sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang) < 0) {
-            /* AppUtil not initialised yet by anyone else: do it and ask again. */
-            SceAppUtilInitParam initParam;
-            SceAppUtilBootParam bootParam;
-            memset(&initParam, 0, sizeof(initParam));
-            memset(&bootParam, 0, sizeof(bootParam));
-            sceAppUtilInit(&initParam, &bootParam);
-            lang = -1;
-            sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang);
-        }
-        switch (lang) {
-        case SCE_SYSTEM_PARAM_LANG_PORTUGUESE_PT:
-        case SCE_SYSTEM_PARAM_LANG_PORTUGUESE_BR: s_sysLang = "pt"; break;
-        case SCE_SYSTEM_PARAM_LANG_SPANISH: s_sysLang = "es"; break;
-        case SCE_SYSTEM_PARAM_LANG_FRENCH: s_sysLang = "fr"; break;
-        case SCE_SYSTEM_PARAM_LANG_GERMAN: s_sysLang = "de"; break;
-        case SCE_SYSTEM_PARAM_LANG_ITALIAN: s_sysLang = "it"; break;
-        default: s_sysLang = ""; break;
-        }
-    }
-    return s_sysLang;
-#else
-    return "";
-#endif
+    return Cvar_VariableString("vita_language");
 }
 
 static const VitaMenuText *VitaMenu_FindText(const char *en)

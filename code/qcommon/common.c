@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "vita_prof.h"
 #include "q_shared.h"
+#include "localization.h"
 #include "qcommon.h"
 #include "q_version.h"
 #include <setjmp.h>
@@ -1956,6 +1957,20 @@ void Com_Init( char *commandLine ) {
 	// if any archived cvars are modified after this, we will trigger a writing
 	// of the config file
 	cvar_modifiedFlags &= ~CVAR_ARCHIVE;
+
+#ifdef __vita__
+	// Text Language: a player who never chose one starts in the Vita's system language
+	// (English is saved as "en", so an empty value means no choice yet). Set before the
+	// renderer loads the menu pictures, which have translated copies.
+	{
+		cvar_t *lang = Cvar_Get( "vita_language", "", CVAR_ARCHIVE );
+
+		if ( !lang->string[0] ) {
+			Cvar_Set( "vita_language", Sys_DefaultTextLanguage() );
+			cvar_modifiedFlags |= CVAR_ARCHIVE;
+		}
+	}
+#endif
 
 #ifdef __vita__
 	// Initial visual settings (misc/vita/main/vita_defaults.cfg), applied once per

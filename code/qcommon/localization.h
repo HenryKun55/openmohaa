@@ -12,6 +12,8 @@ extern "C" {
     // The text in the language of that code (vita/lang/<code>.txt), or var itself when that
     // language or entry is missing. Latin-1, like the game's own table.
     const char *Sys_LV_ConvertStringFor(const char *code, const char *var);
+    // The Text Language a new player starts with (the system language, or "en").
+    const char *Sys_DefaultTextLanguage(void);
 #endif
 
 #ifdef __cplusplus

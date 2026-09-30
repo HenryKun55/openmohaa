@@ -2648,7 +2648,7 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 		// loads do not pay for the extra lookups.
 		{
 			const char *lang = ri.Cvar_Get("vita_language", "", CVAR_ARCHIVE)->string;
-			if (lang[0] && !Q_stricmpn(name, "textures/mohmenu/", 17)) {
+			if (lang[0] && Q_stricmp(lang, "en") && !Q_stricmpn(name, "textures/mohmenu/", 17)) {
 				char langName[MAX_QPATH];
 				Com_sprintf(langName, sizeof(langName), "lang/%s/%s", lang, name);
 				R_LoadImage(langName, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);

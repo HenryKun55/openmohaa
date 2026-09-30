@@ -24,6 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "win_localization.h"
 #include "../corepp/tiki.h"
+#ifdef __vita__
+#    include <psp2/apputil.h>
+#    include <psp2/system_param.h>
+#endif
 
 #define MAX_BUFFERS             6
 #define MAX_LOCALIZATION_LENGTH 1024
@@ -51,6 +55,10 @@ static cLocalization *Sys_LocalizationFor(const char *code)
 {
     cLocalization *loc;
     int            i;
+
+    if (!Q_stricmp(code, "en")) {
+        code = ""; // English is the game's own text
+    }
 
     for (i = 0; i < s_numLangs; i++) {
         if (!Q_stricmp(s_langs[i].code, code)) {
@@ -87,6 +95,43 @@ static void Sys_ReloadLocalization_f(void)
 }
 #endif
 
+#if defined(__vita__) || defined(__SWITCH__)
+// The Text Language a new player starts with: the Vita's system language when there is a
+// translation for it, English ("en") otherwise. Common init applies it when the config
+// has no choice yet.
+const char *Sys_DefaultTextLanguage(void)
+{
+#    ifdef __vita__
+    int lang = -1;
+
+    if (sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang) < 0) {
+        // AppUtil not initialised yet by anyone else: do it and ask again.
+        SceAppUtilInitParam initParam;
+        SceAppUtilBootParam bootParam;
+        memset(&initParam, 0, sizeof(initParam));
+        memset(&bootParam, 0, sizeof(bootParam));
+        sceAppUtilInit(&initParam, &bootParam);
+        lang = -1;
+        sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang);
+    }
+    switch (lang) {
+    case SCE_SYSTEM_PARAM_LANG_PORTUGUESE_PT:
+    case SCE_SYSTEM_PARAM_LANG_PORTUGUESE_BR:
+        return "pt";
+    case SCE_SYSTEM_PARAM_LANG_SPANISH:
+        return "es";
+    case SCE_SYSTEM_PARAM_LANG_FRENCH:
+        return "fr";
+    case SCE_SYSTEM_PARAM_LANG_GERMAN:
+        return "de";
+    case SCE_SYSTEM_PARAM_LANG_ITALIAN:
+        return "it";
+    }
+#    endif
+    return "en";
+}
+#endif
+
 void Sys_InitLocalization()
 {
 #if defined(__vita__) || defined(__SWITCH__)
@@ -98,7 +143,7 @@ void Sys_InitLocalization()
         s_cmdAdded = qtrue;
         // Text language chosen in the Vita settings menu (misc/vita/lang/<code>.txt),
         // empty = the language of the player's own game data.
-        Cvar_Get("vita_language", "", CVAR_ARCHIVE);
+        Cvar_Get("vita_language", "en", CVAR_ARCHIVE);
         Cmd_AddCommand("vita_reloadlanguage", Sys_ReloadLocalization_f);
     }
 

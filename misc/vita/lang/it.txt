@@ -772,7 +772,6 @@
 { "Bilinear" "Bilineare" }
 { "Trilinear" "Trilineare" }
 { "Blob" "Semplici" }
-{ "Game" "Del gioco" }
 { "German only" "Solo tedesco" }
 { "Nearby" "Vicini" }
 { "All" "Tutti" }
