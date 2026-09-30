@@ -158,8 +158,9 @@ The Controls menu changes these; they are saved in `ux0:data/openmohaa/main/conf
 ## Settings menu
 
 Double-tap Select, in game or in the main menus (or type `vitasettings` in the
-console). It is in English, or Portuguese when the Vita's system language is
-Portuguese, and every item has a one-line description. L / R or D-pad left /
+console). It is in the Text Language chosen in DISPLAY (English, Português, Español,
+Français, Deutsch, Italiano; the first start follows the Vita's system language), and
+every item has a one-line description. L / R or D-pad left /
 right change tab, D-pad up / down select, Cross changes, Circle / Select / Start
 close.
 
@@ -167,8 +168,10 @@ close.
   at its highest) and texture, model, distant, curve, effect and terrain detail,
   texture filter, shadows (Off / Blob / Precise), dynamic lights, lens flares and
   decals.
-- **DISPLAY**: FPS counter, HUD, crosshair, weapon model, blood, and the text
-  language of the game (see [TRANSLATING.md](TRANSLATING.md)).
+- **DISPLAY**: FPS counter, HUD, crosshair, weapon model, blood, subtitles, and the
+  Text Language of the game, its subtitles and this menu. The menu pictures change too
+  when that language's `lang_<code>.pk3` is in `ux0:data/openmohaa/main/` (see
+  [TRANSLATING.md](TRANSLATING.md)).
 - **CONTROLS**: look sensitivity and crosshair, separately for hip and aim.
 - **SYSTEM**: restore the default settings, open the debug menu, close.
 

@@ -78,9 +78,15 @@ In menus: left stick moves the cursor, Cross clicks, Circle goes back. Buttons c
 be changed in the game's Controls menu.
 
 **Vita settings** (tap Select twice, in game or in the menus): graphics presets
-and detail, HUD, crosshair, look sensitivity, and the **language of the game's
-text** (Portuguese so far; the voices stay as they are). Want your language?
-See [docs/TRANSLATING.md](docs/TRANSLATING.md).
+and detail, HUD, crosshair, look sensitivity, and the **Text Language**: English,
+Português, Español, Français, Deutsch or Italiano for the game's text, the subtitles
+and this menu (the voices stay in English). The first start follows the Vita's
+language.
+
+The words painted on the menu pictures (signs, buttons, the load/save stamps) come in
+a language pack: copy `lang_<code>.pk3` from the release (or build it from your own
+game with the script) to `ux0:data/openmohaa/main/`. Want your language? See
+[docs/TRANSLATING.md](docs/TRANSLATING.md).
 
 ## Limits
 
