@@ -164,6 +164,10 @@ static const VitaPerfChoice g_pcSubtitles[] = {
 static const VitaPerfChoice g_pcLanguage[] = {
     { "Game",      "",   "seta vita_language \"\"; vita_reloadlanguage" },
     { "Português", "pt", "seta vita_language pt; vita_reloadlanguage" },
+    { "Español",   "es", "seta vita_language es; vita_reloadlanguage" },
+    { "Français",  "fr", "seta vita_language fr; vita_reloadlanguage" },
+    { "Deutsch",   "de", "seta vita_language de; vita_reloadlanguage" },
+    { "Italiano",  "it", "seta vita_language it; vita_reloadlanguage" },
 };
 static const VitaPerfChoice g_pcWeapon[] = {
     { "None",     "0", "seta cg_drawviewmodel 0" },
