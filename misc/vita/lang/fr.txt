@@ -1,0 +1,1457 @@
+// OpenMoHAA Vita - game text in French.
+//
+// Each line is { "original English text" "translation" }. The game looks up the
+// English text exactly as it is, spaces included, so never change the first string.
+// Many entries are pieces of one sentence with a key name in between, e.g.
+// "Press " + <key> + " to move forward.": keep the leading/trailing spaces and the
+// " ( " / " ) " parts so the joined sentence still reads well.
+//
+// Encoding: UTF-8. Only Latin-1 letters can be shown (no emoji, Cyrillic, CJK).
+// Double quotes cannot be used inside a string.
+// Chosen in game: Vita settings (tap Select twice) > Display > Text Language.
+// See docs/TRANSLATING.md to add a language.
+// Machine translation: needs review by a native speaker.
+
+{ "That team is full" "Cette équipe est complète" }
+{ "Game Auto Saved" "Partie sauvegardée automatiquement" }
+{ "Rounds" "Munitions" }
+{ "Pistol" "Pistolet" }
+{ "Got" "Obtenu" }
+{ "Rifle" "Fusil" }
+{ "Smg" "Pistolet-mitrailleur" }
+{ "Mg" "Mitrailleuse" }
+{ "Heavy" "Lourde" }
+{ "Grenade" "Grenade" }
+{ "Equipment Destroyed" "Équipement détruit" }
+{ "An objective has been added!" "Un objectif a été ajouté!" }
+{ "An objective has been completed!" "Un objectif a été accompli!" }
+{ "Health" "Santé" }
+{ "Recovered" "Récupérée" }
+{ "Document taken." "Document récupéré." }
+{ "in the head" "à la tête" }
+{ "in the helmet" "au casque" }
+{ "in the neck" "au cou" }
+{ "in the upper torso" "au haut du torse" }
+{ "in the middle torso" "au milieu du torse" }
+{ "in the lower torso" "au bas du torse" }
+{ "in the pelvis" "au bassin" }
+{ "in the upper right arm" "au haut du bras droit" }
+{ "in the upper left arm" "au haut du bras gauche" }
+{ "in the upper right leg" "au haut de la jambe droite" }
+{ "in the upper left leg" "au haut de la jambe gauche" }
+{ "in the lower right arm" "à l'avant-bras droit" }
+{ "in the lower left arm" "à l'avant-bras gauche" }
+{ "in the lower right leg" "au bas de la jambe droite" }
+{ "in the lower left leg" "au bas de la jambe gauche" }
+{ "in the right hand" "à la main droite" }
+{ "in the left hand" "à la main gauche" }
+{ "in the right foot" "au pied droit" }
+{ "in the left foot" "au pied gauche" }
+{ "You need the" "Il vous faut" }
+{ "You will be kicked for inactivity in" "Vous serez expulsé pour inactivité dans" }
+{ "You will be moved to spectator for inactivity in" "Vous passerez spectateur pour inactivité dans" }
+{ "seconds" "secondes" }
+{ "Press fire to join the battle!" "Appuyez sur tir pour rejoindre la bataille!" }
+{ "You are not on a team" "Vous n'êtes dans aucune équipe" }
+{ "You are already on a team" "Vous êtes déjà dans une équipe" }
+{ "Will switch to Axis model & weapons next time you respawn" "Passage au modèle et aux armes de l'Axe à votre prochaine réapparition" }
+{ "Will switch to new weapon next time you respawn" "Passage à la nouvelle arme à votre prochaine réapparition" }
+{ "has joined the Allies" "a rejoint les Alliés" }
+{ "has joined the Axis" "a rejoint l'Axe" }
+{ "Can not change teams again for another" "Impossible de changer encore d'équipe pendant" }
+{ "Voting not allowed here." "Vote interdit ici." }
+{ "A vote is already in progress" "Un vote est déjà en cours" }
+{ "You have called the maximum number of votes" "Vous avez lancé le nombre maximum de votes" }
+{ "Invalid vote string." "Vote invalide." }
+{ "Vote commands are:" "Les commandes de vote sont:" }
+{ "called a vote" "a lancé un vote" }
+{ "No vote in progress." "Aucun vote en cours." }
+{ "Vote already cast." "Vote déjà enregistré." }
+{ "Usage" "Utilisation" }
+{ "Vote cast." "Vote enregistré." }
+{ "Command" "Commande" }
+{ "not available from console" "non disponible depuis la console" }
+{ "You must run the server with '+set cheats 1' to enable this command." "Vous devez lancer le serveur avec '+set cheats 1' pour activer cette commande." }
+{ "Bad filter address" "Adresse de filtre invalide" }
+{ "IP filter list is full" "La liste des filtres IP est pleine" }
+{ "Removed" "Supprimé" }
+{ "Didn't find" "Introuvable" }
+{ "Filter list" "Liste des filtres" }
+{ "Writing" "Écriture" }
+{ "Couldn't open" "Impossible d'ouvrir" }
+{ "Unknown server command" "Commande serveur inconnue" }
+{ "Wrote" "Écrit" }
+{ "You have not completed your objectives." "Vous n'avez pas accompli vos objectifs." }
+{ "That's not a research document." "Ce n'est pas un document de recherche." }
+{ "You have not completed all your Objectives yet." "Vous n'avez pas encore accompli tous vos objectifs." }
+{ "You have not completed all of your Objectives." "Vous n'avez pas accompli tous vos objectifs." }
+{ "You have acquired the spy camera!" "Vous avez récupéré l'appareil photo d'espion!" }
+{ "You have acquired the binoculars!" "Vous avez récupéré les jumelles!" }
+{ "You have acquired the bangalores!" "Vous avez récupéré les torpilles Bangalore!" }
+{ "You have acquired the battery!" "Vous avez récupéré la batterie!" }
+{ "You have acquired the manifest!" "Vous avez récupéré le manifeste!" }
+{ "You have acquired the Naxos radar blueprints!" "Vous avez récupéré les plans du radar Naxos!" }
+{ "You have acquired the Naxos radar research notes!" "Vous avez récupéré les notes de recherche du radar Naxos!" }
+{ "You have acquired the Naxos uboat blueprints!" "Vous avez récupéré les plans du U-boot Naxos!" }
+{ "You have acquired the Naxos uboat research notes!" "Vous avez récupéré les notes de recherche du U-boot Naxos!" }
+{ "You have acquired explosives!" "Vous avez récupéré des explosifs!" }
+{ "You have acquired the gasmask!" "Vous avez récupéré le masque à gaz!" }
+{ "You have acquired level 1 papers!" "Vous avez récupéré les papiers de niveau 1!" }
+{ "You have acquired level 2 papers!" "Vous avez récupéré les papiers de niveau 2!" }
+{ "You have acquired the wirecutters!" "Vous avez récupéré la pince coupante!" }
+{ "You have acquired the radio!" "Vous avez récupéré la radio!" }
+{ "The King Tiger has been lost, you have failed." "Le Tigre Royal a été perdu, vous avez échoué." }
+{ "The King Tiger Tank has been lost, you have failed." "Le char Tigre Royal a été perdu, vous avez échoué." }
+{ "You hit" "Vous avez touché" }
+{ "You have not completed all of your objectives yet." "Vous n'avez pas encore accompli tous vos objectifs." }
+{ "Shotgun" "Fusil à pompe" }
+{ "The Allies have breached the perimeter!" "Les Alliés ont percé le périmètre!" }
+{ "The Bomb has been planted!" "La bombe a été posée!" }
+{ "Picked Up " "Ramassé " }
+{ "MP44" "MP44" }
+{ "StG 44" "StG 44" }
+{ "BAR" "BAR" }
+{ "Bazooka" "Bazooka" }
+{ "Colt 45" "Colt 45" }
+{ "Mauser KAR 98K" "Mauser KAR 98K" }
+{ "KAR98 - Sniper" "KAR98 - Sniper" }
+{ "M1 Garand" "M1 Garand" }
+{ "Frag Grenade" "Grenade à fragmentation" }
+{ "MP40" "MP40" }
+{ "Walther P38" "Walther P38" }
+{ "Panzerschreck" "Panzerschreck" }
+{ "Hi-Standard Silenced" "Hi-Standard silencieux" }
+{ "Springfield '03 Sniper" "Springfield '03 Sniper" }
+{ "Stielhandgranate" "Stielhandgranate" }
+{ "Thompson" "Thompson" }
+{ "45 seconds to escape" "45 secondes pour s'échapper" }
+{ "This door is locked." "Cette porte est verrouillée." }
+{ "15 seconds to clear the room" "15 secondes pour nettoyer la pièce" }
+{ "You have not completed the objective." "Vous n'avez pas accompli l'objectif." }
+{ "Enigma machine" "Machine Enigma" }
+{ "8!" "8!" }
+{ "9!" "9!" }
+{ "You got the Panzerschreck." "Vous avez récupéré le Panzerschreck." }
+{ "Binoculars" "Jumelles" }
+{ "Mission Failed: Not enough Rangers survived!" "Mission échouée: trop peu de Rangers ont survécu!" }
+{ "You have acquired a German officers uniform!" "Vous avez récupéré un uniforme d'officier allemand!" }
+{ "ALARM OFF" "ALARME COUPÉE" }
+{ "Papers" "Papiers" }
+{ "Grenades" "Grenades" }
+{ "Enigma machine stolen" "Machine Enigma volée" }
+{ "You have no explosives." "Vous n'avez pas d'explosifs." }
+{ "You have acquired radio detonated explosives!" "Vous avez récupéré des explosifs radiocommandés!" }
+{ "Hold use key to activate/deactivate bomb" "Maintenez la touche utiliser pour activer/désactiver la bombe" }
+{ "Manifest stolen" "Manifeste volé" }
+{ "Can't duck under water" "Impossible de s'accroupir sous l'eau" }
+{ "You got the KAR98D Sniper Rifle." "Vous avez récupéré le fusil de précision KAR98D." }
+{ "Press Forward to move out of the truck" "Appuyez sur Avancer pour sortir du camion" }
+{ "Press TAB to view your current objectives" "Appuyez sur TAB pour voir vos objectifs actuels" }
+{ "Use your compass to guide you to your next objective." "Utilisez votre boussole pour rejoindre votre prochain objectif." }
+{ "Press USE to grab items off tables" "Appuyez sur UTILISER pour prendre les objets sur les tables" }
+{ "Press USE to use mounted weapons" "Appuyez sur UTILISER pour vous servir des armes fixes" }
+{ "Press USE to open doors. If you can not open the door, you will be able to hear the handle rattle." "Appuyez sur UTILISER pour ouvrir les portes. Si la porte ne s'ouvre pas, vous entendrez la poignée cliqueter." }
+{ "Follow me" "Suivez-moi" }
+{ "You have recieved 30 health" "Vous avez reçu 30 points de santé" }
+{ "You lost too many of your tank crew" "Vous avez perdu trop d'hommes de votre équipage de char" }
+{ "Mission Objectives:" "Objectifs de la mission:" }
+{ "The Bridge was Destroyed. You failed the mission." "Le pont a été détruit. Vous avez échoué dans votre mission." }
+{ "CHECKPOINT: Game AutoSaved" "POINT DE CONTRÔLE: partie sauvegardée automatiquement" }
+{ "Game Saved" "Partie sauvegardée" }
+{ "Game AutoSaved" "Partie sauvegardée automatiquement" }
+{ "Game Loaded" "Partie chargée" }
+{ "You have recieved health" "Vous avez reçu de la santé" }
+{ "Lt. Joe Baylor has been killed in action." "Le Lt. Joe Baylor a été tué au combat." }
+{ "NOT ALL OBJECTIVES HAVE BEEN COMPLETED!" "LES OBJECTIFS N'ONT PAS TOUS ÉTÉ ACCOMPLIS!" }
+{ "To call in air support switch to the binoculars. Then look at the target and press your Fire key." "Pour demander un appui aérien, prenez les jumelles. Puis visez la cible et appuyez sur votre touche de tir." }
+{ "Once you find a radio you will be able to call in air support." "Une fois une radio trouvée, vous pourrez demander un appui aérien." }
+{ "You have recieved health from a medic" "Vous avez reçu de la santé d'un infirmier" }
+{ " seconds to escape" " secondes pour s'échapper" }
+{ " seconds to get to train" " secondes pour rejoindre le train" }
+{ "took himself out of commision" "s'est mis hors de combat" }
+{ "was burned to a crisp" "a fini carbonisé" }
+{ "cratered" "s'est écrasé" }
+{ "tripped on his own grenade" "a trébuché sur sa propre grenade" }
+{ "played catch with himself" "a joué au ballon avec lui-même" }
+{ "blew himself up" "s'est fait sauter" }
+{ "rocketed himself" "s'est pris sa propre roquette" }
+{ "shot himself in the" "s'est tiré une balle" }
+{ "died" "est mort" }
+{ "was crushes by" "a été écrasé par" }
+{ "was telefragged by" "a été télé-fraggé par" }
+{ "was burned up by" "a été brûlé par" }
+{ "was pushed over the edge by" "a été poussé dans le vide par" }
+{ "is picking" "retire les éclats de" }
+{ "'s shrapnel out of his teeth" " de ses dents" }
+{ "tripped on" "a trébuché sur la grenade de" }
+{ "'s grenade" "!" }
+{ "was blown away by" "a été soufflé par" }
+{ "took" "a pris la roquette de" }
+{ "'s rocket in the face" " en pleine face" }
+{ "'s rocket right in the kisser" " en pleine poire" }
+{ "was knocked out by" "a été assommé par" }
+{ "was shot by" "a été abattu par" }
+{ "was gunned down by" "a été descendu par" }
+{ "was sniped by" "a été abattu par le tireur d'élite" }
+{ "was rifled by" "a été fusillé par" }
+{ "was perforated by" "a été criblé par" }
+{ "'s SMG" " au pistolet-mitrailleur" }
+{ "was machine-gunned by" "a été mitraillé par" }
+{ "was run over by" "a été écrasé par" }
+{ "was impaled by" "a été empalé par" }
+{ "was clubbed by" "a été matraqué par" }
+{ "was bashed by" "a été cogné par" }
+{ "was pumped full of buckshot by" "a été plombé de chevrotine par" }
+{ "was hunted down by" "a été traqué par" }
+{ "was killed by" "a été tué par" }
+{ "caught some shrapnel" "a pris des éclats" }
+{ "blew up" "a sauté" }
+{ "caught a rocket" "a pris une roquette" }
+{ "was shot in the" "a été touché" }
+{ "was shot" "a été touché" }
+{ "You killed yourself" "Vous vous êtes tué" }
+{ "You killed" "Vous avez tué" }
+{ "You have the Panzerschreck." "Vous avez le Panzerschreck." }
+{ "TIGER TANK: " "CHAR TIGRE: " }
+{ " percent" " pour cent" }
+{ "HINT: Switch to your Panzerschreck (rocket launcher) to destroy the halftrack." "ASTUCE: prenez votre Panzerschreck (lance-roquettes) pour détruire le semi-chenillé." }
+{ "HINT: Switch to your Panzerschreck (rocket launcher) to destroy the tank." "ASTUCE: prenez votre Panzerschreck (lance-roquettes) pour détruire le char." }
+{ "HINT: It will take several hits to destroy a tank." "ASTUCE: il faut plusieurs coups au but pour détruire un char." }
+{ "Sergeant Harrison has been killed in action." "Le Sergent Harrison a été tué au combat." }
+{ "Private Tomlin has been killed in action." "Le Soldat Tomlin a été tué au combat." }
+{ "Captain Ramsey has been killed in action." "Le Capitaine Ramsey a été tué au combat." }
+{ "Tiger Tank destroyed." "Char Tigre détruit." }
+{ "Ranger Casualties: " "Pertes chez les Rangers: " }
+{ " of " " sur " }
+{ "HINT: Use the wheel to open the doors." "ASTUCE: utilisez le volant pour ouvrir les portes." }
+{ "HINT: Use the plunger to blow the door open." "ASTUCE: utilisez le détonateur pour faire sauter la porte." }
+{ "Move the tank with your Forward and Backward keys." "Déplacez le char avec les touches Avancer et Reculer." }
+{ "Use your Strafe keys to turn." "Utilisez les touches de pas latéral pour tourner." }
+{ "Turn the turret with the Mouse." "Tournez la tourelle avec la souris." }
+{ "Hold your Jump key to align the base with the turret." "Maintenez la touche de saut pour aligner la caisse sur la tourelle." }
+{ "Align the balls to reach your current objective" "Alignez les billes pour atteindre votre objectif actuel" }
+{ "Use the mouse or keyboard to look up and around at the towers" "Utilisez la souris ou le clavier pour regarder en haut et autour, vers les tours" }
+{ "Find a way through the gate" "Trouvez un passage par le portail" }
+{ "Hello Mike Powell. Welcome to training." "Bonjour, Mike Powell. Bienvenue à l'entraînement." }
+{ "Follow the arrow on your compass to reach your current objective." "Suivez la flèche de votre boussole pour atteindre votre objectif actuel." }
+{ "As you get closer, the balls will contract." "À mesure que vous approchez, les billes se rapprochent." }
+{ "Press " "Appuyez sur " }
+{ " to move forward." " pour avancer." }
+{ "Use your mouse or " "Utilisez la souris ou " }
+{ " and " " et " }
+{ " to turn left and right." " pour tourner à gauche et à droite." }
+{ "Use the mouse or keyboard to look up and around at the towers." "Utilisez la souris ou le clavier pour regarder en haut et autour, vers les tours." }
+{ "Press your jump key ( " "Appuyez sur la touche de saut ( " }
+{ " ) and movement keys to surpass these crates." " ) et les touches de déplacement pour franchir ces caisses." }
+{ "Press your duck key ( " "Appuyez sur la touche s'accroupir ( " }
+{ " ) and movement keys to pass under the barbwire." " ) et les touches de déplacement pour passer sous les barbelés." }
+{ "Use the movement keys and look up to climb the ladder. You may also press your use button. " "Utilisez les touches de déplacement et regardez en haut pour grimper à l'échelle. Vous pouvez aussi appuyer sur utiliser. " }
+{ "Press your use key ( " "Appuyez sur la touche utiliser ( " }
+{ " ) to open these doors." " ) pour ouvrir ces portes." }
+{ "Some doors might not open. These doors will make a different sound." "Certaines portes ne s'ouvrent pas. Elles font un bruit différent." }
+{ "When you get close to health and ammunition you will use them automatically." "En approchant de la santé et des munitions, vous les prendrez automatiquement." }
+{ "You may have to press your use key ( " "Vous devrez peut-être appuyer sur la touche utiliser ( " }
+{ " ) to activate items that are farther away." " ) pour activer les objets plus éloignés." }
+{ "Approach the explosives and press your use key ( " "Approchez-vous des explosifs et appuyez sur la touche utiliser ( " }
+{ " ) to pick them up." " ) pour les ramasser." }
+{ "Find the red ghost image of the bomb and press your use key ( " "Trouvez l'image rouge transparente de la bombe et appuyez sur la touche utiliser ( " }
+{ " ) on it to plant explosives on the tank." " ) dessus pour poser les explosifs sur le char." }
+{ " ) to control the targets on the firing range." " ) pour commander les cibles du stand de tir." }
+{ "Continue on to the exit when you are done." "Continuez vers la sortie quand vous avez terminé." }
+{ "Explore the firing range." "Explorez le stand de tir." }
+{ "Press the USE key ( " "Appuyez sur la touche UTILISER ( " }
+{ " ) to activate targets." " ) pour activer les cibles." }
+{ "Touch or press the USE key ( " "Touchez ou appuyez sur la touche UTILISER ( " }
+{ " ) to get weapons and ammo to use on the firing range" " ) pour prendre des armes et des munitions pour le stand de tir" }
+{ "Continue on to the exit." "Continuez vers la sortie." }
+{ "Take control of the MG42 by approaching it and pressing USE" "Prenez la MG42 en vous approchant et en appuyant sur UTILISER" }
+{ "Officers uniform removed" "Uniforme d'officier retiré" }
+{ "Locate the missing Bazooka team" "Retrouvez l'équipe bazooka disparue" }
+{ "The OSS Agent was killed. You failed the mission" "L'agent de l'OSS a été tué. Vous avez échoué dans votre mission" }
+{ "30 seconds to escape to elevator" "30 secondes pour fuir jusqu'à l'ascenseur" }
+{ "You must first open the valves" "Vous devez d'abord ouvrir les vannes" }
+{ "5 seconds to clear the room" "5 secondes pour nettoyer la pièce" }
+{ "You have received health from a medic." "Vous avez reçu de la santé d'un infirmier." }
+{ "You did not complete all the objectives." "Vous n'avez pas accompli tous les objectifs." }
+{ "A Bomb has been planted!" "Une bombe a été posée!" }
+{ "A Bomb has been defused!" "Une bombe a été désamorcée!" }
+{ "You have acquired the gas mask!" "Vous avez récupéré le masque à gaz!" }
+{ "The King Tiger has been lost, you have failed" "Le Tigre Royal a été perdu, vous avez échoué" }
+{ "The King Tiger was destroyed. You failed the mission" "Le Tigre Royal a été détruit. Vous avez échoué dans votre mission" }
+{ "If your weapon is not holstered" "Si votre arme n'est pas rangée" }
+{ "your cover will be blown." "votre couverture sera grillée." }
+{ "Be prepared to show your papers when asked." "Soyez prêt à montrer vos papiers quand on vous les demande." }
+{ "Press the ( " "Appuyez sur la touche ( " }
+{ " ) key to holster your weapon." " ) pour ranger votre arme." }
+{ " ) key to show your papers." " ) pour montrer vos papiers." }
+{ "Once you destroy the anti-aircraft gun, you will be able to call in air support." "Une fois le canon antiaérien détruit, vous pourrez demander un appui aérien." }
+{ "Press the FORWARD key  ( " "Appuyez sur la touche AVANCER ( " }
+{ " ) to move out of the truck" " ) pour sortir du camion" }
+{ "Press the OBJECTIVE key  ( " "Appuyez sur la touche OBJECTIFS ( " }
+{ " ) to see your objectives" " ) pour voir vos objectifs" }
+{ "Find your way to the mounted machine gun and press the USE key  ( " "Rejoignez la mitrailleuse fixe et appuyez sur la touche UTILISER ( " }
+{ " ) to take control" " ) pour en prendre le contrôle" }
+{ "Press the USE key  ( " "Appuyez sur la touche UTILISER ( " }
+{ " ) to use mounted weapons" " ) pour vous servir des armes fixes" }
+{ "has entered the battle" "est entré dans la bataille" }
+{ "has left the battle" "a quitté la bataille" }
+{ "Use beach obstacles as cover from enemy machine gun fire." "Servez-vous des obstacles de la plage pour vous abriter des mitrailleuses ennemies." }
+{ " ) to grab items off tables" " ) pour prendre les objets sur les tables" }
+{ "You have acquired the King Tiger field manual!" "Vous avez récupéré le manuel de campagne du Tigre Royal!" }
+{ "You have acquired the German battle plans!" "Vous avez récupéré les plans de bataille allemands!" }
+{ "The SAS Agent was killed. You failed the mission." "L'agent du SAS a été tué. Vous avez échoué dans votre mission." }
+{ "Allies win!" "Victoire des Alliés!" }
+{ "Axis win!" "Victoire de l'Axe!" }
+{ "It's a draw!" "Match nul!" }
+{ "A bomb is still set!" "Une bombe est encore armée!" }
+{ "Allies have destroyed the Southern Cannon!" "Les Alliés ont détruit le canon sud!" }
+{ "Allies have destroyed the Northern Cannon!" "Les Alliés ont détruit le canon nord!" }
+{ "Use your MOUSE and the movement keys to look at the towers." "Utilisez la SOURIS et les touches de déplacement pour regarder les tours." }
+{ " ) to open doors." " ) pour ouvrir les portes." }
+{ "Touch the health and ammo to pick it up." "Touchez la santé et les munitions pour les ramasser." }
+{ " ) to activate items that are far away." " ) pour activer les objets éloignés." }
+{ " ) to get the explosives." " ) pour prendre les explosifs." }
+{ " ) to get weapons and ammo." " ) pour prendre des armes et des munitions." }
+{ "Use your MOUSE or " "Utilisez la SOURIS ou " }
+{ "Good work Powell, get ready for your first mission" "Beau travail, Powell, préparez-vous pour votre première mission" }
+{ "Press your JUMP key ( " "Appuyez sur la touche SAUTER ( " }
+{ "Press your DUCK key ( " "Appuyez sur la touche S'ACCROUPIR ( " }
+{ "Use the movement keys and look up to climb the ladder. You may also press your USE key." "Utilisez les touches de déplacement et regardez en haut pour grimper à l'échelle. Vous pouvez aussi appuyer sur la touche UTILISER." }
+{ "Press your USE key ( " "Appuyez sur la touche UTILISER ( " }
+{ "Find the red ghost image of the bomb and press the USE key ( " "Trouvez l'image rouge transparente de la bombe et appuyez sur la touche UTILISER ( " }
+{ " ) to plant explosives on the tank." " ) pour poser les explosifs sur le char." }
+{ "75 seconds to escape the sub" "75 secondes pour fuir le sous-marin" }
+{ "Use your MOUSE to turn and aim." "Utilisez la SOURIS pour tourner et viser." }
+{ "Your hard drive is full, unable to save game." "La carte mémoire est pleine, impossible de sauvegarder la partie." }
+{ "Your hard drive is full. Unable to save game." "La carte mémoire est pleine. Impossible de sauvegarder la partie." }
+{ "Error" "Erreur" }
+{ "You have the KAR98 Sniper Rifle." "Vous avez le fusil de précision KAR98." }
+{ "Pick up the explosives and plant them on the tank before opening this door." "Ramassez les explosifs et posez-les sur le char avant d'ouvrir cette porte." }
+{ "Make sure you pick up some health and ammo before progressing." "Prenez de la santé et des munitions avant d'avancer." }
+{ "Try several doors before you progress in your training." "Essayez plusieurs portes avant de poursuivre l'entraînement." }
+{ "30 seconds to escape to elevator." "30 secondes pour fuir jusqu'à l'ascenseur." }
+{ "You must first open the valves." "Vous devez d'abord ouvrir les vannes." }
+{ "Will switch to Allies model & weapons next time you respawn" "Passage au modèle et aux armes des Alliés à votre prochaine réapparition" }
+{ "Press USE to open doors. If you cannot open the door, you will be able to hear the handle rattle." "Appuyez sur UTILISER pour ouvrir les portes. Si la porte ne s'ouvre pas, vous entendrez la poignée cliqueter." }
+{ "You have not completed all your objectives yet." "Vous n'avez pas encore accompli tous vos objectifs." }
+{ "You must gather the entire tank crew before you can leave" "Vous devez rassembler tout l'équipage du char avant de partir" }
+{ " to switch to the sniper rifle." " pour prendre le fusil de précision." }
+{ " to use the scope on the sniper rifle." " pour utiliser la lunette du fusil de précision." }
+{ "You can only climb one side of a ladder." "On ne peut grimper une échelle que d'un seul côté." }
+{ "Approach this ladder from the west to climb it." "Abordez cette échelle par l'ouest pour y grimper." }
+{ "Look up and press your forward key ( " "Regardez en haut et appuyez sur la touche avancer ( " }
+{ " ) to climb a ladder." " ) pour grimper à une échelle." }
+{ "Follow the arrow on your compass to reach your objectives." "Suivez la flèche de votre boussole pour atteindre vos objectifs." }
+{ "Press ( " "Appuyez sur ( " }
+{ " ) to see your objectives." " ) pour voir vos objectifs." }
+{ "Lieutenant Powell, it's time to commence field training." "Lieutenant Powell, il est temps de commencer l'entraînement sur le terrain." }
+{ "Pay attention and you might even stand a chance on the battlefield." "Soyez attentif et vous aurez peut-être une chance sur le champ de bataille." }
+{ "First I want you to use your mouse to look at each of the four guard towers." "D'abord, utilisez la souris pour regarder chacun des quatre miradors." }
+{ "Good. Press now press your FORWARDS key ( " "Bien. Appuyez maintenant sur la touche AVANCER ( " }
+{ " ) to move in the direction you are facing." " ) pour aller dans la direction où vous regardez." }
+{ "Press your BACKWARDS key ( " "Appuyez sur la touche RECULER ( " }
+{ " ) to move back." " ) pour reculer." }
+{ "Press STRAFE LEFT ( " "Appuyez sur PAS À GAUCHE ( " }
+{ " ) to move left and STRAFE RIGHT ( " " ) pour aller à gauche et PAS À DROITE ( " }
+{ " ) to move right." " ) pour aller à droite." }
+{ "Using these four keys together with the mouse is critical to your success against the enemy." "Utiliser ces quatre touches avec la souris est essentiel pour l'emporter sur l'ennemi." }
+{ "Press your OBJECTIVES key ( " "Appuyez sur la touche OBJECTIFS ( " }
+{ " ) to see your list of current objectives." " ) pour voir la liste de vos objectifs actuels." }
+{ "When you complete an objective it is checked off on this list." "Quand vous accomplissez un objectif, il est coché dans cette liste." }
+{ "Your current objective is highlighted in yellow." "Votre objectif actuel est surligné en jaune." }
+{ "The arrow points to your current objective." "La flèche indique votre objectif actuel." }
+{ "As you near your objective, the ball bearings on the compass will get closer together." "À mesure que vous approchez de l'objectif, les billes de la boussole se rapprochent." }
+{ "Now notice that the arrow on your compass is pointing at one of the towers." "Remarquez que la flèche de votre boussole indique l'une des tours." }
+{ "Approach the tower indicated by the arrow." "Approchez-vous de la tour indiquée par la flèche." }
+{ "Good. Now press your OBJECTIVES key ( " "Bien. Appuyez maintenant sur la touche OBJECTIFS ( " }
+{ " ) again." " ) à nouveau." }
+{ "You have a new objective. Complete this objective." "Vous avez un nouvel objectif. Accomplissez-le." }
+{ "Press the JUMP ( " "Appuyez sur les touches SAUTER ( " }
+{ " ) and FORWARD ( " " ) et AVANCER ( " }
+{ " ) keys to jump up this pile of crates." " ) pour grimper sur cette pile de caisses." }
+{ "Press the DUCK key ( " "Appuyez sur la touche S'ACCROUPIR ( " }
+{ " ) and then move FORWARD ( " " ) puis avancez ( " }
+{ " ) to pass under the barbed wire." " ) pour passer sous les barbelés." }
+{ " ) again to stand up." " ) à nouveau pour vous relever." }
+{ "Press the FORWARD key ( " "Appuyez sur la touche AVANCER ( " }
+{ " ) and look up and you will climb up the ladder." " ) et regardez en haut pour grimper à l'échelle." }
+{ " ) to grab a ladder from above or below." " ) pour attraper une échelle par le haut ou par le bas." }
+{ "Look down and Press the FORWARD key ( " "Regardez en bas et appuyez sur la touche AVANCER ( " }
+{ " ) and you will descend the ladder." " ) pour descendre l'échelle." }
+{ "Approach the explosives and press the USE key ( " "Approchez-vous des explosifs et appuyez sur la touche UTILISER ( " }
+{ "Notice that an image of the explosives has appeared in the upper right corner of your hud." "Remarquez qu'une image des explosifs est apparue en haut à droite de l'écran." }
+{ "This is how you know what items you have in your inventory." "C'est ainsi que vous savez quels objets vous avez dans votre inventaire." }
+{ "The other image is of the radio which I am using to communicate with you." "L'autre image est celle de la radio par laquelle je communique avec vous." }
+{ "A red transparent image of the explosives has appeared on the tank." "Une image rouge transparente des explosifs est apparue sur le char." }
+{ " ) while near the image to plant explosives on the tank." " ) près de l'image pour poser les explosifs sur le char." }
+{ "Keep in mind that items you need to USE ( " "Retenez que les objets que vous devez UTILISER ( " }
+{ " ) or destroy to complete your mission will also pulse red." " ) ou détruire pour accomplir votre mission clignotent aussi en rouge." }
+{ "Move away from the tank to avoid being injured." "Éloignez-vous du char pour ne pas être blessé." }
+{ "Some doors might be locked. The sound will clue you in." "Certaines portes peuvent être verrouillées. Le bruit vous mettra sur la piste." }
+{ "You will automatically pick up first-aid supplies when your health is below 100%." "Vous ramassez automatiquement les trousses de soins quand votre santé est sous 100%." }
+{ "Same for ammunition and weapons--but remember that each weapon has a maximum amount of ammo you can carry." "Pareil pour les munitions et les armes, mais chaque arme a une quantité maximale de munitions transportable." }
+{ "Sometimes items are too far to be automatically picked up. Press the USE key ( " "Parfois les objets sont trop loin pour être ramassés automatiquement. Appuyez sur la touche UTILISER ( " }
+{ " ) to grab these items." " ) pour prendre ces objets." }
+{ "Select the Colt 45 by pressing the PISTOL key. ( " "Prenez le Colt 45 en appuyant sur la touche PISTOLET. ( " }
+{ " )" " )" }
+{ "To neutralize an enemy without drawing undue attention, press the SECONDARY ATTACK key ( " "Pour neutraliser un ennemi sans attirer l'attention, appuyez sur la touche ATTAQUE SECONDAIRE ( " }
+{ " ) to activate the pistol whip." " ) pour frapper avec la crosse du pistolet." }
+{ "Press the PRIMARY ATTACK key ( " "Appuyez sur la touche ATTAQUE PRINCIPALE ( " }
+{ " ) to fire any of your weapons." " ) pour faire feu avec n'importe quelle arme." }
+{ "Note that you are more accurate with all weapons when firing in short bursts and while not moving." "Notez que vous êtes plus précis avec toutes les armes en tirant par courtes rafales et à l'arrêt." }
+{ "Shoot the target a couple of times with the pistol." "Tirez quelques fois sur la cible avec le pistolet." }
+{ "Switch to the Thompson by pressing the SMG key. ( " "Prenez la Thompson en appuyant sur la touche PISTOLET-MITRAILLEUR. ( " }
+{ "You may reload any of your weapons at any time by pressing the RELOAD key. ( " "Vous pouvez recharger n'importe quelle arme à tout moment avec la touche RECHARGER. ( " }
+{ "You should always reload all of your weapons before going into combat." "Rechargez toujours toutes vos armes avant d'aller au combat." }
+{ "Shoot the target twenty times with the Thompson." "Tirez vingt fois sur la cible avec la Thompson." }
+{ "Switch to the Springfield '03 Sniper Rifle by pressing the RIFLE key. ( " "Prenez le fusil de précision Springfield '03 en appuyant sur la touche FUSIL. ( " }
+{ "Press the SECONDARY ATTACK key ( " "Appuyez sur la touche ATTAQUE SECONDAIRE ( " }
+{ " ) to toggle the sniper scope on and off." " ) pour activer ou désactiver la lunette." }
+{ "Use the scope and hit the farthest target on the red dot three times." "Utilisez la lunette et touchez trois fois le point rouge de la cible la plus éloignée." }
+{ "Select the Frag Grenades by pressing the GRENADE key. ( " "Prenez les grenades à fragmentation en appuyant sur la touche GRENADE. ( " }
+{ "The PRIMARY ATTACK ( " "L'ATTAQUE PRINCIPALE ( " }
+{ " ) for the grenades is a long throw." " ) des grenades est un lancer long." }
+{ "Use the SECONDARY ATTACK ( " "Utilisez l'ATTAQUE SECONDAIRE ( " }
+{ " ) for shorter tosses." " ) pour les lancers plus courts." }
+{ "How long you hold the SECONDARY ATTACK key ( " "La durée pendant laquelle vous maintenez la touche ATTAQUE SECONDAIRE ( " }
+{ " ) down affects how far you throw." " ) détermine la distance du lancer." }
+{ "Use bank shots with the grenades to clear rooms where the enemy might be hiding." "Faites ricocher les grenades sur les murs pour nettoyer les pièces où l'ennemi pourrait se cacher." }
+{ "Throw a grenade into each of the concrete boxes." "Lancez une grenade dans chacun des caissons en béton." }
+{ "Approach the MG42 stationary machine gun and press the USE key ( " "Approchez-vous de la mitrailleuse fixe MG42 et appuyez sur la touche UTILISER ( " }
+{ " ) to activate it." " ) pour l'activer." }
+{ "Destroy the target with the machine gun." "Détruisez la cible avec la mitrailleuse." }
+{ " ) on the red door at the end of the range to exit the firing range." " ) sur la porte rouge au bout du stand pour quitter le stand de tir." }
+{ "This training should help you keep your head under fire." "Cet entraînement devrait vous aider à garder la tête froide sous le feu." }
+{ "You're dismissed, Lieutenant Powell. Good luck." "Rompez, Lieutenant Powell. Bonne chance." }
+{ " ) on the red door at the end of the range to exit the firing range whenever you are ready.." " ) sur la porte rouge au bout du stand pour quitter le stand de tir quand vous serez prêt." }
+{ "Your cover has been blown." "Votre couverture est grillée." }
+{ " ) to walk. Walk when you want to sneak up on enemies." " ) pour marcher. Marchez quand vous voulez surprendre l'ennemi." }
+{ "You need a new set of papers to procede past this point." "Il vous faut de nouveaux papiers pour aller plus loin." }
+{ " ) to move out of the truck." " ) pour sortir du camion." }
+{ " ) to grab items off tables." " ) pour prendre les objets sur les tables." }
+{ "Climb the stairs and find the MG42 mounted machine gun." "Montez l'escalier et trouvez la mitrailleuse fixe MG42." }
+{ " ) to use mounted weapons." " ) pour vous servir des armes fixes." }
+{ "Move the tank with your Forward key ( " "Déplacez le char avec la touche Avancer ( " }
+{ " ) and Backward key. ( " " ) et la touche Reculer. ( " }
+{ " ) to turn left and STRAFE RIGHT ( " " ) pour tourner à gauche et PAS À DROITE ( " }
+{ " ) to turn right." " ) pour tourner à droite." }
+{ "Hold your Jump key ( " "Maintenez la touche de saut ( " }
+{ " ) to align the base with the turret." " ) pour aligner la caisse sur la tourelle." }
+{ "To call in air support switch to the binoculars. ( " "Pour demander un appui aérien, prenez les jumelles. ( " }
+{ " ) Then look at the target and press your Fire key. ( " " ) Puis visez la cible et appuyez sur votre touche de tir. ( " }
+{ "Private Durden has been killed in action." "Le Soldat Durden a été tué au combat." }
+{ "Private Cobb has been killed in action." "Le Soldat Cobb a été tué au combat." }
+{ "You have acquired the StG44 blueprints!" "Vous avez récupéré les plans du StG44!" }
+{ "Sometimes an objective may be located directly above or below where the compass appears to indicate." "Parfois un objectif peut se trouver juste au-dessus ou en dessous de l'endroit indiqué par la boussole." }
+{ "You need a new set of papers to procede pass this point." "Il vous faut de nouveaux papiers pour aller plus loin." }
+{ "You have not completed all of the objectives." "Vous n'avez pas accompli tous les objectifs." }
+{ "Holster your weapon by pressing the [" "Rangez votre arme en appuyant sur la touche [" }
+{ "] key to avoid losing your cover" "] pour ne pas griller votre couverture" }
+{ "Scour the area for the missing Bazooka team" "Ratissez le secteur pour retrouver l'équipe bazooka disparue" }
+{ "The Bazooka team is missing, they must be found" "L'équipe bazooka a disparu, il faut la retrouver" }
+{ "Find the Bazooka team, spare no expense!" "Retrouvez l'équipe bazooka, coûte que coûte!" }
+{ "You must find them, before it's too late!" "Vous devez les retrouver avant qu'il ne soit trop tard!" }
+{ "You know, Bazooka team. Probably carrying a long, tubular looking thing." "Vous savez, l'équipe bazooka. Ils portent sûrement un long machin en forme de tube." }
+{ "Why are you banging away at this gate when you have yet to FIND THE BAZOOKA TEAM?!" "Pourquoi vous acharner sur ce portail alors que vous n'avez pas encore RETROUVÉ L'ÉQUIPE BAZOOKA?!" }
+{ "STOP POKING ME" "ARRÊTEZ DE ME TRIPOTER" }
+{ "By accidentally destroying The Bridge, you have failed the mission" "En détruisant le pont par accident, vous avez échoué dans votre mission" }
+{ "Once you find a radio, you will be able to call in air support." "Une fois une radio trouvée, vous pourrez demander un appui aérien." }
+{ "Captain Richards has been killed in action." "Le Capitaine Richards a été tué au combat." }
+{ "Private Wilson has been killed in action." "Le Soldat Wilson a été tué au combat." }
+{ "Private Thomas has been killed in action." "Le Soldat Thomas a été tué au combat." }
+{ "Private Allen has been killed in action." "Le Soldat Allen a été tué au combat." }
+{ "Private Jury has been killed in action." "Le Soldat Jury a été tué au combat." }
+{ "Major Grillo has been killed in action." "Le Major Grillo a été tué au combat." }
+{ "T/4 Medic Glenn has been killed in action." "L'infirmier T/4 Glenn a été tué au combat." }
+{ "Sergeant Hammon has been killed in action." "Le Sergent Hammon a été tué au combat." }
+{ "T/2 Engineer Campbell has been killed in action." "Le sapeur T/2 Campbell a été tué au combat." }
+{ "Approach alarms and press the USE key ( " "Approchez-vous des alarmes et appuyez sur la touche UTILISER ( " }
+{ " ) to toggle them off or on." " ) pour les couper ou les activer." }
+{ "Use your mouse to look at each of the four guard towers." "Utilisez la souris pour regarder chacun des quatre miradors." }
+{ " to move forwards." " pour avancer." }
+{ " to move backwards." " pour reculer." }
+{ " to move left and " " pour aller à gauche et " }
+{ " to move right." " pour aller à droite." }
+{ " to see your list of objectives." " pour voir la liste de vos objectifs." }
+{ " to see your new objective." " pour voir votre nouvel objectif." }
+{ " to jump." " pour sauter." }
+{ " to duck." " pour vous accroupir." }
+{ " to stand up." " pour vous relever." }
+{ "  and look up to climb up the ladder." "  et regardez en haut pour grimper à l'échelle." }
+{ " to get the explosives." " pour prendre les explosifs." }
+{ " to plant the bomb on the tank." " pour poser la bombe sur le char." }
+{ " to open doors." " pour ouvrir les portes." }
+{ " to switch to a pistol." " pour prendre un pistolet." }
+{ " to pistol whip." " pour frapper avec la crosse." }
+{ " to fire." " pour tirer." }
+{ "Shoot the target three times." "Tirez trois fois sur la cible." }
+{ " to switch to a submachine gun." " pour prendre un pistolet-mitrailleur." }
+{ " to reload." " pour recharger." }
+{ "Shoot the target twenty times." "Tirez vingt fois sur la cible." }
+{ " to switch to a rifle." " pour prendre un fusil." }
+{ " to use the scope." " pour utiliser la lunette." }
+{ "Hit the farthest bulls eye three times." "Touchez trois fois le centre de la cible la plus éloignée." }
+{ " to select a grenade." " pour choisir une grenade." }
+{ " for a long throw." " pour un lancer long." }
+{ " for a short throw." " pour un lancer court." }
+{ " to use the machine gun." " pour utiliser la mitrailleuse." }
+{ "Destroy the target." "Détruisez la cible." }
+{ " on the red door to exit the firing range." " sur la porte rouge pour quitter le stand de tir." }
+{ " and look up to climb up the ladder." " et regardez en haut pour grimper à l'échelle." }
+{ " to grab a ladder." " pour attraper une échelle." }
+{ "Look down and press " "Regardez en bas et appuyez sur " }
+{ " to descend the ladder." " pour descendre l'échelle." }
+{ "Pick up the pistol (press " "Ramassez le pistolet (appuyez sur " }
+{ "Go to the next room and pick up the Thompson (press " "Allez dans la pièce suivante et ramassez la Thompson (appuyez sur " }
+{ " )." " )." }
+{ "Go to the next room and pick up the sniper rifle (press " "Allez dans la pièce suivante et ramassez le fusil de précision (appuyez sur " }
+{ "Go to the next room and pick up some grenades (press " "Allez dans la pièce suivante et ramassez des grenades (appuyez sur " }
+{ "Go to the next room and use the machine gun (press " "Allez dans la pièce suivante et utilisez la mitrailleuse (appuyez sur " }
+{ "Use beach obstacles as cover from enemy machinegun fire." "Servez-vous des obstacles de la plage pour vous abriter des mitrailleuses ennemies." }
+{ "You lost too many of your tank crew." "Vous avez perdu trop d'hommes de votre équipage de char." }
+{ "Allies have destroyed the Western Cannon!" "Les Alliés ont détruit le canon ouest!" }
+{ "Allies have destroyed the Eastern Cannon!" "Les Alliés ont détruit le canon est!" }
+{ "The bridge was destroyed. You failed the mission." "Le pont a été détruit. Vous avez échoué dans votre mission." }
+
+// Script hints missing from the game's table (maps/m1l1.scr).
+{ "Find your way to the MG42 mounted machine gun and press the USE key  ( " "Rejoignez la mitrailleuse fixe MG42 et appuyez sur la touche UTILISER ( " }
+{ " ) to take control." " ) pour en prendre le contrôle." }
+
+// Pickup messages built by the game with a number or a name in the middle: &&& stands
+// for that part (code/fgame/ammo.cpp, weapon.cpp, health.cpp). The first entry that
+// matches wins, so the more specific ones come first.
+{ "Got &&& Rifle Rounds" "&&& balles de fusil obtenues" }
+{ "Got &&& Pistol Rounds" "&&& balles de pistolet obtenues" }
+{ "Got &&& Smg Rounds" "&&& balles de pistolet-mitrailleur obtenues" }
+{ "Got &&& Mg Rounds" "&&& balles de mitrailleuse obtenues" }
+{ "Got &&& Heavy Rounds" "&&& munitions lourdes obtenues" }
+{ "Got &&& Shotgun Rounds" "&&& cartouches de fusil à pompe obtenues" }
+{ "Got 1 Rifle Grenade" "1 grenade à fusil obtenue" }
+{ "Got &&& Rifle Grenades" "&&& grenades à fusil obtenues" }
+{ "Got 1 Grenade" "1 grenade obtenue" }
+{ "Got &&& Grenades" "&&& grenades obtenues" }
+{ "Recovered &&& Health" "&&& points de santé récupérés" }
+{ "Picked Up &&&" "Ramassé: &&&" }
+
+// Mission objectives (maps/*.scr). &&& is the number the script fills in.
+{ "Check the door." "Vérifiez la porte." }
+{ "Continue on your mission." "Poursuivez votre mission." }
+{ "Hold off the reinforcements." "Repoussez les renforts." }
+{ "Infiltrate the German occupied village." "Infiltrez le village occupé par les Allemands." }
+{ "Man the MG42 mounted machine gun." "Prenez la mitrailleuse fixe MG42." }
+{ "Find and rescue the SAS Agent." "Trouvez et libérez l'agent du SAS." }
+{ "Follow the SAS Agent." "Suivez l'agent du SAS." }
+{ "Meet Grillo by the gate and exfiltrate." "Rejoignez Grillo au portail et exfiltrez-vous." }
+{ "Steal explosives from the fortress" "Volez des explosifs dans la forteresse" }
+{ "Steal explosives from the fortress." "Volez des explosifs dans la forteresse." }
+{ "Use explosives to destroy a Flak88." "Utilisez les explosifs pour détruire un Flak88." }
+{ "Use explosives to escape." "Utilisez les explosifs pour vous échapper." }
+{ "Bomb munitions cache." "Faites sauter le dépôt de munitions." }
+{ "Bomb tanks. [&&& remaining]" "Faites sauter les chars. [reste &&&]" }
+{ "Bomb tanks." "Faites sauter les chars." }
+{ "Disable Opel trucks. [&&& remaining]" "Neutralisez les camions Opel. [reste &&&]" }
+{ "Disable Opel trucks." "Neutralisez les camions Opel." }
+{ "Exfiltrate the facility." "Exfiltrez-vous du site." }
+{ "Reach the airfield." "Atteignez l'aérodrome." }
+{ "Destroy all communications equipment." "Détruisez tout le matériel de transmission." }
+{ "Make your way to the lighthouse." "Rejoignez le phare." }
+{ "Meet up with Major Grillo in the truck and escape." "Retrouvez le Major Grillo dans le camion et fuyez." }
+{ "Signal the fleet with the lighthouse beacon." "Faites signe à la flotte avec la lanterne du phare." }
+{ "Steal the research documents [&&& remaining]" "Volez les documents de recherche [reste &&&]" }
+{ "Steal the research documents. [&&& remaining]." "Volez les documents de recherche. [reste &&&]." }
+{ "Enter the complex with the assistance of Major Grillo." "Entrez dans le complexe avec l'aide du Major Grillo." }
+{ "Enter the main facility." "Entrez dans le bâtiment principal." }
+{ "Destroy the Naxos Prototype." "Détruisez le prototype Naxos." }
+{ "Enter the 2nd U-boat." "Entrez dans le 2e U-boot." }
+{ "Find a disguise." "Trouvez un déguisement." }
+{ "Eliminate opposition and escape." "Éliminez la résistance et fuyez." }
+{ "Escape." "Fuyez." }
+{ "Plant the bombs [&&& left]." "Posez les bombes [reste &&&]." }
+{ "Plant the bombs." "Posez les bombes." }
+{ "Exfiltrate." "Exfiltrez-vous." }
+{ "Exfiltrate" "Exfiltrez-vous" }
+{ "Exfiltrate the base." "Exfiltrez-vous de la base." }
+{ "Meet up with allies at train station." "Rejoignez les alliés à la gare." }
+{ "Bring the bangalores back to the shingle." "Rapportez les torpilles Bangalore jusqu'aux galets." }
+{ "Follow the Captain to the bunker." "Suivez le Capitaine jusqu'au bunker." }
+{ "Get the bangalores." "Prenez les torpilles Bangalore." }
+{ "Get to the shingle." "Atteignez les galets." }
+{ "Get to the trench." "Atteignez la tranchée." }
+{ "Infiltrate the bunker." "Infiltrez le bunker." }
+{ "Meet up with the Captain." "Rejoignez le Capitaine." }
+{ "Clear out the bunker." "Nettoyez le bunker." }
+{ "Destroy the 1 20mm Anti-Aircraft gun emplacement" "Détruisez l'unique emplacement de canon antiaérien de 20mm" }
+{ "Destroy the 15cm Artillery emplacement" "Détruisez l'emplacement d'artillerie de 15cm" }
+{ "Destroy the 2 20mm Anti-Aircraft gun emplacements" "Détruisez les 2 emplacements de canons antiaériens de 20mm" }
+{ "Destroy the 20mm Anti-Aircraft gun emplacements" "Détruisez les emplacements de canons antiaériens de 20mm" }
+{ "Destroy the FLAK 88 Artillery emplacement" "Détruisez l'emplacement d'artillerie FLAK 88" }
+{ "Eliminate the MG42 machine gunners." "Éliminez les servants des MG42." }
+{ "Exit the bunker." "Sortez du bunker." }
+{ "Meet up at the rendevous point" "Rejoignez le point de rendez-vous" }
+{ "Bypass the roadblock." "Contournez le barrage routier." }
+{ "Call an airstrike on the Flak 88." "Demandez une frappe aérienne sur le Flak 88." }
+{ "Call an airstrike on the second Flak 88." "Demandez une frappe aérienne sur le second Flak 88." }
+{ "Defend the back of the house." "Défendez l'arrière de la maison." }
+{ "Defend the front of the house." "Défendez l'avant de la maison." }
+{ "Destroy the anti-aircraft gun so air support can return." "Détruisez le canon antiaérien pour que l'appui aérien puisse revenir." }
+{ "Find a radio to call an airstrike on the Flak 88 cannon." "Trouvez une radio pour demander une frappe aérienne sur le canon Flak 88." }
+{ "Find the radio near the silo and use it to call an airstrike on the Flak 88 cannon." "Trouvez la radio près du silo et utilisez-la pour demander une frappe aérienne sur le canon Flak 88." }
+{ "Locate any Flak 88's guarding the road." "Repérez les Flak 88 qui gardent la route." }
+{ "Search the house." "Fouillez la maison." }
+{ "Locate and destroy the Nebelwerfers." "Repérez et détruisez les Nebelwerfer." }
+{ "Find allied soldiers." "Trouvez des soldats alliés." }
+{ "Take secret German documents." "Prenez les documents secrets allemands." }
+{ "Escort the pilot to the Maquis hideout." "Escortez le pilote jusqu'à la planque du maquis." }
+{ "Locate the downed G3 pilot." "Retrouvez le pilote abattu du G3." }
+{ "Bomb Tiger tanks. [&&& remaining]" "Faites sauter les chars Tigre. [reste &&&]" }
+{ "Bomb Tiger tanks." "Faites sauter les chars Tigre." }
+{ "Find a way into the train station." "Trouvez un moyen d'entrer dans la gare." }
+{ "Get into the back of the Opel truck." "Montez à l'arrière du camion Opel." }
+{ "Get to the control tower and switch the tracks." "Rejoignez le poste d'aiguillage et changez les voies." }
+{ "Infiltrate the tank park." "Infiltrez le parc à chars." }
+{ "Plant explosives on the track barrier." "Posez des explosifs sur la barrière de la voie." }
+{ "Switch the tracks at the first junction." "Changez l'aiguillage au premier embranchement." }
+{ "Escape and meet up with Manon." "Fuyez et retrouvez Manon." }
+{ "Gather any intelligence on the new Tiger tank." "Recueillez des renseignements sur le nouveau char Tigre." }
+{ "Infiltrate the perimeter." "Infiltrez le périmètre." }
+{ "Send the false comminique." "Envoyez le faux communiqué." }
+{ "Steal the battle plans." "Volez les plans de bataille." }
+{ "Steal the troop manifest." "Volez le manifeste des troupes." }
+{ "Get past the gate into the rest of the town." "Franchissez le portail pour gagner le reste de la ville." }
+{ "Locate the bazooka team." "Retrouvez l'équipe bazooka." }
+{ "Proceed to the south edge of town." "Gagnez la lisière sud de la ville." }
+{ "Bring reinforcements all the way through Sniper Town." "Faites passer les renforts à travers toute la Ville des Snipers." }
+{ "Defeat the Panzer tank." "Venez à bout du char Panzer." }
+{ "Find the tank crew." "Retrouvez l'équipage du char." }
+{ "Keep the tank crew alive and infiltrate city hall." "Gardez l'équipage du char en vie et infiltrez la mairie." }
+{ "Steal the King Tiger with the tank crew." "Volez le Tigre Royal avec l'équipage du char." }
+{ "Escape with the King Tiger tank." "Fuyez avec le char Tigre Royal." }
+{ "Destroy the enemy King Tiger." "Détruisez le Tigre Royal ennemi." }
+{ "Sneak in and find a high position overlooking the bridge." "Glissez-vous dans la ville et trouvez une position haute qui domine le pont." }
+{ "Snipe the Germans that try to blow up the bridge." "Abattez au fusil de précision les Allemands qui tentent de faire sauter le pont." }
+{ "Use the high vantage point to call in artillery strikes. You may have to use multiple buildings to cover all the approaches to the bridge." "Utilisez ce point élevé pour demander des tirs d'artillerie. Vous devrez peut-être utiliser plusieurs bâtiments pour couvrir tous les accès au pont." }
+{ "Find and destroy the 20mm Flaks.         [&&& remaining]" "Trouvez et détruisez les Flak de 20mm.         [reste &&&]" }
+{ "Keep tracking towards the rally point." "Continuez vers le point de ralliement." }
+{ "Find and destroy the 20mm Flak." "Trouvez et détruisez le Flak de 20mm." }
+{ "Keep tracking towards the rally point in the nearby town." "Continuez vers le point de ralliement dans la ville voisine." }
+{ "Destroy the weapons stockpile." "Détruisez le stock d'armes." }
+{ "Infiltrate the base (Hint: find a disguise)." "Infiltrez la base (astuce: trouvez un déguisement)." }
+{ "Steal an StG44." "Volez un StG44." }
+{ "Steal blueprints for StG44." "Volez les plans du StG44." }
+{ "Escape through the Commandant's residence on the south side of town." "Fuyez par la résidence du Kommandant, au sud de la ville." }
+{ "Plant explosives in the radio command post, in the northeast corner of the town. [&&& remaining]" "Posez des explosifs dans le poste de commandement radio, au nord-est de la ville. [reste &&&]" }
+{ "Plant explosives in the radio command post, in the northeast corner of the town." "Posez des explosifs dans le poste de commandement radio, au nord-est de la ville." }
+{ "Cut the electrical power to the fences." "Coupez le courant des clôtures électrifiées." }
+{ "Find the train station." "Trouvez la gare." }
+{ "Send the radio transmission." "Envoyez la transmission radio." }
+{ "Find a way to the inner facility. Check elevators for enemy reinforcements." "Trouvez un chemin vers le coeur du site. Surveillez les ascenseurs, des renforts ennemis peuvent arriver." }
+{ "Open the main fuel line valve." "Ouvrez la vanne principale de la conduite de carburant." }
+{ "Plant explosives on the fuel flow control units." "Posez des explosifs sur les unités de contrôle du débit de carburant." }
+{ "Snipe the tower guards. Avoid excessive casualties." "Abattez au fusil de précision les gardes des miradors. Évitez les pertes excessives." }
+{ "Unlock the cellblock doors and free the POWs." "Déverrouillez les portes des cellules et libérez les prisonniers." }
+{ "Acquire a gas mask." "Trouvez un masque à gaz." }
+{ "Make your way to the lower level." "Descendez au niveau inférieur." }
+{ "Escape Fort Schmerzen." "Évadez-vous du Fort Schmerzen." }
+{ "Open the main gas valves. [&&& remaining]" "Ouvrez les vannes de gaz principales. [reste &&&]" }
+{ "Open the two main gas valves." "Ouvrez les deux vannes de gaz principales." }
+{ "Plant the explosives." "Posez les explosifs." }
+{ "Return to the elevator." "Retournez à l'ascenseur." }
+{ "Approach the tower indicated by the arrow on the compass." "Approchez-vous de la tour indiquée par la flèche de la boussole." }
+{ "Complete the rest of training." "Terminez le reste de l'entraînement." }
+{ "Find the explosives." "Trouvez les explosifs." }
+{ "Get over the wall to the north." "Franchissez le mur au nord." }
+{ "Look at all four towers [&&& remaining]." "Regardez les quatre tours [reste &&&]." }
+{ "Plant the explosives on the tank." "Posez les explosifs sur le char." }
+
+// Messages from the mission scripts.
+{ "Come back when you have them." "Revenez quand vous les aurez." }
+{ "You don't have the proper papers!" "Vous n'avez pas les bons papiers!" }
+{ "Here, take a High Standard. It's sneaky sneaky." "Tenez, prenez un High Standard. Il est discret, très discret." }
+{ "I got the papers, now, let's find the explosives!" "J'ai les papiers, maintenant trouvons les explosifs!" }
+{ "Quick, grab that sniper rifle" "Vite, prenez ce fusil de précision" }
+{ "Stay back, there's a sniper up there!" "Restez en arrière, il y a un tireur embusqué là-haut!" }
+{ "Powell, stop him before he can blow the bridge!" "Powell, arrêtez-le avant qu'il fasse sauter le pont!" }
+{ "By accidentally destroying the bridge, you have failed the mission" "En détruisant le pont par accident, vous avez échoué dans votre mission" }
+{ "The King Tiger was destroyed. You failed the mission." "Le Tigre Royal a été détruit. Vous avez échoué dans votre mission." }
+{ "Health: " "Santé: " }
+
+// End of mission statistics (ui/statsscreen_*.urc).
+{ "Mission Statistics" "Statistiques de la mission" }
+{ "Mission Success" "Mission accomplie" }
+{ "Mission Failed" "Mission échouée" }
+{ "Medal Awarded" "Médaille décernée" }
+{ "Enemies Killed:" "Ennemis tués:" }
+{ "Objectives Completed:" "Objectifs accomplis:" }
+{ "Shots Fired:" "Tirs effectués:" }
+{ "Shots Hit:" "Tirs au but:" }
+{ "Accuracy:" "Précision:" }
+{ "Preferred Weapon:" "Arme préférée:" }
+{ "Hits Taken:" "Blessures reçues:" }
+{ "Hit Locations Percentage" "Zones touchées (%)" }
+{ "Head:" "Tête:" }
+{ "Torso:" "Torse:" }
+{ "Groin:" "Aine:" }
+{ "Left Arm:" "Bras gauche:" }
+{ "Right Arm:" "Bras droit:" }
+{ "Left Leg:" "Jambe gauche:" }
+{ "Right Leg:" "Jambe droite:" }
+{ "Press 'Fire' to Continue" "Appuyez sur Tir pour continuer" }
+
+// Options menus (ui/*options*.urc).
+{ "Model detail" "Détail des modèles" }
+{ "Shadows" "Ombres" }
+{ "Speaker Type" "Type d'enceintes" }
+{ "Sound Quality" "Qualité du son" }
+{ "Texture Filter" "Filtrage des textures" }
+{ "Texture Quality" "Qualité des textures" }
+{ "Current Picmip" "Picmip actuel" }
+{ "Current ColorDepth" "Profondeur de couleur actuelle" }
+{ "New Resolution" "Nouvelle résolution" }
+{ "Server Disconnected" "Déconnecté du serveur" }
+{ "Connecting to Server..." "Connexion au serveur..." }
+
+// Controls list (ui/bind.scr).
+{ "Action" "Action" }
+{ "Primary" "Principale" }
+{ "Alternate" "Secondaire" }
+{ "Primary Attack" "Attaque principale" }
+{ "Secondary Attack" "Attaque secondaire" }
+{ "Move Forward" "Avancer" }
+{ "Move Backward" "Reculer" }
+{ "Jump/Stand Up" "Sauter/Se relever" }
+{ "Crouch" "S'accroupir" }
+{ "Turn Left" "Tourner à gauche" }
+{ "Turn Right" "Tourner à droite" }
+{ "Look Up" "Regarder en haut" }
+{ "Look Down" "Regarder en bas" }
+{ "Center View" "Centrer la vue" }
+{ "Strafe Left" "Pas à gauche" }
+{ "Strafe Right" "Pas à droite" }
+{ "Run/Walk" "Courir/Marcher" }
+{ "Always-Run Toggle" "Toujours courir (oui/non)" }
+{ "Use" "Utiliser" }
+{ "Reload" "Recharger" }
+{ "Holster Weapon" "Ranger l'arme" }
+{ "Last Used Weapon" "Dernière arme utilisée" }
+{ "Next Weapon" "Arme suivante" }
+{ "Prev Weapon" "Arme précédente" }
+{ "SMG" "Pistolet-mitrailleur" }
+{ "MG" "Mitrailleuse" }
+{ "Papers/Binoculars" "Papiers/Jumelles" }
+{ "Objectives/Scores" "Objectifs/Scores" }
+{ "QuickSave" "Sauvegarde rapide" }
+{ "Load QuickSave" "Charger sauvegarde rapide" }
+
+// Words drawn in menu pictures, used by misc/vita/make_menu_text.py (not by the game).
+{ "SELECT DIFFICULTY" "DIFFICULTÉ" }
+{ "EASY" "FACILE" }
+{ "MEDIUM" "MOYEN" }
+{ "HARD" "DIFFICILE" }
+{ "CANCEL" "ANNULER" }
+{ "ARE YOU SURE YOU WANT TO DELETE?" "VOULEZ-VOUS VRAIMENT SUPPRIMER?" }
+{ "YES" "OUI" }
+{ "NO" "NON" }
+{ "NEW GAME" "NOUVELLE PARTIE" }
+{ "OPTIONS" "OPTIONS" }
+{ "BRIEFING ROOM" "SALLE DE BRIEFING" }
+{ "CREDITS" "CRÉDITS" }
+{ "MULTIPLAYER" "MULTIJOUEUR" }
+{ "MAPLIST" "CARTES" }
+{ "CONTINUE GAME" "CONTINUER" }
+{ "LOAD DEMO" "CHARGER DÉMO" }
+{ "LOAD/SAVE & MEDAL CASE" "CHARGER/SAUVER|ET MÉDAILLES" }
+{ "MAP ROOM" "SALLE DES CARTES" }
+{ "START GAME" "LANCER PARTIE" }
+{ "JOIN GAME" "REJOINDRE" }
+{ "MULTIPLAYER OPTIONS" "OPTIONS|MULTIJOUEUR" }
+{ "ADVANCED" "AVANCÉ" }
+{ "AUDIO" "AUDIO" }
+{ "CONTROLS" "COMMANDES" }
+{ "VIDEO" "VIDÉO" }
+{ "LOAD/SAVE GAME" "PARTIES|SAUVÉES" }
+{ "PERSONAL RECORDS" "DOSSIER|PERSONNEL" }
+{ "TRAINING COURSE" "CAMP|D'ENTRAÎNEMENT" }
+{ "MISSION 1:" "MISSION 1:" }
+{ "MISSION 2:" "MISSION 2:" }
+{ "MISSION 3:" "MISSION 3:" }
+{ "MISSION 4:" "MISSION 4:" }
+{ "MISSION 5:" "MISSION 5:" }
+{ "MISSION 6:" "MISSION 6:" }
+{ "Lighting The Torch" "Allumer la Torche" }
+{ "Scuttling The U-529" "Saborder le U-529" }
+{ "Operation Overlord" "Opération Overlord" }
+{ "Behind Enemy Lines" "Derrière les Lignes" }
+{ "The Day Of The Tiger" "Le Jour du Tigre" }
+{ "Return To Schmerzen" "Retour à Schmerzen" }
+{ "APPLY" "APPLIQUER" }
+{ "BACK" "RETOUR" }
+{ "BACK TO GAME" "RETOUR AU JEU" }
+{ "CONTINUE" "CONTINUER" }
+{ "DEFAULT" "DÉFAUT" }
+{ "QUIT" "QUITTER" }
+{ "LOAD" "CHARGER" }
+{ "SAVE" "SAUVER" }
+{ "DELETE" "SUPPRIMER" }
+{ "PAUSED" "PAUSE" }
+{ "LOADING" "CHARGEMENT" }
+{ "CLICK FIRE TO SKIP BRIEFING" "TIREZ POUR PASSER LE BRIEFING" }
+{ "GAME SAVED" "PARTIE SAUVÉE" }
+{ "REFRESH" "ACTUALISER" }
+
+// Subtitles: what the characters say (ubersound/uberdialog.scr), in the order of the
+// missions. The voices stay in English; Vita settings > Display > Subtitles chooses which
+// speech is subtitled.
+{ "Okay squad listen up. This is a rescue mission, so watch your fire and don't give your position away. Advance from cover and check your corners." "Bon, écoutez-moi bien. C'est une mission de sauvetage, alors surveillez vos tirs et ne trahissez pas notre position. Progressez à couvert et vérifiez les angles." }
+{ "Powell you're on point." "Powell, vous êtes en tête." }
+{ "Powell. Take out that sentry." "Powell. Descendez cette sentinelle." }
+{ "Come on, come on." "Allez, allez." }
+{ "Good. Cooper you take point now. Powell, watch our backs." "Bien. Cooper, vous passez en tête. Powell, couvrez nos arrières." }
+{ "Powell, man that machine gun!" "Powell, prenez cette mitrailleuse!" }
+{ "German checkpoint, 200 yards." "Poste de contrôle allemand, à 200 mètres." }
+{ "Everyone keep quiet.  This had better work." "Pas un bruit. Ça a intérêt à marcher." }
+{ "Change of plans! Let's go!" "Changement de programme! On y va!" }
+{ "Go! Go! Get the truck moving, they're on to us!" "Allez! Allez! Démarre ce camion, ils nous ont repérés!" }
+{ "Powell, check the door." "Powell, vérifiez la porte." }
+{ "Check the door, I'll cover you." "Vérifiez la porte, je vous couvre." }
+{ "Now, get going!" "Maintenant, allez-y!" }
+{ "I got all the time in the world here, Powell." "J'ai tout mon temps, Powell." }
+{ "Get your act together Powell!" "Reprenez-vous, Powell!" }
+{ "What was that? I think I heard something." "Qu'est-ce que c'était? J'ai cru entendre quelque chose." }
+{ "Ambush!" "Embuscade!" }
+{ "Make a run for it Powell, I'll cover you." "Foncez, Powell, je vous couvre." }
+{ "Get going!" "Allez-y!" }
+{ "I got you covered.  Move!" "Je vous couvre. Bougez!" }
+{ "He's taking too long." "Il prend trop de temps." }
+{ "He's buying it, just hold on." "Il est en train de gober, tenez bon." }
+{ "He's not taking them Captain." "Il ne les accepte pas, mon Capitaine." }
+{ "Come on." "Allez." }
+{ "Thanks.  They would've killed me for certain.  Stick close to me at all times." "Merci. Ils m'auraient tué, c'est certain. Restez tout près de moi en permanence." }
+{ "Let's get going Lieutenant." "En route, Lieutenant." }
+{ "The documents and explosives I had were confiscated." "Les documents et les explosifs que j'avais ont été confisqués." }
+{ "We've got to recover them, or this mission is lost." "Il faut les récupérer, sinon la mission est fichue." }
+{ "They're probably in the Commandant's office." "Ils sont sûrement dans le bureau du Kommandant." }
+{ "Stick close Lieutenant, and I'll show you how to avoid detection." "Restez près de moi, Lieutenant, et je vous montrerai comment passer inaperçu." }
+{ "Find cover, quickly!" "À couvert, vite!" }
+{ "You've got to neutralize that sentry before we can advance." "Il faut neutraliser cette sentinelle avant de pouvoir avancer." }
+{ "Okay, we've found the documents." "Bon, on a trouvé les documents." }
+{ "Now let's get the explosives." "Maintenant, allons chercher les explosifs." }
+{ "Here they are." "Les voilà." }
+{ "We'll have to blow that gate, set a charge." "Il va falloir faire sauter ce portail, posez une charge." }
+{ "We need to destroy these Flak-88s. I'll take care of this one, you get the other." "Il faut détruire ces Flak-88. Je m'occupe de celui-ci, vous prenez l'autre." }
+{ "The Afrika Corps Motor Pool is up ahead.  Use the rest of the explosives and sabotage as much as you can." "Le parc automobile de l'Afrika Korps est juste devant. Utilisez le reste des explosifs et sabotez tout ce que vous pouvez." }
+{ "In the meantime, I'll get some transportation for us." "Pendant ce temps, je nous trouve un moyen de transport." }
+{ "Good luck Lieutenant.  I'll see you soon." "Bonne chance, Lieutenant. À bientôt." }
+{ "Hurry, get in. We've got to go!" "Vite, montez. Il faut filer!" }
+{ "Lieutenant, it sounds like they've got more Allied prisoners." "Lieutenant, on dirait qu'ils ont d'autres prisonniers alliés." }
+{ "Shooting the spotlights will get their attention.  It's best to just avoid them." "Tirer sur les projecteurs attirera leur attention. Mieux vaut simplement les éviter." }
+{ "Looks like we got their attention." "On dirait qu'on a attiré leur attention." }
+{ "Get the explosives." "Prenez les explosifs." }
+{ "Let's go!" "On y va!" }
+{ "Take Cover!" "À couvert!" }
+{ "Powell, get out of the way!" "Powell, dégagez de là!" }
+{ "I'll cover this area." "Je couvre ce secteur." }
+{ "You saved my life, sir." "Vous m'avez sauvé la vie, mon Lieutenant." }
+{ "Get ready. We're almost there." "Tenez-vous prêts. On y est presque." }
+{ "Remember, don't just take out the planes, we also want to get the fuel dump and any troops on the ground." "N'oubliez pas: pas seulement les avions, on veut aussi le dépôt de carburant et toutes les troupes au sol." }
+{ "And don't let any of those planes take off!" "Et ne laissez aucun de ces avions décoller!" }
+{ "Don't let that Stuka get away!" "Ne laissez pas filer ce Stuka!" }
+{ "It's coming back for a strafing run, bring it down!" "Il revient pour un mitraillage, abattez-le!" }
+{ "It's coming in after us!" "Il fonce sur nous!" }
+{ "Destroy that Stuka now!" "Détruisez ce Stuka, tout de suite!" }
+{ "Let's split up. I'll draw their reinforcements away." "Séparons-nous. J'attire leurs renforts ailleurs." }
+{ "Go through that bunker to the lighthouse." "Traversez ce bunker jusqu'au phare." }
+{ "I'll meet up with you there." "Je vous retrouve là-bas." }
+{ "Hurry Powell. Get in the back of the truck!" "Vite, Powell. Montez à l'arrière du camion!" }
+{ "Look alive Powell, we're coming up on the outskirts of the airfield." "Ouvrez l'oeil, Powell, on arrive aux abords de l'aérodrome." }
+{ "Hang on,  we're taking a detour!" "Accrochez-vous, on fait un détour!" }
+{ "Clear that barricade!" "Dégagez cette barricade!" }
+{ "Clear a path!" "Ouvrez-nous un passage!" }
+{ "Powell, make a path for us!" "Powell, ouvrez-nous la voie!" }
+{ "MG 42!" "MG 42!" }
+{ "That sign points to the airfield." "Ce panneau indique l'aérodrome." }
+{ "Powell, hit those barrels!" "Powell, tirez sur ces barils!" }
+{ "Look out, here comes the guards!" "Attention, voilà les gardes!" }
+{ "That got their attention." "Ça les a réveillés." }
+{ "Powell, we got a truck on our tail." "Powell, on a un camion aux trousses." }
+{ "Deal with that truck!" "Occupez-vous de ce camion!" }
+{ "Powell, the truck!" "Powell, le camion!" }
+{ "Machine gun nest!" "Nid de mitrailleuse!" }
+{ "Heads up!" "Attention!" }
+{ "We've got big trouble" "On a un gros pépin" }
+{ "Shoot it's tires out!" "Crevez-lui les pneus!" }
+{ "Go for the truck's engine!" "Visez le moteur du camion!" }
+{ "Take care of that truck!" "Réglez son compte à ce camion!" }
+{ "Blue fox this is white rook." "Renard Bleu, ici Tour Blanche." }
+{ "I'm in the guard house near the gate." "Je suis dans le poste de garde près du portail." }
+{ "I'm now standing in front of the window." "Je suis maintenant devant la fenêtre." }
+{ "You should be able to see me through the scope." "Vous devriez me voir dans votre lunette." }
+{ "I'm going to take out the guards at the gate." "Je vais éliminer les gardes du portail." }
+{ "When I open fire, give me sniper cover." "Quand j'ouvre le feu, couvrez-moi au fusil de précision." }
+{ "Then watch the perimeter for any reinforcements." "Ensuite, surveillez le périmètre au cas où des renforts arriveraient." }
+{ "Powell, go on without me." "Powell, continuez sans moi." }
+{ "Can I help you sir?" "Je peux vous aider, mon officier?" }
+{ "What are you looking for sir?" "Que cherchez-vous, mon officier?" }
+{ "Is something wrong sir?" "Quelque chose ne va pas, mon officier?" }
+{ "Are you interested in the prototype sir?" "Le prototype vous intéresse, mon officier?" }
+{ "Would you like me to leave you alone sir?" "Voulez-vous que je vous laisse seul, mon officier?" }
+{ "He has a gun!" "Il est armé!" }
+{ "He's a spy!" "C'est un espion!" }
+{ "Stop him!" "Arrêtez-le!" }
+{ "The prototype!" "Le prototype!" }
+{ "No!" "Non!" }
+{ "Sir, are you alright? Can I get you anything?" "Mon officier, tout va bien? Je peux vous apporter quelque chose?" }
+{ "What's going on?" "Que se passe-t-il?" }
+{ "A gun!" "Une arme!" }
+{ "Sabotage!" "Sabotage!" }
+{ "Bomb!" "Une bombe!" }
+{ "Intruder!" "Un intrus!" }
+{ "Are you alright sir? Can I see your... Intruder!" "Tout va bien, mon officier? Puis-je voir vos... Un intrus!" }
+{ "Attention! Attention! Private Gustav Vogel report to the office of area seven. Repeat. Private Gustav Vogal report to the area seven office." "Attention! Attention! Le soldat Gustav Vogel est prié de se présenter au bureau de la zone sept. Je répète. Le soldat Gustav Vogel au bureau de la zone sept." }
+{ "Attention Attention! Sergeant Karl Dittmer report to equipment bay two. Sergeant Dittmer go to equipment bay two." "Attention, attention! Le Sergent Karl Dittmer est prié de se présenter à la baie d'équipement deux. Sergent Dittmer, à la baie d'équipement deux." }
+{ "Attention Attention! LT Gerbig requests two additional equipment loaders be brought to warehouse one immediately." "Attention, attention! Le Lieutenant Gerbig demande que deux chargeurs de matériel supplémentaires soient envoyés immédiatement à l'entrepôt un." }
+{ "Attention personnel. U-665 will depart at 20:00 hours. Let's all remember to be on hand to bid the courageous crew of U-665 happy hunting at 20:00 hours." "Attention à tout le personnel. Le U-665 appareillera à 20 heures. Soyez tous présents pour souhaiter bonne chasse au courageux équipage du U-665 à 20 heures." }
+{ "Attention. Good news today on the eastern front. The heroic troops of the sixth army have struck a brilliant victory against the Soviet Menace. The cowardly Bolshevekis suffered over 300 causalities. In addition, the patriotic troops of sixth destroyed 20 enemy tanks and took 500 prisoners. Field Marshall Model declared that total victory would soon be at hand." "Attention. Bonnes nouvelles aujourd'hui du front de l'Est. Les troupes héroïques de la sixième armée ont remporté une brillante victoire contre la menace soviétique. Les lâches bolcheviks ont subi plus de 300 pertes. En outre, les troupes patriotes de la sixième ont détruit 20 chars ennemis et fait 500 prisonniers. Le Feldmarschall Model a déclaré que la victoire totale était proche." }
+{ "Attention Attention! There is a saboteur in the complex. He may be walking around in a officers uniform. Be on the watch for anyone you do not recognize. All personnel are ordered to be on alert and watch for suspicious persons." "Attention, attention! Un saboteur se trouve dans le complexe. Il se déplace peut-être en uniforme d'officier. Méfiez-vous de toute personne que vous ne connaissez pas. Tout le personnel doit rester en alerte et signaler les individus suspects." }
+{ "I'm going in after him." "Je vais le suivre." }
+{ "Where is he?" "Où est-il?" }
+{ "There is an intruder!" "Il y a un intrus!" }
+{ "Check over there!" "Vérifiez par là!" }
+{ "I'll look in here!" "Je regarde ici!" }
+{ "I already checked there!" "J'ai déjà vérifié là!" }
+{ "What's he look like?" "Il ressemble à quoi?" }
+{ "What was that sound?  He's in the vents!" "C'était quoi, ce bruit? Il est dans les conduits!" }
+{ "Has anyone seen him?" "Quelqu'un l'a vu?" }
+{ "Open fire!" "Ouvrez le feu!" }
+{ "Covering fire!" "Tir de couverture!" }
+{ "Attack!" "À l'attaque!" }
+{ "Fire!" "Feu!" }
+{ "Powell, come over here!" "Powell, venez par ici!" }
+{ "Go! Get moving, come on go!" "Allez! Bougez-vous, allez, allez!" }
+{ "Holdup!" "Halte!" }
+{ "Get down!" "À terre!" }
+{ "Move!" "Bougez!" }
+{ "Take cover!" "À couvert!" }
+{ "I think I wet myself." "Je crois que je me suis pissé dessus." }
+{ "Let's go." "On y va." }
+{ "Outstanding." "Du beau travail." }
+{ "Just get up the beach!" "Remontez la plage, c'est tout!" }
+{ "Special Engineers! We are blowing these barriers to make holes for the tanks." "Génie spécial! On fait sauter ces obstacles pour ouvrir des brèches aux chars." }
+{ "Move up the line, this one is going!" "Avancez le long de la ligne, celui-là va sauter!" }
+{ "30 seconds!" "30 secondes!" }
+{ "Clear the ramp!" "Dégagez la rampe!" }
+{ "Spread out!" "Dispersez-vous!" }
+{ "Move up to the shingle!" "Montez jusqu'aux galets!" }
+{ "We're getting off this damn beach! Move, move!  Go, go!" "On quitte cette foutue plage! Allez, allez! Avancez, avancez!" }
+{ "Stay down!" "Restez à terre!" }
+{ "Who the hell are you guys?" "Mais bon sang, vous êtes qui, vous autres?" }
+{ "Are you nuts? This is the only cover between here and the shingle!" "T'es cinglé? C'est le seul abri d'ici aux galets!" }
+{ "Where's your gear, Private?" "Où est votre paquetage, soldat?" }
+{ "Grab some weapons and follow me!" "Prenez des armes et suivez-moi!" }
+{ "Sir, where's the armor? They said they'd back us up with DD tanks!" "Mon Capitaine, où sont les blindés? On nous avait promis l'appui des chars DD!" }
+{ "They're either destroyed or at the bottom of the Channel. Either way, we're on our own!" "Ils sont détruits ou au fond de la Manche. De toute façon, on est livrés à nous-mêmes!" }
+{ "We can't take the beach without tank support, sir!" "On ne prendra pas la plage sans l'appui des chars, mon Capitaine!" }
+{ "All we can do here is die! Keep moving soldier!" "Ici, on ne peut que mourir! Avancez, soldat!" }
+{ "My gut's been torn out!" "J'ai les tripes à l'air!" }
+{ "Hold on Private, you're gonna be okay!" "Tiens bon, soldat, tu vas t'en tirer!" }
+{ "Keep your head down!" "Garde la tête baissée!" }
+{ "We gotta retreat!" "Il faut se replier!" }
+{ "We're never gonna make it!" "On n'y arrivera jamais!" }
+{ "Sir, the bombers didn't hit a thing! Not a damn thing!" "Mon Capitaine, les bombardiers n'ont rien touché! Pas une fichue cible!" }
+{ "We gotta keep moving sir!" "Il faut avancer, mon Capitaine!" }
+{ "Powell, get the men up the beach! You lead one side, I'll take the other!" "Powell, faites remonter la plage aux hommes! Vous menez un côté, je prends l'autre!" }
+{ "Defilade up ahead! Use those craters and stay low!" "Angle mort devant! Servez-vous des cratères et restez bas!" }
+{ "There are no others!" "Il n'y en a pas d'autres!" }
+{ "Powell, get over here!" "Powell, par ici!" }
+{ "Powell, they need you down there!" "Powell, on a besoin de vous là-bas!" }
+{ "Powell, get down the line, the Captain's needs you!" "Powell, descendez la ligne, le Capitaine a besoin de vous!" }
+{ "Bangalores up the line!" "Les Bangalore en tête de ligne!" }
+{ "Fire in the hole!" "Attention, ça va sauter!" }
+{ "Keep your eyes open!" "Ouvrez l'oeil!" }
+{ "Hold up right here! Stay in cover!" "Halte, ici! Restez à couvert!" }
+{ "Two MG-42s, plus enfilade from that bunker. We've got to find a way up the bluff, we gotta get up there and take out that artillery!" "Deux MG-42, plus le tir d'enfilade de ce bunker. Il faut trouver un moyen de grimper la falaise, monter là-haut et détruire cette artillerie!" }
+{ "Jefferson, Webber, you're up! Get ready! Head for that trench over there!" "Jefferson, Webber, à vous! Préparez-vous! Filez vers cette tranchée là-bas!" }
+{ "Go! Go! Get moving, come on, go! Go!" "Allez! Allez! Bougez-vous, allez, allez! Allez!" }
+{ "Powell. Stick to those impact craters, cut across to that trench over there, and find a way up the bluff. Take out the bunker gunners if you can get a clear shot. Wait for my signal!" "Powell. Passez par les cratères d'obus, coupez jusqu'à cette tranchée là-bas, et trouvez un moyen de grimper la falaise. Descendez les servants du bunker si vous avez un tir dégagé. Attendez mon signal!" }
+{ "Go!" "Allez!" }
+{ "All right men, move fast, spread out, and stay clear of open beach." "Bon, les gars, vite, dispersez-vous, et restez à l'écart de la plage à découvert." }
+{ "Portside, you're with Powell. Starboard, you're with me." "Bâbord, vous êtes avec Powell. Tribord, avec moi." }
+{ "Head for cover and get to the shingle. I'll see you on the beach." "Mettez-vous à couvert et gagnez les galets. On se retrouve sur la plage." }
+{ "Take the sides! Take the sides! Go! Go!" "Par les côtés! Par les côtés! Allez! Allez!" }
+{ "Abandon heavy equipment and head for shore!" "Abandonnez le matériel lourd et foncez vers le rivage!" }
+{ "Sir, I'm staying here!" "Mon Lieutenant, je reste ici!" }
+{ "You stay in one spot, you're a dead man!" "Si tu restes sur place, t'es un homme mort!" }
+{ "Sir, what's the rallying point?!" "Mon Lieutenant, où est le point de ralliement?!" }
+{ "We're gonna die if we don't get off the beach!" "On va crever si on ne quitte pas la plage!" }
+{ "No way, that's suicide! I'm staying here!" "Pas question, c'est du suicide! Je reste ici!" }
+{ "Had to ditch it, sir, almost drowned!" "J'ai dû le larguer, mon Lieutenant, j'ai failli me noyer!" }
+{ "Hold on, Private. You're gonna be ok." "Tiens bon, soldat. Tu vas t'en tirer." }
+{ "Shore party. Gap teams and assault infantry are pinned down at beach obstacles! Request additional supporting fire, over!" "Ici groupe de plage. Les équipes de brèche et l'infanterie d'assaut sont clouées aux obstacles de la plage! Demandons appui feu supplémentaire, terminé!" }
+{ "It's a firing squad up there!" "Là-haut, c'est un peloton d'exécution!" }
+{ "You can either stay here and die in the sand, or you can get yourself to the seawall. Follow me!" "Vous pouvez rester ici et crever dans le sable, ou vous traîner jusqu'à la digue. Suivez-moi!" }
+{ "Get up the beach! Anyone that can move, get up the beach now! Move! Move! Come on! Go!" "Remontez la plage! Tous ceux qui peuvent bouger, remontez la plage, tout de suite! Bougez! Bougez! Allez! En avant!" }
+{ "Any senior noncom, take the men off the beach!" "Les sous-officiers les plus anciens, sortez les hommes de la plage!" }
+{ "Sir, it's a massacre! What the hell are we doing here?" "Mon Lieutenant, c'est un massacre! Bon Dieu, qu'est-ce qu'on fout ici?" }
+{ "We don't stand a chance! What are we supposed to do, sir?" "On n'a aucune chance! Qu'est-ce qu'on doit faire, mon Lieutenant?" }
+{ "I'm not moving! They're cutting us to pieces!" "Je ne bouge pas! Ils nous taillent en pièces!" }
+{ "There's no room to move! The open beach is suicide! I'm staying right here!" "Pas de place pour bouger! La plage à découvert, c'est du suicide! Je reste ici!" }
+{ "Lieutenant! I don't think I can..." "Mon Lieutenant! Je crois que je ne peux pas..." }
+{ "Incoming! Get down!" "Obus! À terre!" }
+{ "We can't stay here! They're concentrating artillery on us! Displace!" "On ne peut pas rester là! Ils concentrent leur artillerie sur nous! Décrochez!" }
+{ "Powell! There's more artillery inbound! Move out now!" "Powell! D'autres obus arrivent! Dégagez, tout de suite!" }
+{ "Powell! They're concentrating fire on our position! Move out now!" "Powell! Ils concentrent le feu sur notre position! Dégagez, tout de suite!" }
+{ "Well there's no way we're getting over there, sir, not with those MG-42s." "Impossible d'aller là-bas, mon Capitaine, pas avec ces MG-42." }
+{ "There's gotta be a way up through those bluffs! Where the hell are the others?" "Il doit bien y avoir un chemin par ces falaises! Où sont passés les autres, bon sang?" }
+{ "Damn, that was close!" "Bon sang, c'était moins une!" }
+{ "Powell, we need some bangalores up here to clear the shingle." "Powell, il nous faut des Bangalore ici pour dégager les galets." }
+{ "Bring up some bangalores! Come on, let's bring them in!" "Amenez des Bangalore! Allez, apportez-les!" }
+{ "Right over here! I've got some bangalores." "Par ici! J'ai des Bangalore." }
+{ "Powell, go back down there and grab those bangalores!" "Powell, redescendez là-bas et prenez ces Bangalore!" }
+{ "What the hell are you waiting for Lieutenant? Get those bangalores!" "Qu'est-ce que vous attendez, Lieutenant? Allez chercher ces Bangalore!" }
+{ "Over here! This way! Bring them over here!" "Par ici! Par là! Apportez-les ici!" }
+{ "Hey Powell, over here! Get those bangers over here!" "Hé, Powell, par ici! Amenez ces Bangalore par ici!" }
+{ "Bring up the bangalores, Lieutenant! Get back here!" "Apportez les Bangalore, Lieutenant! Revenez ici!" }
+{ "Good job Powell, let's get this stuff into position." "Bon boulot, Powell, mettons ce matériel en place." }
+{ "Ok guys, bangers coming your way, come on, move it, move it!" "Bon, les gars, les Bangalore arrivent, allez, magnez-vous, magnez-vous!" }
+{ "Come on, come on, keep it moving, let's go." "Allez, allez, on continue, on y va." }
+{ "Heads up! Bangalores coming through!" "Attention! Les Bangalore passent!" }
+{ "Bangalores! Clear the shingle!" "Bangalore! Dégagez les galets!" }
+{ "Minefields! Watch for minefields!" "Champs de mines! Attention aux champs de mines!" }
+{ "Hold up! There's an MG-42 covering the length of this tunnel!" "Halte! Une MG-42 couvre tout le tunnel!" }
+{ "I'll toss some grenades in, then you follow up and light him up!" "Je balance quelques grenades, puis vous suivez et vous l'arrosez!" }
+{ "We've got wounded back here! Sergeant! Get over here and gimme a hand! Powell! You're on point! Scout ahead and clear that bunker! Medic!" "On a des blessés ici! Sergent! Venez me donner un coup de main! Powell! Vous êtes en tête! Partez en éclaireur et nettoyez ce bunker! Infirmier!" }
+{ "We'll cover you." "On vous couvre." }
+{ "Let's check out this house.  Some boys from the 101st could be trapped inside." "Jetons un oeil à cette maison. Des gars de la 101e pourraient être coincés dedans." }
+{ "Move in!" "On entre!" }
+{ "Okay, let's get back to the Jeep." "Bon, retournons à la Jeep." }
+{ "Powell, get back here and man that machine gun!" "Powell, revenez ici et prenez cette mitrailleuse!" }
+{ "Powell, grab that radio." "Powell, prenez cette radio." }
+{ "Okay, let's get back to those 88's." "Bon, retournons à ces 88." }
+{ "It looks like we'll have to finish this mission on foot. " "On dirait qu'il va falloir finir cette mission à pied." }
+{ "Hold your fire! 101st Airbone!" "Cessez le feu! 101e Aéroportée!" }
+{ "Boy are we glad to see you." "Bon sang, qu'est-ce qu'on est contents de vous voir." }
+{ "We landed way off target sir.  We've been trying to find our regiment ever since, but there are snipers everywhere." "On a été largués loin de la cible, mon Lieutenant. Depuis, on essaie de retrouver notre régiment, mais il y a des tireurs embusqués partout." }
+{ "Hey, alright, some airborne boys." "Hé, super, des gars de l'aéroportée." }
+{ "Powell, stay here and watch the back." "Powell, restez ici et surveillez l'arrière." }
+{ "Powell, help me cover the front!" "Powell, aidez-moi à couvrir l'avant!" }
+{ "Okay, I think that's the last of them. " "Bon, je crois que c'étaient les derniers." }
+{ "So much for our transport." "Adieu notre moyen de transport." }
+{ "Come on Powell, we're moving out." "Allez, Powell, on se met en route." }
+{ "Powell, take point.  Gentlemen, move out." "Powell, prenez la tête. Messieurs, en route." }
+{ "Powell, get us some air support." "Powell, trouvez-nous un appui aérien." }
+{ "Powell, get us some air support!" "Powell, trouvez-nous un appui aérien!" }
+{ "Powell, hit that 88 with air support." "Powell, envoyez l'aviation sur ce 88." }
+{ "Powell, hit that 88 with air support!" "Powell, envoyez l'aviation sur ce 88!" }
+{ "That 88 has this road locked down!" "Ce 88 verrouille toute la route!" }
+{ "We could call in some air support if we had a radio. We have to find another way around." "On pourrait demander un appui aérien si on avait une radio. Il faut trouver un autre chemin." }
+{ "Private Cobb, 3rd of the five-oh-sixth, sir." "Soldat Cobb, 3e bataillon du 506e, mon Capitaine." }
+{ "Private Cobb do you have a radio?" "Soldat Cobb, vous avez une radio?" }
+{ "Our squad's radioman was killed in the clearing to the southeast of this house. But there's a sniper in the silo out there. We can't get anywhere near it, sir." "Le radio de notre groupe a été tué dans la clairière au sud-est de cette maison. Mais il y a un tireur embusqué dans le silo là-bas. Impossible de s'en approcher, mon Capitaine." }
+{ "This should stop the sniper from seeing in here." "Ça devrait empêcher le tireur de voir à l'intérieur." }
+{ "Powell, you're the only sniper here. Head for the farm house and flank that sniper. Take him out and get back with the radio.  Cobb and I will cover the reverse approach on the road." "Powell, vous êtes le seul tireur d'élite ici. Filez vers la ferme et prenez ce tireur à revers. Descendez-le et revenez avec la radio. Cobb et moi, on couvre la route dans l'autre sens." }
+{ "That's not a target. Over." "Ce n'est pas une cible. Terminé." }
+{ "Give me a target. Over." "Donnez-moi une cible. Terminé." }
+{ "Roger. Target acquired." "Reçu. Cible acquise." }
+{ "Roger. Consider it done." "Reçu. Considérez que c'est fait." }
+{ "Target already acquired. Over." "Cible déjà acquise. Terminé." }
+{ "Already enroute to a target. Over." "Déjà en route vers une cible. Terminé." }
+{ "Beautiful, that's the way to win a war." "Magnifique, c'est comme ça qu'on gagne une guerre." }
+{ "Another 88 Powell. Call Fighter Command." "Encore un 88, Powell. Appelez le Commandement de la chasse." }
+{ "Hold your fire! 101st Airborne coming out!" "Cessez le feu! 101e Aéroportée, on sort!" }
+{ "You boys seen any strange looking rocket launchers around here?" "Vous auriez vu de drôles de lance-roquettes dans le coin, les gars?" }
+{ "Yes sir. Just down the road aways." "Oui, mon Capitaine. Un peu plus loin sur la route." }
+{ "Sergeant Harrison, Pathfinders, 101st." "Sergent Harrison, éclaireurs, 101e." }
+{ "Good to meet you Sergeant, I'm Ramsey, 2nd Rangers." "Enchanté, Sergent. Ramsey, 2e bataillon de Rangers." }
+{ "So what did these weapons look like?" "Alors, à quoi ressemblaient ces armes?" }
+{ "Well sir we didn't exactly see them. We just heard them from a long ways off. I've never heard anything like it, either." "Eh bien, mon Capitaine, on ne les a pas vraiment vues. On les a seulement entendues de loin. Et j'ai jamais rien entendu de pareil." }
+{ "Tiger tank to the south! Take cover!" "Char Tigre au sud! À couvert!" }
+{ "Powell, try to get its attention!" "Powell, essayez d'attirer son attention!" }
+{ "We need to trick that tank into clearing our path!" "Il faut piéger ce char pour qu'il nous ouvre le passage!" }
+{ "Echo Charlie out of ammo and returning to base.  You're on your own now.  Good luck, over and out." "Echo Charlie à court de munitions, retour à la base. Vous êtes seuls maintenant. Bonne chance, terminé." }
+{ "I'm lucky you came along. There's a Maquis safehouse right near here. It's over that way." "Heureusement que vous êtes passé par là. Il y a une planque du maquis tout près d'ici. C'est par là." }
+{ "You are the American agent?" "Vous êtes l'agent américain?" }
+{ "You didn't have too much trouble getting here I hope." "J'espère que vous n'avez pas eu trop de mal à venir jusqu'ici." }
+{ "We have prepared some explosives for you to use. They are in this bag." "Nous vous avons préparé des explosifs. Ils sont dans ce sac." }
+{ "I also have a pistol with a silencer for you." "J'ai aussi un pistolet avec silencieux pour vous." }
+{ "You won't want to use those guns you are carrying, they make far too much noise." "Vous ne voudrez pas vous servir de ces armes que vous portez, elles font bien trop de bruit." }
+{ "You should leave them here." "Vous devriez les laisser ici." }
+{ "Here are some papers which explain your mission." "Voici des papiers qui expliquent votre mission." }
+{ "Powell, hurry get into the truck." "Powell, vite, montez dans le camion." }
+{ "We must get away from here." "Il faut partir d'ici." }
+{ "Attention! I'm going to ram the gate! Watch our backs! " "Attention! Je vais enfoncer le portail! Surveillez nos arrières!" }
+{ "That was close!" "C'était moins une!" }
+{ "Powell, once I pull up to the barn, you'll have to hop out and take cover before the inspectors arrive." "Powell, quand je m'arrêterai à la grange, vous devrez sauter et vous cacher avant l'arrivée des inspecteurs." }
+{ "Find an officer's identification papers and make your way into the estate.  Manon will be waiting for you at the bridge beyond the front gates when you're done." "Trouvez les papiers d'identité d'un officier et entrez dans le domaine. Manon vous attendra au pont après le portail principal quand vous aurez fini." }
+{ "Good luck Powell, I hope we meet again." "Bonne chance, Powell, j'espère qu'on se reverra." }
+{ "Go now, quickly!" "Allez-y, vite!" }
+{ "There he is." "Le voilà." }
+{ "We're all ready to go sir." "On est prêts à partir, mon Lieutenant." }
+{ "Alright, let's take this tank and go." "Bon, prenons ce char et partons." }
+{ "Come on Powell, get in the tank." "Allez, Powell, montez dans le char." }
+{ "Come with me sir, the rest of the tank crew is holed up back here." "Venez avec moi, mon Lieutenant, le reste de l'équipage est planqué là-derrière." }
+{ "This is Alpha-Zulu.  Awaiting coordinates, over." "Ici Alpha-Zoulou. En attente de coordonnées, terminé." }
+{ "Alpha-Zulu standing by." "Alpha-Zoulou en attente." }
+{ "This is Alpha-Zulu, standing by." "Ici Alpha-Zoulou, en attente." }
+{ "This is Alpha-Zulu.  Waiting for a response." "Ici Alpha-Zoulou. En attente de réponse." }
+{ "That's affirmative." "Affirmatif." }
+{ "That's an affirmative." "C'est affirmatif." }
+{ "We got it, over." "Bien reçu, terminé." }
+{ "Transmission received." "Transmission reçue." }
+{ "Roger, coordinates received." "Reçu, coordonnées reçues." }
+{ "Roger, we have the coordinates." "Reçu, nous avons les coordonnées." }
+{ "Got it, coordinates have been received." "Compris, coordonnées bien reçues." }
+{ "Affirmative, coordinates received." "Affirmatif, coordonnées reçues." }
+{ "Sir we're in position.  The tank will stay here while you check out the bridge." "Mon Lieutenant, nous sommes en position. Le char reste ici pendant que vous allez voir le pont." }
+{ "Okay sir, we're moving the tank up to the bridge." "Bien, mon Lieutenant, on avance le char jusqu'au pont." }
+{ "Here comes the cavalry." "Voilà la cavalerie." }
+{ "Got that gun." "Canon détruit." }
+{ "Target destroyed." "Cible détruite." }
+{ "The tank is down." "Le char est hors de combat." }
+{ "Enemy armor neutralized." "Blindé ennemi neutralisé." }
+{ "Got them." "On les a eus." }
+{ "Enemy tank destroyed." "Char ennemi détruit." }
+{ "One less Jerry tank." "Un char boche de moins." }
+{ "Shell on target." "Obus au but." }
+{ "Powell, look for a plunger. We believe the enemy has the bridge wired for detonation. You've got to stop them from pressing that plunger at all costs." "Powell, cherchez un détonateur. Nous pensons que l'ennemi a piégé le pont. Vous devez les empêcher d'actionner ce détonateur à tout prix." }
+{ "Powell, the artillery is ready and Fighter Command is sending planes your way. Target enemy tanks with your binoculars and we'll take care of the rest." "Powell, l'artillerie est prête et le Commandement de la chasse vous envoie des avions. Désignez les chars ennemis avec vos jumelles, on s'occupe du reste." }
+{ "Powell. Watch for enemy reinforcements on the other side of the river." "Powell. Surveillez les renforts ennemis de l'autre côté de la rivière." }
+{ "Good work Powell, your reinforcements have arrived." "Beau travail, Powell, vos renforts sont arrivés." }
+{ "Make absolutely certain they don't get to that bridge." "Assurez-vous absolument qu'ils n'atteignent pas ce pont." }
+{ "Too late Powell, fall back!" "Trop tard, Powell, repliez-vous!" }
+{ "Get out of that tower Powell!" "Sortez de cette tour, Powell!" }
+{ "Hurry, get down now!" "Vite, descendez tout de suite!" }
+{ "Go, Powell, Go!" "Allez, Powell, allez!" }
+{ "Thanks. We got cut off from the rest of our squad. They're up ahead somewhere." "Merci. On a été coupés du reste du groupe. Ils sont quelque part devant." }
+{ "About an hour ago a regiment of Germans pushed us back through town." "Il y a une heure, un régiment allemand nous a repoussés à travers la ville." }
+{ "Our squad was completely scattered, we don't know where anyone is." "Notre groupe a été complètement dispersé, on ne sait pas où sont les autres." }
+{ "Have you seen any more guys from our squad? We're scattered all over the place." "Vous avez vu d'autres gars de notre groupe? On est éparpillés partout." }
+{ "Those snipers are tearing us to pieces out here." "Ces tireurs embusqués nous taillent en pièces, ici." }
+{ "It's tooth and nail, sir. We've been fighting for every inch all day." "C'est à couteaux tirés, mon Lieutenant. On se bat pour chaque centimètre depuis ce matin." }
+{ "The sniper's up there." "Le tireur est là-haut." }
+{ "The sniper's up there!" "Le tireur est là-haut!" }
+{ "Thunder!" "Éclair!" }
+{ "Flash!" "Tonnerre!" }
+{ "Hey Hill, look it's Parish." "Hé, Hill, regarde, c'est Parish." }
+{ "Finn, Hill. I figured you guys were dead." "Finn, Hill. Je vous croyais morts." }
+{ "Not yet." "Pas encore." }
+{ "This is Lieutenant Powell." "Voici le Lieutenant Powell." }
+{ "Lieutenant." "Lieutenant." }
+{ "This doesn't look good." "Ça ne sent pas bon." }
+{ "Hey, something's coming." "Hé, quelque chose arrive." }
+{ "It's a tank!" "C'est un char!" }
+{ "Hurry Powell, they're heading for the bridge!" "Vite, Powell, ils foncent vers le pont!" }
+{ "They're on their way to the bridge right now!" "Ils sont en route vers le pont en ce moment même!" }
+{ "Lieutenant, you will fail your mission if that bridge is destroyed!" "Lieutenant, votre mission échouera si ce pont est détruit!" }
+{ "Don't let him get to that plunger!" "Ne le laissez pas atteindre ce détonateur!" }
+{ "We must keep that bridge intact!" "Ce pont doit rester intact!" }
+{ "It's imperative that the enemy does not reach that bridge." "Il est impératif que l'ennemi n'atteigne pas ce pont." }
+{ "We're pinned down! Get some help over here!" "On est cloués au sol! Envoyez-nous du renfort!" }
+{ "Stay back-- there's a sniper up there!" "Restez en arrière, il y a un tireur embusqué là-haut!" }
+{ "Stay put! There's a sniper up there!" "Ne bougez pas! Il y a un tireur embusqué là-haut!" }
+{ "There's City Hall, boys. Let's do this." "Voilà la mairie, les gars. Allons-y." }
+{ "This is the Schmerzen train, we can give Colonel Sanders a lift into the base, we are almost there already so make sure he is ready to go." "Ici le train de Schmerzen, nous pouvons emmener le Colonel Sanders jusqu'à la base, nous y sommes presque, alors veillez à ce qu'il soit prêt à partir." }
+{ "Stop shooting!" "Cessez le feu!" }
+{ "No shooting!" "Pas de tirs!" }
+{ "Stop you'll release the gas!" "Arrêtez, vous allez libérer le gaz!" }
+{ "You fools! Look the gas!" "Imbéciles! Attention au gaz!" }
+{ "Get away from the vapors!" "Éloignez-vous des vapeurs!" }
+{ "We're almost there. Get ready." "On y est presque. Tenez-vous prêts." }
+{ "Alright Powell, we're going to move the train to the prison section. You go on ahead and release the prisoners." "Bien, Powell, on va amener le train jusqu'au quartier de la prison. Passez devant et libérez les prisonniers." }
+{ "Come on Powell. Get in the train. We're moving out!" "Allez, Powell. Montez dans le train. On part!" }
+{ "Would you look at that." "Regardez-moi ça." }
+{ "Okay, we'll secure this area and get the prisoners on the train." "Bon, on sécurise ce secteur et on fait monter les prisonniers dans le train." }
+{ "Powell, you and the Sarge can move up ahead and plant the explosives." "Powell, le Sergent et vous, passez devant et posez les explosifs." }
+{ "Start with the pumping station and work your way to the foundation. Go!" "Commencez par la station de pompage et progressez jusqu'aux fondations. Allez!" }
+{ "Allright Powell, we'll hold this area and take care of the POWs." "Bien, Powell, on tient ce secteur et on s'occupe des prisonniers." }
+{ "I've sent a few more men your way to help out.  Go ahead and start laying those charges!" "Je vous ai envoyé quelques hommes de plus en renfort. Allez-y, commencez à poser les charges!" }
+{ "Meet us back here when you're done!" "Retrouvez-nous ici quand vous aurez fini!" }
+{ "Ok, guys, let's get those POWs out of there! Go! Go! Go!" "Bon, les gars, sortons ces prisonniers de là! Allez! Allez! Allez!" }
+{ "Okay sir, the door is rigged to blow. Its all yours now!" "Bien, mon Lieutenant, la porte est piégée. À vous de jouer!" }
+{ "Lieutenant Powell, Im Colonel Hargrove from the Office of Strategic Services-the OSS. Our branch specializes in covert operations, usually deep behind enemy lines. Espionage, sabotage, infiltrationthats the business were in, Lieutenant." "Lieutenant Powell, je suis le Colonel Hargrove, de l'Office of Strategic Services, l'OSS. Notre section est spécialisée dans les opérations clandestines, en général loin derrière les lignes ennemies. Espionnage, sabotage, infiltration... voilà notre métier, Lieutenant." }
+{ "As you know, Germanys famed Afrika Corps has captured key locations along the southern coast of the Mediterranean, and is now in the process of fortifying their positions. Our response, in coordination with our British allies, is an invasion of North Africa. The attack is code-named Operation Torch. This is finally it, Lieutenant; our first large-scale offensive of the war.  While everything you hear in this room is classified Top Secret, what Im about to tell you is extremely sensitive and only known by a select few." "Comme vous le savez, le célèbre Afrika Korps allemand s'est emparé de points clés sur la côte sud de la Méditerranée et fortifie actuellement ses positions. Notre riposte, en coordination avec nos alliés britanniques, est une invasion de l'Afrique du Nord. L'attaque a pour nom de code Opération Torch. Ça y est enfin, Lieutenant: notre première grande offensive de la guerre. Tout ce que vous entendez dans cette pièce est classé Très Secret, mais ce que je vais vous dire est extrêmement sensible et seule une poignée de gens est au courant." }
+{ "The Germans have positioned artillery batteries along the coast, several of which overlook our intended landing zone. A British SAS operative has penetrated enemy lines at the town of Arzew, on the Algerian coast. His mission was to sabotage these batteries, then give the all clear signal to start the invasion. Yesterday, however, all contact with that agent was lost. The enemys artillery positions remain intactand, the SAS officers capture could compromise the entire operation." "Les Allemands ont installé des batteries d'artillerie le long de la côte, dont plusieurs dominent notre zone de débarquement prévue. Un agent britannique du SAS a franchi les lignes ennemies dans la ville d'Arzew, sur la côte algérienne. Sa mission était de saboter ces batteries, puis de donner le signal pour lancer l'invasion. Mais hier, nous avons perdu tout contact avec cet agent. Les positions d'artillerie ennemies sont toujours intactes, et la capture de l'officier du SAS pourrait compromettre toute l'opération." }
+{ "You and a small squad of your fellow Rangers will infiltrate Arzew under cover of darkness. Your goal is to destroy the coastal batteries and rescue the captured agent. Youll receive specific details of the mission once youre in the field." "Vous et un petit groupe de Rangers allez infiltrer Arzew à la faveur de la nuit. Votre objectif: détruire les batteries côtières et libérer l'agent capturé. Vous recevrez les détails de la mission une fois sur le terrain." }
+{ "The SAS operative is Major Jack Grillo, a man Ive known for years. He would never allow himself to give up what he knows to the Germans, so please find him before hes forced into taking drastic measures." "L'agent du SAS est le Major Jack Grillo, un homme que je connais depuis des années. Il ne se laisserait jamais aller à livrer ce qu'il sait aux Allemands, alors je vous en prie, trouvez-le avant qu'il ne soit contraint de prendre des mesures extrêmes." }
+{ "No doubt about it, this is a critical mission, Lieutenant. Your team has trained hard, and I have every confidence youll get the job done." "Aucun doute là-dessus, c'est une mission capitale, Lieutenant. Votre équipe s'est entraînée durement, et j'ai toute confiance en votre réussite." }
+{ "Outstanding work in North Africa, Lieutenant. Operation Torch was a success. With our forces pressing Rommel from the west, and Montgomerys British troops closing in from the east, it looks like the Afrika Corps days are numbered.  Major Grillo was quite impressed with your actions, and hes specifically requested you for this next mission. As always, what Im about to tell you is Top Secret." "Travail remarquable en Afrique du Nord, Lieutenant. L'Opération Torch a été un succès. Avec nos forces qui pressent Rommel à l'ouest et les troupes britanniques de Montgomery qui se rapprochent à l'est, les jours de l'Afrika Korps semblent comptés. Le Major Grillo a été très impressionné par votre action, et il vous a expressément demandé pour la prochaine mission. Comme toujours, ce que je vais vous dire est Très Secret." }
+{ "As you may know, our primary advantage against the German U-boat threat lies in our ability to detect them with ship and airborne radar. Unfortunately, weve learned that the Kriegsmarine has developed a new piece of equipment-a kind of radar detector, called the Naxos, which will enable Wolfpacks to find the blind spots in our patrol sweeps and once again attack Allied convoys with impunity.  This would give the enemy a tremendous advantage, shifting the balance of power in the Atlantic back to the Germans. The British are researching a way to neutralize this new technology, but I fear it wont be ready in time to prevent the carnage resulting from this Naxos detector being deployed by the Germans." "Comme vous le savez peut-être, notre principal atout face à la menace des U-boote allemands est notre capacité à les détecter au radar, depuis nos navires et nos avions. Malheureusement, nous avons appris que la Kriegsmarine a mis au point un nouvel appareil, une sorte de détecteur de radar appelé Naxos, qui permettra aux meutes de trouver les angles morts de nos patrouilles et d'attaquer de nouveau les convois alliés en toute impunité. Cela donnerait à l'ennemi un avantage énorme et ferait de nouveau pencher la balance dans l'Atlantique en faveur des Allemands. Les Britanniques cherchent un moyen de neutraliser cette nouvelle technologie, mais je crains qu'il ne soit pas prêt à temps pour éviter le carnage qui suivra la mise en service du détecteur Naxos." }
+{ "Major Grillo has infiltrated a Kriegsmarine U-boat base in Trondheim, Norway, where the Naxos device has reached the prototype phase. Your mission is to rendezvous with the Major, assist in destroying the existing prototype unit, and steal whatever research documents you can find. This action should set the enemy back long enough to give the British time to develop a countermeasure." "Le Major Grillo a infiltré une base de U-boote de la Kriegsmarine à Trondheim, en Norvège, où l'appareil Naxos a atteint le stade de prototype. Votre mission: rejoindre le Major, l'aider à détruire le prototype existant et voler tous les documents de recherche que vous trouverez. Cette action devrait retarder l'ennemi assez longtemps pour laisser aux Britanniques le temps de mettre au point une parade." }
+{ "The Allied convoys that traverse the North Atlantic are the lifeblood of the war effort, Lieutenant. Let me be clear, this Naxos prototype must be destroyed at any cost, no matter what may happen to you or Major Grillo." "Les convois alliés qui traversent l'Atlantique Nord sont le sang de l'effort de guerre, Lieutenant. Soyons clairs: ce prototype Naxos doit être détruit à tout prix, quoi qu'il arrive au Major Grillo ou à vous." }
+{ "Your transport, manned by the Norwegian resistance, departs at Oh-Four-Hundred tomorrow, so get some rest. Youll receive additional briefing details once youre established in the field. Good luck Lieutenant-I expect to see you and the Major back here in London soon." "Votre transport, assuré par la résistance norvégienne, part demain à quatre heures du matin, alors reposez-vous. Vous recevrez des compléments d'information une fois installé sur le terrain. Bonne chance, Lieutenant. Je compte vous revoir bientôt ici à Londres, vous et le Major." }
+{ "Excellent work in Norway, Lieutenant, under very difficult circumstances. Thanks to your efforts, the Kriegsmarine Wolfpacks that once terrorized the North Atlantic have been decimated over the past year by our naval and aerial patrols. With Allied shipping lines secure, the door is now open for the invasion of Europe that weve been planning since the start of this bloody war. Its called Operation Overlord, and were breaching Hitlers Atlantic Wall through the Normandy coast." "Excellent travail en Norvège, Lieutenant, dans des conditions très difficiles. Grâce à vous, les meutes de U-boote qui terrorisaient l'Atlantique Nord ont été décimées au cours de l'année écoulée par nos patrouilles navales et aériennes. Les lignes maritimes alliées étant sûres, la voie est libre pour l'invasion de l'Europe que nous préparons depuis le début de cette maudite guerre. Elle s'appelle Opération Overlord, et nous allons percer le Mur de l'Atlantique d'Hitler par la côte normande." }
+{ "The Germans know were coming, and coming soon, but weve got them thinking that the invasion will be up at Calais, well north of the actual landing beaches. This will be the largest amphibious invasion in history, Lieutenant, and youre going to be in the group thats leading the charge.  Now, we may have the numbers on our side, but we dont have the experience. Most of our troops are fresh out of basic training, and they need true combat veterans like you to help lead the attack. Thats why Ive re-assigned you to the Second Ranger Battalion." "Les Allemands savent que nous arrivons, et bientôt, mais nous leur avons fait croire que l'invasion aurait lieu à Calais, bien au nord des vraies plages de débarquement. Ce sera la plus grande invasion amphibie de l'histoire, Lieutenant, et vous serez dans le groupe qui mènera l'assaut. Nous avons peut-être le nombre pour nous, mais pas l'expérience. La plupart de nos soldats sortent tout juste de l'instruction, et ils ont besoin de vrais vétérans comme vous pour mener l'attaque. C'est pourquoi je vous ai réaffecté au Deuxième Bataillon de Rangers." }
+{ "The landings will take place across five beaches, codenamed Gold, Juno, Sword, Omaha, and Utah. The British will land at Sword and Gold, the Canadians at Juno, and the Americans at Omaha and Utah. Youll be going ashore at Charlie Sector of Omaha Beach, just west of the Dog One exit. " "Les débarquements auront lieu sur cinq plages, nommées Gold, Juno, Sword, Omaha et Utah. Les Britanniques débarqueront à Sword et Gold, les Canadiens à Juno, et les Américains à Omaha et Utah. Vous débarquerez dans le secteur Charlie d'Omaha Beach, juste à l'ouest de la sortie Dog One." }
+{ "Although the beaches are not as fortified as they are at Calais, the Germans have left no spot undefended. Every inch of beach is covered by machine guns and artillery, and the place is surrounded by miles of barbed wire and countless minefields." "Même si les plages ne sont pas aussi fortifiées qu'à Calais, les Allemands n'ont laissé aucun endroit sans défense. Chaque centimètre de plage est couvert par des mitrailleuses et de l'artillerie, et le secteur est entouré de kilomètres de barbelés et d'innombrables champs de mines." }
+{ "One more thing Lieutenant. Try to keep in mind that this is the largest and most complicated operation that weve ever attempted, and in my experience, whenever things get complicated, things go wrong. But no matter what happens, I believe that with soldiers like you leading the way, we will prevail with this Allied assault.  Good luck at Omaha Beach, Lieutenant, and Godspeed." "Encore une chose, Lieutenant. Gardez à l'esprit que c'est l'opération la plus vaste et la plus complexe que nous ayons jamais tentée, et d'après mon expérience, dès que les choses se compliquent, elles tournent mal. Mais quoi qu'il arrive, je crois qu'avec des soldats comme vous en tête, cet assaut allié l'emportera. Bonne chance à Omaha Beach, Lieutenant, et que Dieu vous garde." }
+{ "Good to see youre still with us, Lieutenant. The landings at Omaha, especially Dog Green and Charlie sector, were very, very toughwe lost a lot of good men. While weve established a strong beachhead, finding out what the Germans are planning next is key to the success of this Normandy campaign." "Content de vous voir toujours parmi nous, Lieutenant. Les débarquements à Omaha, surtout dans les secteurs Dog Green et Charlie, ont été très, très durs. Nous avons perdu beaucoup de braves. Nous avons établi une solide tête de pont, mais savoir ce que les Allemands préparent est la clé du succès de cette campagne de Normandie." }
+{ "The French Resistance has reported a shift of enemy troops from the Calais region southward, towards our advancing troops. Two formidable German units are assembling just outside St. Lo. We believe theyre using a manor house as a command post to organize their counteroffensive." "La Résistance française signale un mouvement de troupes ennemies depuis la région de Calais vers le sud, en direction de nos troupes qui avancent. Deux redoutables unités allemandes se rassemblent aux portes de Saint-Lô. Nous pensons qu'elles utilisent un manoir comme poste de commandement pour organiser leur contre-offensive." }
+{ "We need you to find that command post, infiltrate it, and obtain any tactical data you can regarding the enemys battle plans. One of our most trusted agents in the Resistance, a young woman named Manon Batiste, will be there to lend you a hand." "Vous devez trouver ce poste de commandement, l'infiltrer et obtenir toutes les données tactiques possibles sur les plans de bataille de l'ennemi. L'une de nos agents les plus sûres dans la Résistance, une jeune femme nommée Manon Batiste, sera là pour vous prêter main-forte." }
+{ "One more thing, Lieutenant. Intelligence reports indicate that the Germans have deployed a new tank into the field, a type bigger than anything weve seen before. This model has been appropriately designated King Tiger, and we believe the Germans have transferred some of these new tanks to the command post. Youre ordered to gather information on the capabilities, and hopefully the weaknesses, of this new threat. " "Encore une chose, Lieutenant. D'après nos renseignements, les Allemands ont engagé sur le terrain un nouveau char, plus gros que tout ce que nous avons vu jusqu'ici. Ce modèle a été baptisé à juste titre Tigre Royal, et nous pensons que les Allemands en ont transféré quelques-uns au poste de commandement. Vous avez ordre de recueillir des informations sur les capacités et, espérons-le, les faiblesses de cette nouvelle menace." }
+{ "Good luck, Lieutenant! I know the mission is in good hands." "Bonne chance, Lieutenant! Je sais que la mission est entre de bonnes mains." }
+{ "Excellent work on your intelligence gathering mission, Lieutenant. This information will be much appreciated by our units advancing through Normandy.   Now for your next assignment. As we speak, three divisions from the U.S. Seven Corps are closing in on the second largest port in France, the city of Brest. The German commander of the port has fifty-thousand troops in the region-as well as several heavy coastal defense batteries, which hes turned around to fire inland at our advancing troops. " "Excellent travail pour cette mission de renseignement, Lieutenant. Ces informations seront très appréciées par nos unités qui avancent en Normandie. Passons à votre prochaine affectation. En ce moment même, trois divisions du VIIe Corps américain encerclent le deuxième port de France, la ville de Brest. Le commandant allemand du port dispose de cinquante mille hommes dans la région, ainsi que de plusieurs batteries lourdes de défense côtière, qu'il a retournées pour tirer vers l'intérieur des terres sur nos troupes." }
+{ "Command has put together a daring plan to improve the Allied chances of capturing Brest. By securing a key estuary crossing into the region, well be able to move troops and armor in rapidly and apply more pressure to the besieged city. " "Le commandement a mis au point un plan audacieux pour améliorer les chances alliées de prendre Brest. En tenant un passage clé sur un estuaire de la région, nous pourrons faire entrer rapidement troupes et blindés et accentuer la pression sur la ville assiégée." }
+{ "Time is of the essence, but we dont have enough available tanks to punch quickly through to the bridge, so were going to liberate an enemy King Tiger. Thanks to the documents you acquired from the German command post, the OSS was able to quickly train a veteran American tank crew on how to operate this armored behemoth. Lieutenant, this is the team you will lead. Youll meet them at a rally point on the outskirts of Landerneau, a town about twenty-five kilometers northeast of Brest." "Le temps presse, mais nous n'avons pas assez de chars disponibles pour percer rapidement jusqu'au pont, alors nous allons libérer un Tigre Royal ennemi. Grâce aux documents que vous avez pris au poste de commandement allemand, l'OSS a pu former rapidement un équipage de char américain chevronné à la conduite de ce monstre blindé. Lieutenant, c'est l'équipe que vous allez commander. Vous la rejoindrez à un point de ralliement aux abords de Landerneau, une ville à environ vingt-cinq kilomètres au nord-est de Brest." }
+{ "Your mission is a dangerous one: capture a King Tiger, blast your way across enemy territory to the estuary, and hold the bridge until an Allied tank unit from the Sixth Armored Division can reinforce your position. Fighter Command will be there to back you up, and well give you all the artillery support we can muster, but I have a feeling the success of this mission may ultimately rest on the actions of one man. Good luck." "Votre mission est dangereuse: capturer un Tigre Royal, vous frayer un chemin à travers le territoire ennemi jusqu'à l'estuaire, et tenir le pont jusqu'à ce qu'une unité de chars alliée de la 6e Division blindée puisse renforcer votre position. Le Commandement de la chasse vous appuiera, et nous vous donnerons tout l'appui d'artillerie possible, mais j'ai le sentiment que le succès de cette mission pourrait finalement reposer sur un seul homme. Bonne chance." }
+{ "Last November, one of your fellow operatives, Lieutenant James Patterson, destroyed the enemys plans for mustard gas production at a secret Nazi facility along the Siegfried Line, a place called Fort Schmerzen. Unfortunately, new intelligence suggests that Schmerzens commander, one Colonel Muller, has somehow restored the Fort to operation.  The OSS has received reports of trains headed towards the Fort, hauling prisoners of war from the Hurtgen Forest. Its possible Schmerzen is just a stop-over point for POWs being moved east, but my gut feeling is Muller has more nefarious reasons for rebuilding the Fort. " "En novembre dernier, un de vos collègues, le Lieutenant James Patterson, a anéanti les projets ennemis de production de gaz moutarde dans un site nazi secret le long de la ligne Siegfried, un endroit appelé Fort Schmerzen. Malheureusement, de nouveaux renseignements laissent penser que le commandant de Schmerzen, un certain Colonel Muller, a réussi à remettre le fort en service. L'OSS a reçu des rapports signalant des trains en route vers le fort, transportant des prisonniers de guerre de la forêt de Hürtgen. Il est possible que Schmerzen ne soit qu'une étape pour les prisonniers envoyés vers l'est, mais mon instinct me dit que Muller a des raisons bien plus sinistres de reconstruire le fort." }
+{ "Whatever is going on inside Schmerzen, your orders are to wipe this facility off the map once and for all. To help you, weve formed a special assault force of Rangers hand-picked from your old unit. Theyll be bringing enough high explosives to reduce Schmerzen to rubble." "Quoi qu'il se passe à Schmerzen, vos ordres sont de rayer ce site de la carte une bonne fois pour toutes. Pour vous aider, nous avons formé une force d'assaut spéciale de Rangers triés sur le volet dans votre ancienne unité. Ils apporteront assez d'explosifs puissants pour réduire Schmerzen en ruines." }
+{ "Were sending you in first, to cut off all lines of communication from Schmerzen to the outside world. Next, a POW train headed to Schmerzen will have to be intercepted. The commandeered train will then serve as the Trojan Horse that delivers you and your fellow Rangers into the Schmerzen compound. From there, fight your way in, plant the charges, and get out as fast as you can. Needless to say, make sure any POWs you encounter are clear of the blast area." "Nous vous envoyons en premier pour couper toutes les communications entre Schmerzen et l'extérieur. Ensuite, il faudra intercepter un train de prisonniers en route vers Schmerzen. Le train réquisitionné servira de cheval de Troie pour vous amener, vous et vos camarades Rangers, dans l'enceinte de Schmerzen. De là, frayez-vous un chemin, posez les charges et sortez aussi vite que possible. Inutile de le préciser: veillez à ce que tous les prisonniers rencontrés soient loin de la zone de l'explosion." }
+{ "Youre dismissed. Good luck." "Rompez. Bonne chance." }
+{ "Let me see your papers." "Vos papiers, s'il vous plaît." }
+{ "Your papers are not in order." "Vos papiers ne sont pas en règle." }
+{ "What cargo are you carrying?" "Que transportez-vous?" }
+{ "What's that?" "Qu'est-ce que c'est?" }
+{ "Who's that in the other seat?" "Qui est assis à côté de vous?" }
+{ "Show me your licence immediately!" "Montrez-moi votre permis, immédiatement!" }
+{ "What's that in your hand?" "Qu'avez-vous dans la main?" }
+{ "Give me your queen." "Donne-moi ta dame." }
+{ "Go fish." "Pioche." }
+{ "You cheat! You always cheat at this game." "Tricheur! Tu triches toujours à ce jeu." }
+{ "I don't have a queen. Go fish." "J'ai pas de dame. Pioche." }
+{ "Give me your king." "Donne-moi ton roi." }
+{ "You've been very quiet tonight." "T'es bien silencieux ce soir." }
+{ "I've been thinking." "Je réfléchissais." }
+{ "About what?" "À quoi?" }
+{ "Oh you wouldn't understand." "Oh, tu ne comprendrais pas." }
+{ "Try me." "Essaie toujours." }
+{ "Well have you ever wondered? Oh nevermind its stupid." "Eh bien, tu ne t'es jamais demandé? Oh, laisse tomber, c'est idiot." }
+{ "What is it. Now I really want to know." "Qu'est-ce que c'est? Maintenant je veux vraiment savoir." }
+{ "Well I was just imagining, what if none of this was real? What if we don't really exist?" "Eh bien, je me disais: et si rien de tout ça n'était réel? Et si on n'existait pas vraiment?" }
+{ "What like someone is just imagining this whole thing?" "Quoi, comme si quelqu'un imaginait tout ça?" }
+{ "Yeah or what if we are just characters in a book or something?" "Oui, ou si on n'était que des personnages dans un livre ou un truc du genre?" }
+{ "Well I don't know about you. But I'm real. I have no doubt about that." "Je ne sais pas pour toi. Mais moi, je suis réel. Ça, j'en suis sûr." }
+{ "How can you be so sure?" "Comment peux-tu en être si sûr?" }
+{ "Well if I didn't really exist, why would I be having this silly conversation with you?" "Si je n'existais pas vraiment, pourquoi j'aurais cette conversation idiote avec toi?" }
+{ "That's a good point." "Pas faux." }
+{ "Yes. So don't worry about it." "Oui. Alors ne t'en fais pas." }
+{ "Yeah I see your point." "Oui, je vois ce que tu veux dire." }
+{ "So how do you like Norway now?" "Alors, la Norvège te plaît maintenant?" }
+{ "Its okay." "Ça va." }
+{ "You don't hate it?" "Tu ne détestes pas?" }
+{ "No not really." "Non, pas vraiment." }
+{ "You will. You will. We all do now." "Ça viendra. Ça viendra. Nous tous, on déteste, maintenant." }
+{ "If you say so." "Si tu le dis." }
+{ "Where are all the Norwegian girls?" "Où sont toutes les filles norvégiennes?" }
+{ "They are hidden in a bunker." "Elles sont cachées dans un bunker." }
+{ "What?" "Quoi?" }
+{ "The Norwegian resistance took all the pretty girls and hid them in a secret bunker." "La résistance norvégienne a pris toutes les jolies filles et les a cachées dans un bunker secret." }
+{ "That's ridiculous." "C'est ridicule." }
+{ "Its true, Fritz told me that Gobbel has a special squad of SS looking for that bunker." "C'est vrai, Fritz m'a dit que Goebbels a une escouade spéciale de SS qui cherche ce bunker." }
+{ "Why would the resistance do that?" "Pourquoi la résistance ferait-elle ça?" }
+{ "They were afraid that we would take all the girls back to the fatherland to increase the master race." "Ils avaient peur qu'on ramène toutes les filles au Reich pour agrandir la race des seigneurs." }
+{ "Wow. That's incredible." "Ça alors. C'est incroyable." }
+{ "Oh that's nothing. These Norwegians are crazy." "Oh, c'est rien du tout. Ces Norvégiens sont fous." }
+{ "So what are they doing to that submarine?" "Et qu'est-ce qu'ils font à ce sous-marin?" }
+{ "I don't know. The scientists are working on somthing. It's very hush-hush." "Je ne sais pas. Les savants travaillent sur quelque chose. C'est top secret." }
+{ "Like a new Super weapon that will destroy all of England?" "Genre une nouvelle super-arme qui va détruire toute l'Angleterre?" }
+{ "Yeah probably something like that." "Oui, sans doute un truc comme ça." }
+{ "Do you really think that's possible?" "Tu crois vraiment que c'est possible?" }
+{ "If it is, the German Army will do it." "Si ça l'est, l'armée allemande y arrivera." }
+{ "Did you hear back about the aircraft tests of the new prototype?" "Vous avez eu des nouvelles des essais en vol du nouveau prototype?" }
+{ "Yes they were outstanding. Completely undetectable." "Oui, ils ont été remarquables. Totalement indétectable." }
+{ "I don't care about that, how was the sensitivity range." "Je me moque de ça, qu'en est-il de la portée de sensibilité?" }
+{ "Oh that was fine I suppose." "Oh, c'était correct, je suppose." }
+{ "It was fine? If you don't know, then just say so. The sensitivity is very important." "Correct? Si vous ne savez pas, dites-le. La sensibilité est très importante." }
+{ "Well, I will have to ask about that. They didn't say anything specific." "Eh bien, il faudra que je me renseigne. Ils n'ont rien dit de précis." }
+{ "Please do that." "Faites-le, je vous prie." }
+{ "I will, I promise. I'm sorry. I was so excited to learn that it was undetected in ten out of ten tests, that I forgot to ask." "Je le ferai, promis. Désolé. J'étais si content d'apprendre qu'il était passé inaperçu dix fois sur dix que j'ai oublié de demander." }
+{ "Thank you." "Merci." }
+{ "He's in the vents!" "Il est dans les conduits!" }
+{ "He's going to try to get to the rail station!" "Il va essayer de rejoindre la gare!" }
+{ "There are intruders in the base!" "Il y a des intrus dans la base!" }
+{ "No there is only one!" "Non, il n'y en a qu'un!" }
+{ "I heard there were four!" "J'ai entendu dire qu'ils étaient quatre!" }
+{ "He is dressed like an Officer!" "Il est habillé en officier!" }
+{ "I think they're in the bunker!" "Je crois qu'ils sont dans le bunker!" }
+{ "Which floor?" "Quel étage?" }
+{ "I don't know! Gather some men and go take a look!" "Je ne sais pas! Rassemblez des hommes et allez voir!" }
+{ "The perimeter has been breached! We need to fall back now!" "Le périmètre est percé! Il faut se replier, tout de suite!" }
+{ "Get to the surface! Seal those hatches! Quickly!" "Remontez à la surface! Fermez ces écoutilles! Vite!" }
+{ "Don't let them reach the gunnery deck! Hold them off as long as you can!" "Ne les laissez pas atteindre le pont d'artillerie! Retenez-les aussi longtemps que possible!" }
+{ "Get word to the Captain immediately! Move it!" "Prévenez le Capitaine immédiatement! Exécution!" }
+{ "There's no way the Americans could be in the bunker!" "Les Américains ne peuvent absolument pas être dans le bunker!" }
+{ "Hurry up and open the damned hatch!" "Dépêchez-vous d'ouvrir cette maudite écoutille!" }
+{ "Wiederstandnesten 72, we're under heavy attack at the Vierville pass! The Americans are still coming! Request reinforcements, over!" "Widerstandsnest 72, nous subissons une violente attaque au défilé de Vierville! Les Américains continuent d'arriver! Demandons des renforts, terminé!" }
+{ "What are you talking about! Keep shooting them! You have machine guns, you have ammunition! Shoot! Shoot! Shoot! Don't stop!" "Qu'est-ce que vous racontez! Continuez à leur tirer dessus! Vous avez des mitrailleuses, vous avez des munitions! Feu! Feu! Feu! Ne vous arrêtez pas!" }
+{ "The machine gun barrels are overheating! We're running low on ammunition, twelve thousand rounds fired already! They're coming up the pass! They're -" "Les canons des mitrailleuses surchauffent! Nous manquons de munitions, déjà douze mille coups tirés! Ils remontent le défilé! Ils sont..." }
+{ "I need to speak with the Lieutenant Colonel! The Allies are invading! What?! Wake him up you fool! This is an emergency!" "Je dois parler au Lieutenant-Colonel! Les Alliés débarquent! Quoi?! Réveillez-le, imbécile! C'est une urgence!" }
+{ "Echo Charlie standing by. Awaiting orders to commence close air support, over." "Echo Charlie en attente. Attendons l'ordre de commencer l'appui aérien rapproché, terminé." }
+{ "Echo Charlie standing by." "Echo Charlie en attente." }
+{ "Anyone there? over." "Quelqu'un m'entend? Terminé." }
+{ "I repeat, is anyone there? Over." "Je répète, quelqu'un m'entend? Terminé." }
+{ "Is anyone there? Please respond. Over." "Quelqu'un m'entend? Répondez. Terminé." }
+{ "This is Echo Charlie. Please respond. Over." "Ici Echo Charlie. Répondez. Terminé." }
+{ "A survivor." "Un survivant." }
+{ "A spy, kill him." "Un espion, tuez-le." }
+{ "The american pilot." "Le pilote américain." }
+{ "Hows the ham?" "Comment est le jambon?" }
+{ "Its excellent. Very juicy." "Excellent. Très juteux." }
+{ "I don't like it. Its not as good as my wife made." "Je n'aime pas. Il n'est pas aussi bon que celui de ma femme." }
+{ "Nothing is ever as good as your wife's cooking." "Rien n'est jamais aussi bon que la cuisine de ta femme." }
+{ "I cant help it if she is a good cook." "C'est pas ma faute si elle cuisine bien." }
+{ "Well you can help by not talking about it at every meal." "Eh bien, tu pourrais éviter d'en parler à chaque repas." }
+{ "What color hair does your wife have?" "De quelle couleur sont les cheveux de ta femme?" }
+{ "Black." "Noirs." }
+{ "Oh that's very interesting I have a theory about women with black hair." "Oh, très intéressant, j'ai une théorie sur les femmes aux cheveux noirs." }
+{ "You believe that they are better cooks?" "Tu crois qu'elles cuisinent mieux?" }
+{ "No actually I think that they are more likely to be loyal." "Non, en fait je pense qu'elles sont plus fidèles." }
+{ "My wife is very loyal. She writes me every week ten pages." "Ma femme est très fidèle. Elle m'écrit dix pages chaque semaine." }
+{ "Really? She only writes me four. I'm just joking." "Vraiment? À moi, elle n'en écrit que quatre. Je plaisante." }
+{ "She doesn't write you?" "Elle ne t'écrit pas?" }
+{ "No no. She doesn't." "Non, non. Elle ne m'écrit pas." }
+{ "Is that the new shipment?" "C'est le nouvel arrivage?" }
+{ "Yes sir." "Oui, chef." }
+{ "Okay take it to Joosh, Joseph is gone this week." "Bien, apporte-le à Joosh, Joseph n'est pas là cette semaine." }
+{ "Did you get the extra stuff I asked for?" "Tu as eu les petits extras que je t'ai demandés?" }
+{ "What extra stuff?" "Quels extras?" }
+{ "You know, the extra stuff." "Tu sais bien, les petits extras." }
+{ "Oh. I forgot." "Oh. J'ai oublié." }
+{ "You forgot? I gave you fifty marks for that stuff!" "Oublié? Je t'ai donné cinquante marks pour ça!" }
+{ "Yeah I forgot and spent your fifty marks already. I need another fifty." "Oui, j'ai oublié et j'ai déjà dépensé tes cinquante marks. Il m'en faut encore cinquante." }
+{ "What! You little thief. You spent my fifty marks." "Quoi! Petit voleur. Tu as dépensé mes cinquante marks." }
+{ "Yeah I spent it. I'll get you that stuff this time." "Oui, je les ai dépensés. Cette fois, je te les rapporte, tes trucs." }
+{ "I don't have fifty more marks to give you." "Je n'ai pas cinquante marks de plus à te donner." }
+{ "Oh well, whenever you get it. No hurry." "Bah, quand tu les auras. Rien ne presse." }
+{ "Get out of my face you criminal." "Hors de ma vue, espèce de bandit." }
+{ "Heil." "Heil." }
+{ "Good evening." "Bonsoir." }
+{ "Good day." "Bonjour." }
+{ "Salute." "Salut militaire." }
+{ "Sir." "Mon officier." }
+{ "Hello." "Bonjour." }
+{ "Squad, fall back!" "Groupe, repliez-vous!" }
+{ "Squad, attack right flank!" "Groupe, attaquez par le flanc droit!" }
+{ "Squad, attack left flank!" "Groupe, attaquez par le flanc gauche!" }
+{ "Squad, hold this position!" "Groupe, tenez cette position!" }
+{ "Cover me!" "Couvrez-moi!" }
+{ "I'll cover you!" "Je vous couvre!" }
+{ "Follow me!" "Suivez-moi!" }
+{ "You take point." "Passez en tête." }
+{ "You take the lead." "Prenez la tête." }
+{ "Taking Fire!  Need some help!" "On nous tire dessus! Besoin d'aide!" }
+{ "Charge!" "À l'assaut!" }
+{ "Yes sir!" "À vos ordres!" }
+{ "No sir!" "Non, mon Lieutenant!" }
+{ "Enemy Spotted." "Ennemi repéré." }
+{ "Sniper!" "Tireur embusqué!" }
+{ "Grenade! Take Cover!" "Grenade! À couvert!" }
+{ "Area Clear." "Secteur dégagé." }
+{ "Great Shot!" "Joli tir!" }
+{ "Thanks." "Merci." }
+{ "I owe you one." "Je t'en dois une." }
+{ "Is that all you've got?" "C'est tout ce que vous avez?" }
+{ "I think the Germans are all out of real men!" "Je crois que les Boches n'ont plus de vrais hommes!" }
+{ "Go on and run, you yellow-bellies!" "C'est ça, courez, bande de froussards!" }
+{ "They're a bunch of cowards!" "Bande de lâches!" }
+{ "Come back when you've had some target practice!" "Revenez quand vous aurez appris à tirer!" }
+{ "Come prepared next time!" "Soyez mieux préparés la prochaine fois!" }
+{ "Try again!" "Essayez encore!" }
+{ "I've seen French school girls shoot better!" "J'ai vu des écolières françaises tirer mieux que ça!" }
+{ "That made a mess." "Ça a fait des dégâts." }
+{ "He's going to get us killed!" "Il va nous faire tuer!" }
+{ "A lot of good men are going to die because of his poor leadership." "Beaucoup de braves vont mourir à cause de ce mauvais commandement." }
+{ "Good riddance!" "Bon débarras!" }
+{ "That guy is going to get us all killed!" "Ce type va tous nous faire tuer!" }
+{ "Hey buddy, get down!" "Hé, mon vieux, baisse-toi!" }
+{ "Stay out of my foxhole, pal!" "Sors de mon trou, mon pote!" }
+{ "Find your own hiding place!" "Trouve-toi ta propre planque!" }
+{ "Get out of my way!" "Pousse-toi de là!" }
+{ "I think the Americans are all out of real men!" "Je crois que les Amerloques n'ont plus de vrais hommes!" }
+{ "Are you new here, sir?" "Vous êtes nouveau ici, mon officier?" }
+{ "Sir, are you lost?" "Mon officier, vous êtes perdu?" }
+{ "What unit are you from?" "De quelle unité êtes-vous?" }
+{ "Who is your commanding officer?" "Qui est votre commandant?" }
+{ "Sir, I must call for my superiors!" "Mon officier, je dois appeler mes supérieurs!" }
+{ "Who sent you here?" "Qui vous a envoyé ici?" }
+{ "What is your name?" "Quel est votre nom?" }
+{ "Answer my questions!" "Répondez à mes questions!" }
+{ "Your papers are in order." "Vos papiers sont en règle." }
+{ "My mistake, sir." "Mon erreur, mon officier." }
+{ "Sorry, sir. You may proceed." "Désolé, mon officier. Vous pouvez passer." }
+{ "My apologies, sir." "Toutes mes excuses, mon officier." }
+{ "Drop your weapon!" "Lâchez votre arme!" }
+{ "Hold it right there!" "Halte-là!" }
+{ "American spy!" "Espion américain!" }
+{ "I see we have an uninvited guest!" "On dirait que nous avons un invité surprise!" }
+{ "May I see your papers, please?" "Puis-je voir vos papiers, je vous prie?" }
+{ "Sir, I need to see some identification." "Mon officier, je dois voir une pièce d'identité." }
+{ "Sir, these papers are not in order." "Mon officier, ces papiers ne sont pas en règle." }
+{ "Sir, you don't have the proper identification." "Mon officier, vous n'avez pas les papiers requis." }
+{ "I'm sorry sir, but I can't let you in." "Désolé, mon officier, mais je ne peux pas vous laisser entrer." }
+{ "I just need to see your papers." "J'ai juste besoin de voir vos papiers." }
+{ "Your identification, please." "Vos papiers, je vous prie." }
+{ "You may not pass." "Vous ne pouvez pas passer." }
+{ "Those are improper credentials." "Ces laissez-passer ne sont pas valables." }
+{ "Squad, move in!" "Groupe, avancez!" }
+{ "Squad, hold your position!" "Groupe, tenez votre position!" }
+{ "Squad, covering fire!" "Groupe, tir de couverture!" }
+{ "Squad, regroup!" "Groupe, regroupez-vous!" }
+{ "We've got to press on their positions!" "Il faut mettre la pression sur leurs positions!" }
+{ "Take point." "Prenez la tête." }
+{ "Expect close contact." "Attendez-vous à un contact rapproché." }
+{ "Explosive charge has been diffused!" "La charge explosive a été désamorcée!" }
+{ "Explosive charge has been disarmed!" "La charge explosive a été neutralisée!" }
+{ "The bomb has been dismantled!" "La bombe a été démontée!" }
+{ "The detonator has been removed!" "Le détonateur a été retiré!" }
+{ "Use your panzerschreck!" "Servez-vous du Panzerschreck!" }
+{ "Use a grenade!" "Lancez une grenade!" }
+{ "Right flank!" "Flanc droit!" }
+{ "Move up there!" "Montez là-haut!" }
+{ "Go! Go! Go!" "Allez! Allez! Allez!" }
+{ "Are you crazy, we can't go that way." "T'es fou, on ne peut pas passer par là." }
+{ "No way." "Pas question." }
+{ "No way!" "Pas question!" }
+{ "Wrong way." "Mauvais chemin." }
+{ "Wrong way!" "Mauvais chemin!" }
+{ "She won't make it through that." "Elle ne passera pas par là." }
+{ "We can't go that way." "On ne peut pas passer par là." }
+{ "That's blocked." "C'est bloqué." }
+{ "That's blocked!" "C'est bloqué!" }
+{ "We got to go around." "Il faut faire le tour." }
+{ "We got to go around!" "Il faut faire le tour!" }
+{ "Do you need your eyes checked?" "Faut vous faire examiner les yeux?" }
+{ "I'm right behind you." "Je suis juste derrière vous." }
+{ "You're on point." "Vous êtes en tête." }
+{ "Lead the way." "Ouvrez la marche." }
+{ "Got your back." "Je couvre vos arrières." }
+{ "I'll be right behind you." "Je serai juste derrière vous." }
+{ "Good job." "Bon travail." }
+{ "The bomb is in position." "La bombe est en position." }
+{ "The charge has been placed." "La charge est posée." }
+{ "Explosives in place." "Explosifs en place." }
+{ "Explosive charge is good to go!" "Charge explosive prête!" }
+{ "Explosives ready!" "Explosifs prêts!" }
+{ "Everyone check your ammo." "Tout le monde vérifie ses munitions." }
+{ "Check your ammo." "Vérifiez vos munitions." }
+{ "Let's do a quick sweep of the area." "Ratissons vite le secteur." }
+{ "Medic!" "Infirmier!" }
+{ "Take out that halftrack!" "Détruisez ce semi-chenillé!" }
+{ "Good job team!" "Bon travail, l'équipe!" }
+{ "Victory is ours!" "La victoire est à nous!" }
+{ "Victory!" "Victoire!" }
+{ "Outstanding performance!" "Performance remarquable!" }
+{ "Your parents would be proud." "Vos parents seraient fiers." }
+{ "Here you go Lieutenant!" "Tenez, Lieutenant!" }
+{ "Here you go Powell!" "Tenez, Powell!" }
+{ "Don't move!" "Ne bougez pas!" }
+{ "Guards!" "Gardes!" }
+{ "Hands Up!" "Haut les mains!" }
+{ "Papers, please." "Vos papiers, s'il vous plaît." }
+{ "Show me your pass." "Montrez-moi votre laissez-passer." }
+{ "Thank you, sir." "Merci, mon officier." }
+{ "We're taking damage." "On encaisse des coups." }
+{ "We're hit." "On est touchés." }
+{ "Under fire." "Sous le feu." }
+{ "They're hitting us pretty hard here, sir." "Ils nous tapent dessus sévèrement, mon Lieutenant." }
+{ "We're getting hit pretty hard, sir." "On se fait durement toucher, mon Lieutenant." }
+{ "We're taking a pounding here sir!" "On se fait pilonner, mon Lieutenant!" }
+{ "She can't take much more of this." "Elle ne tiendra plus longtemps." }
+{ "She's not holding up too well." "Elle ne tient pas bien le coup." }
+{ "We're getting cooked in here!" "On cuit là-dedans!" }
+{ "Incoming, get down!" "Obus! À terre!" }
+{ "Get your head down!" "Baissez la tête!" }
+{ "Down!" "À terre!" }
+{ "Find cover!" "Trouvez un abri!" }
+{ "Cover!" "À couvert!" }
+{ "Stay out of the open, we're as good as dead out there!" "Ne restez pas à découvert, là-bas on est des hommes morts!" }
+{ "Stop! There's way too much machine gun fire over there!" "Halte! Il y a beaucoup trop de tirs de mitrailleuse par là!" }
+{ "Don't go over there, you'll be cut to pieces!" "N'allez pas par là, vous allez vous faire hacher!" }
+{ "No, not that way, it's too exposed! Stay under cover!" "Non, pas par là, c'est trop exposé! Restez à couvert!" }
