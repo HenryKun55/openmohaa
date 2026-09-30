@@ -2052,6 +2052,10 @@ void RB_EndSurface( void ) {
 
 #ifdef __vita__
 	RB_VitaDrawCheck();
+	// GPU TEST (Vita settings > debug): hide everything drawn after the opaque pass
+	if ( vita_skip_mask && ( vita_skip_mask->integer & 2048 ) && tess.shader->sort > SS_OPAQUE ) {
+		return;
+	}
 #endif
 
 	// for debugging of sort order issues, stop rendering after a given sort value

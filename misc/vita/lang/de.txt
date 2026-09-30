@@ -878,6 +878,20 @@
 { "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign." "Auch die Erweiterungen Spearhead und Breakthrough fehlen noch: diese Version spielt die Allied-Assault-Kampagne." }
 { "Press any button to go back." "Drücke eine beliebige Taste, um zurückzukehren." }
 
+// Vita settings debug menu, GPU TEST tab.
+{ "GPU TEST" "GPU-TEST" }
+{ "Transparent surfaces" "Transparente Flächen" }
+{ "Sprites (smoke)" "Sprites (Rauch)" }
+{ "Effect polys" "Effekt-Polygone" }
+{ "Marks (decals)" "Spuren (Decals)" }
+{ "World surfaces" "Welt-Flächen" }
+{ "World curves" "Welt-Kurven" }
+{ "Terrain" "Gelände" }
+{ "Sky" "Himmel" }
+{ "Characters" "Figuren" }
+{ "Static models" "Statische Modelle" }
+{ "Swipes (trails)" "Spuren (Swipes)" }
+
 // Update check (Vita settings > System, code/sys/vita_update.c, misc/vita/updater).
 // %s is filled in by the game (a version number): keep it, in the same order.
 { "Check for updates" "Nach Updates suchen" }

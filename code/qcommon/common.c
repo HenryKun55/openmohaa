@@ -2550,6 +2550,7 @@ void Com_VitaLoadReport( void ) {
 }
 
 // RT-PROF: the render thread's time per command group and, sorted, per surface type.
+extern float vita_perfShown[4];
 static void Com_VitaProfRenderThread( int frames ) {
 	static const char *types[VPR_NSURF + 1] = {
 		"bad", "skip", "face", "grid", "poly", "mark", "flare", "entity", "dlist", "skel", "static",
@@ -2561,6 +2562,7 @@ static void Com_VitaProfRenderThread( int frames ) {
 	const char *what[2 * VPR_NSURF + 1];
 	int cnt = 0;
 
+	vita_perfShown[3] = vp_rt[VPR_SWAP] / 1000.0f / frames;
 	n = Com_sprintf( line, sizeof( line ), "RT-PROF (ms/frame): 3d=%.1f sprites=%.1f 2d=%.1f swap=%.1f dl=%.1f other=%.1f | %d batches %d verts |",
 		vp_rt[VPR_SURFS] / 1000.0f / frames, vp_rt[VPR_SPRITES] / 1000.0f / frames, vp_rt[VPR_2D] / 1000.0f / frames,
 		vp_rt[VPR_SWAP] / 1000.0f / frames, vp_rt[VPR_DLIGHTS] / 1000.0f / frames, vp_rt[VPR_OTHER] / 1000.0f / frames,
@@ -2640,6 +2642,10 @@ static void Com_VitaProfRenderThread( int frames ) {
 }
 
 // FRAME-PROF: per-frame averages (ms) of vp_acc every 60 frames.
+// The last averages, for the FPS counter (View3D::DrawFPS): frame, main thread work
+// (frame minus idle and waits), render thread busy, render thread swap.
+float vita_perfShown[4];
+
 static void Com_VitaProfFrame( void ) {
 	static const char *names[VP_COUNT] = {
 		"frame", "idle", "sv", "ev", "cl", "cg", "scene", "world", "terrain", "static", "ents", "sort", "sky", "rthread",
@@ -2658,6 +2664,9 @@ static void Com_VitaProfFrame( void ) {
 	if ( ++frames < 60 ) {
 		return;
 	}
+	vita_perfShown[0] = vp_acc[VP_FRAME] / 1000.0f / frames;
+	vita_perfShown[1] = ( vp_acc[VP_SV] + vp_acc[VP_CL] ) / 1000.0f / frames;
+	vita_perfShown[2] = vp_acc[VP_RTHREAD] / 1000.0f / frames;
 	n = Com_sprintf( line, sizeof( line ), "FRAME-PROF (ms/frame):" );
 	for ( i = 0; i < VP_COUNT; i++ ) {
 		n += Com_sprintf( line + n, sizeof( line ) - n, " %s=%.1f", names[i], vp_acc[i] / 1000.0f / frames );

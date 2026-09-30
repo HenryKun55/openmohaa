@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <psp2/system_param.h>
 #include "../sys/vita_update.h"
 extern "C" void Com_WriteConfiguration(void);
+extern "C" float vita_perfShown[4]; /* frame, cpu, render thread, swap: qcommon/common.c */
 #endif
 
 CLASS_DECLARATION(UIWidget, View3D, NULL) {
@@ -78,6 +79,7 @@ struct VitaPerfMenuItem {
     qboolean    restart;  /* only read at renderer/level load: needs a vid_restart (latched cvars are detected) */
     const VitaPerfChoice *choices; /* if set, A cycles these named levels */
     int         numChoices;
+    int         bit;      /* if set, the item toggles this bit of cvarName (not archived) */
 };
 
 #define VPM_CHOICES(arr) arr, (int)(sizeof(arr) / sizeof(arr[0]))
@@ -504,6 +506,24 @@ static VitaPerfMenuItem g_dmLevels[] = {
     VFASE("m6l3a"), VFASE("m6l3b"), VFASE("m6l3c"), VFASE("m6l3d"), VFASE("m6l3e"),
 };
 
+/* GPU TEST: hide one kind of surface at a time (renderer vita_skip_mask bits) to see
+ * which one costs the frame rate. On = drawn. Not saved: everything is back on the
+ * next start. */
+#define VPM_SKIP(label, bit) { label, "vita_skip_mask", qtrue, 0, NULL, qfalse, NULL, 0, bit }
+static VitaPerfMenuItem g_dmGpuTest[] = {
+    VPM_SKIP("Transparent surfaces", 2048), /* water, smoke, glass, foliage cards */
+    VPM_SKIP("Sprites (smoke)",      8),
+    VPM_SKIP("Effect polys",         128 | 512),
+    VPM_SKIP("Marks (decals)",       1024),
+    VPM_SKIP("World surfaces",       64),
+    VPM_SKIP("World curves",         256),
+    VPM_SKIP("Terrain",              16),
+    VPM_SKIP("Sky",                  32),
+    VPM_SKIP("Characters",           1),
+    VPM_SKIP("Static models",        2),
+    VPM_SKIP("Swipes (trails)",      4),
+};
+
 static VitaPerfMenuItem g_dmDiag[] = {
     { "NO REFRESH (perf test)", "r_norefresh",    qfalse, 0 },
     /* "Skip Backend" and "Measure Overdraw" removed 2026-05-19: r_skipBackEnd freezes the
@@ -537,6 +557,7 @@ static VitaPerfMenuCategory g_dmCats[] = {
     VPM_CAT("WORLD",  g_dmWorld),
     VPM_CAT("GAME",   g_dmGame),
     VPM_CAT("LEVELS", g_dmLevels),
+    VPM_CAT("GPU TEST", g_dmGpuTest),
     VPM_CAT("DIAG",   g_dmDiag),
 };
 
@@ -566,6 +587,7 @@ static void VitaPerfMenu_SetScreen(qboolean debug)
 static int VitaPerfMenu_GetValue(const VitaPerfMenuItem *it)
 {
     if (!it->cvarName) return 0;
+    if (it->bit) return (Cvar_VariableIntegerValue(it->cvarName) & it->bit) ? 1 : 0;
     return Cvar_VariableIntegerValue(it->cvarName);
 }
 
@@ -653,6 +675,13 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
             g_pmNeedRestart = qtrue;
         }
         Com_Printf("PERF-MENU: %s = %s\n", it->label, it->choices[next].name);
+        return;
+    }
+    if (it->bit) {
+        /* a test switch: flipped for this run only, never saved */
+        const int value = Cvar_VariableIntegerValue(it->cvarName) ^ it->bit;
+        Cvar_Set2(it->cvarName, va("%d", value), qtrue);
+        Com_Printf("PERF-MENU: %s = %d (not saved)\n", it->cvarName, value);
         return;
     }
     int cur = VitaPerfMenu_GetValue(it);
@@ -1389,6 +1418,18 @@ void View3D::DrawFPS(void)
     }
 
     Com_sprintf(string, sizeof(string), "FPS %4.1f", currentfps);
+#ifdef __vita__
+    {
+        /* With the perf log on: where the frame goes (averages over 60 frames). Main and
+         * render thread run side by side; a long swap is the render thread waiting for
+         * the GPU. */
+        const cvar_t    *perflog = Cvar_FindVar("r_vita_perflog");
+        if (perflog && perflog->integer && vita_perfShown[0] > 0.0f) {
+            Com_sprintf(string, sizeof(string), "FPS %4.1f  frame %.0f  cpu %.0f  rt %.0f  swap %.0f ms", currentfps,
+                        vita_perfShown[0], vita_perfShown[1], vita_perfShown[2], vita_perfShown[3]);
+        }
+    }
+#endif
     if (currentfps > 23.94) {
         if (cl_greenfps->integer) {
             m_font->setColor(UGreen);
