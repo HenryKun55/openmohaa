@@ -53,7 +53,8 @@ MENU = "textures/mohmenu/"
 # Options: dark (dark letters on a light ground), alpha (white letters drawn by the alpha
 # channel), threshold (how much lighter/darker than the ground a letter pixel is), skew
 # (slant of an italic lettering: the picture is stood upright to cut its letters), unusable
-# (letters not to take from the picture, when they come out with a piece of their neighbour).
+# (letters not to take from the picture, when they come out with a piece of their neighbour),
+# room (x0, x1: where the translation may go, when the sign is narrower than the English area).
 PICTURES = {
     # the wooden boards
     "difficulty.tga": ("board", {}, [
@@ -76,7 +77,7 @@ PICTURES = {
     "credits_sign.tga": ("hanging", {}, [("CREDITS", [(16, 20, 246, 52)])]),
     "multiplayer_sign.tga": ("hanging", {}, [("MULTIPLAYER", [(16, 18, 250, 54)])]),
     "maplist_sign.tga": ("hanging", {}, [("MAPLIST", [(16, 20, 246, 52)])]),
-    "continue_sign.tga": ("hanging", {}, [("CONTINUE GAME", [(14, 18, 250, 54)])]),
+    "continue_sign.tga": ("hanging", {"room": (18, 234)}, [("CONTINUE GAME", [(14, 18, 250, 54)])]),
     "loaddemo_sign.tga": ("hanging", {}, [("LOAD DEMO", [(16, 20, 246, 52)])]),
     "warrecords_sign.tga": ("hanging", {}, [("LOAD/SAVE &|MEDAL CASE", [(16, 10, 252, 62)])]),
     "maproom_sign.tga": ("hanging", {}, [("MAP ROOM", [(14, 20, 124, 48)])]),
@@ -561,7 +562,10 @@ def pick(pool, ch, pic, asc):
     if len(choices) > 2:
         # a copy much wider or narrower than the others was cut wrong
         usual = np.median([g["ink"] / g["asc"] for g in choices])
-        choices = [g for g in choices if abs(g["ink"] / g["asc"] - usual) <= 0.2 * usual] or choices
+        mass = lambda g: g["a"].sum() / g["asc"] ** 2    # a letter cut short has less ink
+        usual_mass = np.median([mass(g) for g in choices])
+        choices = [g for g in choices if abs(g["ink"] / g["asc"] - usual) <= 0.2 * usual
+                   and abs(mass(g) - usual_mass) <= 0.2 * usual_mass] or choices
     own = [g for g in choices if g["pic"] == pic] or choices
     return min(own, key=lambda g: (abs(g["asc"] - asc), -g["asc"]))
 
@@ -753,7 +757,8 @@ def set_line(out, line, words, pool, pic, opts, colour):
         parts.append((scaled(g, line.asc / g["asc"], line.asc / g["asc"]), accent))
     widths = [line.space if p is None else p[0]["ink"] for p in parts]
     total = sum(widths) + line.gap * (len(parts) - 1)
-    room = (line.box[2] - line.box[0]) - 4
+    left, right = opts.get("room", (line.box[0], line.box[2]))
+    room = (right - left) - 4
     squeeze, size = 1.0, 1.0
     if total > room:
         squeeze = room / total
@@ -764,7 +769,7 @@ def set_line(out, line, words, pool, pic, opts, colour):
     # the line keeps its middle when the letters get smaller
     middle = lambda x: line.baseline(x) - line.asc / 2
     x = line.centre - total * fx / 2
-    x = min(max(x, line.box[0] + 2), line.box[2] - 2 - total * fx)     # stay on the sign
+    x = min(max(x, left + 2), right - 2 - total * fx)     # stay on the sign
     placed = []
     for part, width in zip(parts, widths):
         if part is not None:
