@@ -742,6 +742,143 @@
 { "QuickSave" "Salvataggio rapido" }
 { "Load QuickSave" "Carica salvataggio rapido" }
 
+// Vita settings menu (tap Select twice): tabs, options, their descriptions and the
+// multiplayer notice (code/client/cl_uiview3d.cpp).
+{ "VITA SETTINGS" "IMPOSTAZIONI VITA" }
+{ "DEBUG" "DEBUG" }
+{ "GRAPHICS" "GRAFICA" }
+{ "DISPLAY" "SCHERMO" }
+{ "SYSTEM" "SISTEMA" }
+{ "RENDER" "RENDER" }
+{ "WORLD" "MONDO" }
+{ "GAME" "GIOCO" }
+{ "LEVELS" "LIVELLI" }
+{ "DIAG" "DIAG" }
+{ "L/R: tab   D-pad: select   X: change   O: close" "L/R: scheda   D-pad: scegli   X: cambia   O: chiudi" }
+{ "* applied when the menu closes (video restart)" "* applicato alla chiusura del menu (riavvio video)" }
+{ "* changed: applied when the menu closes" "* modificato: applicato alla chiusura del menu" }
+{ "Custom" "Personalizzato" }
+{ "On" "Sì" }
+{ "Off" "No" }
+{ "Lowest" "Minima" }
+{ "Low" "Bassa" }
+{ "Medium" "Media" }
+{ "High" "Alta" }
+{ "Higher" "Molto alta" }
+{ "Highest" "Massima" }
+{ "Minimum" "Minimo" }
+{ "Lower" "Più bassa" }
+{ "Max" "Max" }
+{ "Bilinear" "Bilineare" }
+{ "Trilinear" "Trilineare" }
+{ "Blob" "Semplici" }
+{ "Game" "Del gioco" }
+{ "German only" "Solo tedesco" }
+{ "Nearby" "Vicini" }
+{ "All" "Tutti" }
+{ "Precise" "Precise" }
+{ "None" "Nessuno" }
+{ "Gun Only" "Solo arma" }
+{ "Full" "Completo" }
+{ "Preset: Performance" "Preset: Prestazioni" }
+{ "Lowest detail for the highest frame rate." "Dettaglio minimo per il frame rate più alto." }
+{ "Preset: Balanced" "Preset: Bilanciato" }
+{ "Recommended: good image with smooth gameplay." "Consigliato: buona immagine e gioco fluido." }
+{ "Preset: Quality" "Preset: Qualità" }
+{ "Every option at its highest; lower frame rate in combat." "Tutte le opzioni al massimo; frame rate più basso in combattimento." }
+{ "Texture resolution. Max is the most the Vita's video memory holds." "Risoluzione texture. Max è il massimo che la memoria video del Vita regge." }
+{ "Model Detail" "Dettaglio modelli" }
+{ "Polygon detail of soldiers and objects." "Dettaglio poligonale di soldati e oggetti." }
+{ "Distant Detail" "Dettaglio a distanza" }
+{ "How early far models lose detail." "Quanto presto i modelli lontani perdono dettaglio." }
+{ "Curve Detail" "Dettaglio curve" }
+{ "Smoothness of curved walls and arches." "Morbidezza di muri curvi e archi." }
+{ "Effect Detail" "Dettaglio effetti" }
+{ "Amount of smoke, debris and particles." "Quantità di fumo, detriti e particelle." }
+{ "Terrain Detail" "Dettaglio terreno" }
+{ "Detail of outdoor terrain." "Dettaglio del terreno all'aperto." }
+{ "Trilinear blends texture detail levels more smoothly." "Trilineare fonde più dolcemente i livelli di dettaglio delle texture." }
+{ "Precise: shadows cast by the lights. Blob: a simple shadow. Off is fastest." "Precise: ombre proiettate dalle luci. Semplici: ombra base. No: più veloce." }
+{ "Dynamic Lights" "Luci dinamiche" }
+{ "Light from muzzle flashes, explosions and fires." "Luce di spari, esplosioni e fuoco." }
+{ "Lens Flares" "Riflessi lente" }
+{ "Glare from the sun and bright lights." "Bagliore del sole e delle luci forti." }
+{ "Decals (Marks)" "Segni sui muri" }
+{ "Bullet holes, blood and scorch marks on walls." "Fori di proiettile, sangue e bruciature sui muri." }
+{ "Show FPS" "Mostra FPS" }
+{ "Frame rate counter in the corner of the screen." "Contatore dei fotogrammi al secondo nell'angolo dello schermo." }
+{ "HUD" "HUD" }
+{ "Health, ammo and compass on screen." "Salute, munizioni e bussola sullo schermo." }
+{ "Crosshair" "Mirino" }
+{ "Show the crosshair." "Mostra il mirino." }
+{ "Weapon Model" "Modello arma" }
+{ "Show the weapon (and hands) in first person." "Mostra l'arma (e le mani) in prima persona." }
+{ "Blood / Gore" "Sangue" }
+{ "Blood effects." "Effetti del sangue." }
+{ "Subtitles" "Sottotitoli" }
+{ "Which speech gets subtitles: German only (game default), everyone nearby, or everyone." "Quali dialoghi hanno sottotitoli: solo tedesco (predefinito), vicini o tutti." }
+{ "Text Language" "Lingua del testo" }
+{ "Language of the game's text: menus, messages, HUD. Voices stay as they are." "Lingua dei testi del gioco: menu, messaggi, HUD. Le voci non cambiano." }
+{ "Look Sens (hip)" "Sensibilità (normale)" }
+{ "Right stick look speed when not aiming." "Velocità dello stick destro senza mirare." }
+{ "Look Sens (aim)" "Sensibilità (mira)" }
+{ "Right stick look speed while aiming down the sights." "Velocità dello stick destro mirando con il mirino." }
+{ "Crosshair (hip)" "Mirino (normale)" }
+{ "Show the crosshair when not aiming." "Mostra il mirino quando non miri." }
+{ "Crosshair (aim)" "Mirino (mira)" }
+{ "Show the crosshair while aiming." "Mostra il mirino mentre miri." }
+{ "Restore defaults" "Ripristina predefiniti" }
+{ "Back to the port's recommended settings." "Torna alle impostazioni consigliate del port." }
+{ "Debug menu" "Menu di debug" }
+{ "Renderer switches, level select, cheats and diagnostics." "Opzioni del renderer, selezione livelli, trucchi e diagnostica." }
+{ "Close" "Chiudi" }
+{ "Render thread" "Render thread" }
+{ "Draws on its own CPU core. Off is slower." "Disegna su un proprio core della CPU. No è più lento." }
+{ "GPU skinning" "GPU skinning" }
+{ "Animates characters on the GPU. Off is slower." "Anima i personaggi sulla GPU. No è più lento." }
+{ "World VBO" "VBO della mappa" }
+{ "Keeps the map geometry on the GPU." "Mantiene la geometria della mappa sulla GPU." }
+{ "Force multitexture" "Forza multitexture" }
+{ "Draws walls and their lighting in one pass." "Disegna muri e illuminazione in una sola passata." }
+{ "Render thr. serial" "Render thread seriale" }
+{ "Diagnostic: limits the render thread's overlap with the game." "Diagnostica: limita la sovrapposizione del render thread con il gioco." }
+{ "Engine 2D Pass" "Passata 2D" }
+{ "Diagnostic: turns all 2D drawing off." "Diagnostica: disattiva tutto il disegno 2D." }
+{ "Server thread" "Thread del server" }
+{ "Experimental: game logic on its own CPU core." "Sperimentale: logica di gioco su un proprio core della CPU." }
+{ "BSP World" "Mappa (BSP)" }
+{ "Brush Models" "Brush model" }
+{ "Static Models" "Modelli statici" }
+{ "Static Polys" "Poligoni statici" }
+{ "Entity Polys" "Poligoni entità" }
+{ "Curves" "Curve" }
+{ "Fast Sky" "Cielo semplice" }
+{ "Sky Box" "Skybox" }
+{ "DLight Backfaces" "Luci sul retro" }
+{ "Main Menu" "Menu principale" }
+{ "Restart Level" "Riavvia livello" }
+{ "Suicide (kill)" "Suicidio" }
+{ "Cheats ON" "Trucchi attivi" }
+{ "Cheats OFF" "Trucchi disattivi" }
+{ "God Mode" "God mode" }
+{ "Noclip" "Noclip" }
+{ "Notarget" "Invisibile all'IA" }
+{ "Give All" "Dai tutto" }
+{ "Give Ammo" "Dai munizioni" }
+{ "Give Health" "Dai salute" }
+{ "NO REFRESH (perf test)" "NESSUN DISEGNO (test)" }
+{ "Skips all rendering, to measure CPU cost alone." "Salta tutto il disegno, per misurare solo la CPU." }
+{ "Show Tris" "Mostra triangoli" }
+{ "Show Normals" "Mostra normali" }
+{ "r_speeds Print" "r_speeds" }
+{ "com_speeds Print" "com_speeds" }
+{ "Perf log" "Log prestazioni" }
+{ "Timing lines in boot.log every second." "Righe di tempi nel boot.log ogni secondo." }
+{ "Back to settings" "Torna alle impostazioni" }
+{ "Multiplayer is not available on this version." "Il multigiocatore non è disponibile in questa versione." }
+{ "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign." "Nemmeno le espansioni Spearhead e Breakthrough sono ancora disponibili: questa versione contiene la campagna di Allied Assault." }
+{ "Press any button to go back." "Premi un tasto qualsiasi per tornare indietro." }
+
 // Words drawn in menu pictures, used by misc/vita/make_menu_text.py (not by the game).
 { "SELECT DIFFICULTY" "DIFFICOLTÀ" }
 { "EASY" "FACILE" }
