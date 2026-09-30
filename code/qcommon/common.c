@@ -2602,6 +2602,38 @@ static void Com_VitaProfRenderThread( int frames ) {
 			vp_rt[VPR_SKINFAIL + 1] / frames, vp_rt[VPR_SKINFAIL + 2] / frames, vp_rt[VPR_SKINFAIL + 3] / frames,
 			vp_rt[VPR_SKINFAIL + 4] / frames, vp_rt[VPR_SKINFAIL + 5] / frames );
 	}
+	{
+		// RT-PROF3: the costliest CPU-skinned surfaces. reason: morph = face animating,
+		// stageN = shader refused (tr_vita_skin.c VitaSkin_EligibleStage code N),
+		// buildN = surface refused (VitaSkin_BuildSurf -N: 7 = more than 32 bones), chan = bone channel missing
+		static const char *why[] = { "morph", "off", "stage", "build", "stale", "chan" };
+		unsigned int cpuAll = 0;
+		n = Com_sprintf( line, sizeof( line ), "RT-PROF3 (ms/frame): skin gpu=%.1f", vp_rt[VPR_SKIN_GPU_US] / 1000.0f / frames );
+		for ( i = 0; i < vp_cpuskinCount; i++ ) {
+			cpuAll += vp_cpuskin[i].us;
+		}
+		n += Com_sprintf( line + n, sizeof( line ) - n, " cpu=%.1f |", cpuAll / 1000.0f / frames );
+		for ( j = 0; j < 6; j++ ) {
+			best = -1;
+			for ( i = 0; i < vp_cpuskinCount; i++ ) {
+				if ( vp_cpuskin[i].us && ( best < 0 || vp_cpuskin[i].us > vp_cpuskin[best].us ) ) {
+					best = i;
+				}
+			}
+			if ( best < 0 ) {
+				break;
+			}
+			{
+				const int r = vp_cpuskin[best].reason / 100, sub = vp_cpuskin[best].reason % 100;
+				n += Com_sprintf( line + n, sizeof( line ) - n, " %s[%s%s]=%.2f x%.1f",
+					vp_cpuskin[best].name ? vp_cpuskin[best].name : "?", r >= 0 && r < 6 ? why[r] : "?",
+					sub ? va( "%d", sub ) : "", vp_cpuskin[best].us / 1000.0f / frames, vp_cpuskin[best].count / (float)frames );
+			}
+			vp_cpuskin[best].us = 0;
+		}
+		Com_Printf( "%s\n", line );
+		vp_cpuskinCount = 0;
+	}
 	for ( i = 0; i < VPR_COUNT; i++ ) {
 		vp_rt[i] = 0;
 	}

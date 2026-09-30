@@ -1068,7 +1068,55 @@ inline static void SkelWeightMorphGetXyz(skelWeight_t *weight, skelBoneCache_t *
 RB_SkelMesh
 =============
 */
+#ifdef __vita__
+static qboolean s_skelMeshGpu; // RB_SkelMesh_Body drew the surface with GPU skinning
+static void     RB_SkelMesh_Body(skelSurfaceGame_t *sf);
+
+vpCpuSkin_t vp_cpuskin[VP_CPUSKIN_MAX];
+int         vp_cpuskinCount;
+
+/* Times each skeletal surface: GPU-skinned ones in one sum, CPU-skinned ones per
+ * surface and fallback reason (RT-PROF3), to see which fallbacks are worth fixing. */
 void RB_SkelMesh(skelSurfaceGame_t *sf)
+{
+    extern int         vita_skin_fail, vita_skin_failsub;
+    const unsigned int t0 = VP_Now();
+    unsigned int       dt;
+    int                reason, i;
+
+    s_skelMeshGpu     = qfalse;
+    vita_skin_fail    = 1;
+    vita_skin_failsub = 0;
+    RB_SkelMesh_Body(sf);
+    dt = VP_Now() - t0;
+    if (s_skelMeshGpu) {
+        vp_rt[VPR_SKIN_GPU_US] += dt;
+        return;
+    }
+    reason = vita_skin_fail * 100 + vita_skin_failsub;
+    for (i = 0; i < vp_cpuskinCount; i++) {
+        if (vp_cpuskin[i].name == sf->name && vp_cpuskin[i].reason == reason) {
+            break;
+        }
+    }
+    if (i == vp_cpuskinCount) {
+        if (vp_cpuskinCount == VP_CPUSKIN_MAX) {
+            return;
+        }
+        vp_cpuskin[i].name   = sf->name;
+        vp_cpuskin[i].reason = reason;
+        vp_cpuskin[i].us     = 0;
+        vp_cpuskin[i].count  = 0;
+        vp_cpuskinCount++;
+    }
+    vp_cpuskin[i].us += dt;
+    vp_cpuskin[i].count++;
+}
+
+static void RB_SkelMesh_Body(skelSurfaceGame_t *sf)
+#else
+void RB_SkelMesh(skelSurfaceGame_t *sf)
+#endif
 {
 #ifdef __vita__
     if (vita_skip_mask && (vita_skip_mask->integer & 1)) return;
@@ -1143,6 +1191,7 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
         skelBoneCache_t *gpuBones = &backEnd.data->skelBones[backEnd.currentEntity->e.bonestart];
         if (R_VitaGpuSkin_DrawSurf(sf, tiki, skelmodel, gpuBones, scale)) {
             vp_rt[VPR_SKIN_GPU]++;
+            s_skelMeshGpu = qtrue;
             return;
         }
         vp_rt[VPR_SKIN_CPU]++;

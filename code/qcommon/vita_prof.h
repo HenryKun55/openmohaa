@@ -88,10 +88,23 @@ enum {
 	VPR_SKIN_CPU,								// counter: ... that fell back to the CPU path
 	VPR_SKINFAIL,								// counters per fallback reason (6 slots, vita_skin_fail)
 	VPR_SKINFAIL_END = VPR_SKINFAIL + 6,
-	VPR_COUNT = VPR_SKINFAIL_END
+	VPR_SKIN_GPU_US = VPR_SKINFAIL_END,			// time of the skeletal surfaces drawn by GPU skinning
+	VPR_COUNT
 };
 
 extern unsigned int vp_rt[VPR_COUNT];
+
+// RT-PROF3: CPU time of the skeletal surfaces that fell back to the CPU, per surface and
+// reason (vita_skin_fail * 100 + sub-code), filled by RB_SkelMesh on the render thread.
+#define VP_CPUSKIN_MAX 32
+typedef struct {
+	const char   *name;
+	int           reason;
+	unsigned int  us;
+	unsigned int  count;
+} vpCpuSkin_t;
+extern vpCpuSkin_t vp_cpuskin[VP_CPUSKIN_MAX];
+extern int         vp_cpuskinCount;
 
 static inline unsigned int VP_Now( void ) {
 	return sceKernelGetProcessTimeLow();

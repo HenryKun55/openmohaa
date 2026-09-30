@@ -746,6 +746,7 @@ static void VitaSkin_LogRefusal(const char *what, const char *name, int code, co
 }
 
 int vita_skin_fail;	// RT-PROF: why the last R_VitaGpuSkin_DrawSurf fell back to the CPU
+int vita_skin_failsub;	// RT-PROF3: the stage check or surface build code behind it
 
 qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *bonesV, float scale)
 {
@@ -765,7 +766,8 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     if (!s_skin_ready || !r_vita_gpu_skinning || !r_vita_gpu_skinning->integer) { vita_skin_fail = 1; return qfalse; }
 
     stage = VitaSkin_EligibleStage(&alphaTestMode, &entityAlpha);
-    if (!stage) { vita_skin_fail = 2; VitaSkin_LogRefusal("stage", sf->name, s_stageFail, NULL); return qfalse; }
+    vita_skin_failsub = 0;
+    if (!stage) { vita_skin_fail = 2; vita_skin_failsub = s_stageFail; VitaSkin_LogRefusal("stage", sf->name, s_stageFail, NULL); return qfalse; }
 
     slot = VitaSkin_HashFind(sf);
     if (slot == 0) {
@@ -773,7 +775,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         slot = VitaSkin_BuildSurf(sf, skelmodel);
         VitaSkin_HashInsert(sf, slot > 0 ? slot : -1);
     }
-    if (slot <= 0) { vita_skin_fail = 3; VitaSkin_LogRefusal("surface", sf->name, slot, sf); return qfalse; }                     /* ineligible → CPU */
+    if (slot <= 0) { vita_skin_fail = 3; vita_skin_failsub = -slot; VitaSkin_LogRefusal("surface", sf->name, slot, sf); return qfalse; }                     /* ineligible → CPU */
     if (slot >= s_skin_cache_count) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
     e = &s_skin_cache[slot];
     if (e->sf != sf || !e->ibuf) { vita_skin_fail = 4; return qfalse; }       /* stale guard */
