@@ -291,6 +291,12 @@ typedef struct {
     /* The surface has morph targets (faces): drawn here only for entities whose
      * morphs are off this frame, which RB_SkelMesh also skins without them. */
     qboolean           hasMorphs;
+    /* A surface with more than VITA_SKIN_MAX_BONESLOTS bones (hands: the fingers) is
+     * split into batches of triangles that each use at most that many; they are chained
+     * through 'next' (a slot, 0 = last). */
+    int                next;
+    /* The surface vertex behind each batch vertex (malloc'd, morph surfaces only). */
+    unsigned short    *orig;
 } vitaSkinCacheEntry_t;
 
 static vitaSkinCacheEntry_t s_skin_cache[VITA_SKIN_CACHE_CAP];
@@ -455,6 +461,8 @@ static void VitaSkin_FreeEntry(vitaSkinCacheEntry_t *e)
     }
     if (e->ibuf) vglFree(e->ibuf);
     e->ibuf = NULL;
+    if (e->orig) free(e->orig);
+    e->orig = NULL;
 }
 
 /* Free all per-surface caches + clear the registry. Called at level load
@@ -509,137 +517,230 @@ static int VitaSkin_LookupOrAddBoneSlot(vitaSkinCacheEntry_t *e, int channel)
     return e->numBoneSlots++;
 }
 
-/* Build the interleaved attribute + index buffers for a surface. Returns
- * the cache slot (>0) on success, or a negative ineligibility code. */
+/* The weights a vertex keeps on the GPU: its VITA_SKIN_MAX_WEIGHTS strongest, renormalized
+ * when some were dropped (e.g. Ranger_pants has 5), with the channel of each one's bone. */
+typedef struct {
+    const skeletorVertex_t *v;
+    const skelWeight_t     *w;
+    int                     numPick;
+    int                     pick[VITA_SKIN_MAX_WEIGHTS];
+    int                     channel[VITA_SKIN_MAX_WEIGHTS];
+    float                   weightScale;
+} vitaSkinVert_t;
+
+static void VitaSkin_PickWeights(vitaSkinVert_t *out, const skeletorVertex_t *v, const skelHeaderGame_t *skelmodel)
+{
+    const skelWeight_t *w = (const skelWeight_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                                   + sizeof(skeletorMorph_t) * v->numMorphs);
+    float kept = 0.0f, total = 0.0f;
+    int   k, m;
+
+    out->v           = v;
+    out->w           = w;
+    out->numPick     = v->numWeights < VITA_SKIN_MAX_WEIGHTS ? v->numWeights : VITA_SKIN_MAX_WEIGHTS;
+    out->weightScale = 1.0f;
+    for (k = 0; k < v->numWeights; k++) {
+        total += w[k].boneWeight;
+    }
+    for (m = 0; m < out->numPick; m++) {
+        int best = -1;
+        for (k = 0; k < v->numWeights; k++) {
+            int used = 0, u;
+            for (u = 0; u < m; u++) {
+                if (out->pick[u] == k) used = 1;
+            }
+            if (!used && (best < 0 || w[k].boneWeight > w[best].boneWeight)) {
+                best = k;
+            }
+        }
+        out->pick[m]    = best;
+        out->channel[m] = skelmodel->pBones[w[best].boneIndex].channel;
+        kept += w[best].boneWeight;
+    }
+    if (v->numWeights > out->numPick && kept > 0.0f) {
+        out->weightScale = total / kept;
+    }
+}
+
+/* Channels of triangle t's vertices that the batch channel set 'set' lacks. */
+static int VitaSkin_NewChannels(const vitaSkinVert_t *vtx, const skelIndex_t *tri, const int *set, int setCount,
+                                int *added)
+{
+    int n = 0, c, k, j;
+
+    for (c = 0; c < 3; c++) {
+        const vitaSkinVert_t *vi = &vtx[tri[c]];
+        for (k = 0; k < vi->numPick; k++) {
+            const int ch = vi->channel[k];
+            int       seen = 0;
+            for (j = 0; j < setCount && !seen; j++) seen = set[j] == ch;
+            for (j = 0; j < n && !seen; j++) seen = added[j] == ch;
+            if (!seen) added[n++] = ch;
+        }
+    }
+    return n;
+}
+
+/* Build the attribute + index buffers for a surface: one batch, or several when it uses
+ * more bones than the shader's palette holds. Returns the first batch's cache slot (>0),
+ * or a negative ineligibility code. */
 static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel)
 {
-    int i, j, slot;
-    skeletorVertex_t *v;
-    vitaSkinCacheEntry_t *entry;
+    vitaSkinVert_t   *vtx;
+    const skeletorVertex_t *v;
+    short            *remap;
+    int              *batchOf;
+    int               i, j, t, numBatches, first = 0, prev = 0, hasMorphs = 0, result;
+    int               set[VITA_SKIN_MAX_BONESLOTS], setCount;
 
     if (sf->numVerts <= 0 || sf->numTriangles <= 0) return -2;
+    if (sf->numVerts > 32767) return -8;          /* u16 indices, short remap */
 
-    /* Eligibility: <=4 weights, no morph targets (face anim). */
+    vtx     = (vitaSkinVert_t *)malloc(sizeof(*vtx) * sf->numVerts);
+    remap   = (short *)malloc(sizeof(*remap) * sf->numVerts);
+    batchOf = (int *)malloc(sizeof(*batchOf) * sf->numTriangles);
+    if (!vtx || !remap || !batchOf) {
+        free(vtx);
+        free(remap);
+        free(batchOf);
+        return -9;
+    }
     v = sf->pVerts;
     for (i = 0; i < sf->numVerts; i++) {
-        /* More than VITA_SKIN_MAX_WEIGHTS weights: the strongest ones are kept and
-         * renormalized below (e.g. Ranger_pants has 5). Morph targets are skipped:
-         * see hasMorphs. */
-        v = (skeletorVertex_t *)((byte *)v + sizeof(skeletorVertex_t)
-                                  + sizeof(skeletorMorph_t) * v->numMorphs
-                                  + sizeof(skelWeight_t) * v->numWeights);
+        VitaSkin_PickWeights(&vtx[i], v, skelmodel);
+        if (v->numMorphs > 0) hasMorphs = 1;
+        v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                       + sizeof(skeletorMorph_t) * v->numMorphs
+                                       + sizeof(skelWeight_t) * v->numWeights);
     }
 
-    if (s_skin_cache_count >= VITA_SKIN_CACHE_CAP) return -6;
-    if (sf->numVerts > 65535) return -8;          /* u16 indices */
-    slot  = s_skin_cache_count++;
-    entry = &s_skin_cache[slot];
-    Com_Memset(entry, 0, sizeof(*entry));
-    entry->sf           = sf;
-    entry->localChnTiki = NULL;
+    /* Triangles in order, a new batch whenever the bones would overflow the palette. */
+    numBatches = 1;
+    setCount   = 0;
+    for (t = 0; t < sf->numTriangles; t++) {
+        int added[3 * VITA_SKIN_MAX_WEIGHTS];
+        int n = VitaSkin_NewChannels(vtx, &sf->pTriangles[t * 3], set, setCount, added);
+        if (setCount + n > VITA_SKIN_MAX_BONESLOTS) {
+            numBatches++;
+            setCount = 0;
+            n        = VitaSkin_NewChannels(vtx, &sf->pTriangles[t * 3], set, 0, added);
+            if (n > VITA_SKIN_MAX_BONESLOTS) {    /* cannot happen: 3 verts x 4 weights */
+                result = -7;
+                goto done;
+            }
+        }
+        for (j = 0; j < n; j++) set[setCount++] = added[j];
+        batchOf[t] = numBatches - 1;
+    }
 
-    /* One tightly packed GPU-mapped array per attribute + a u16 index list, built
-     * once per surface. vglVertexAttribPointerMapped / vglIndexPointerMapped then
-     * draw straight from them with no per-draw copy (the old path re-copied an
-     * interleaved, de-indexed buffer on every draw). */
-    {
-    int a, numIdx = sf->numTriangles * 3;
-    for (a = 0; a < ATTR_COUNT; a++) {
-        entry->attr[a] = (float *)vglAlloc(sizeof(float) * s_attr_size[a] * sf->numVerts, VGL_MEM_RAM_TYPE);
-    }
-    entry->ibuf = (unsigned short *)vglAlloc(sizeof(unsigned short) * numIdx, VGL_MEM_RAM_TYPE);
-    for (a = 0; a < ATTR_COUNT; a++) {
-        if (!entry->attr[a]) break;
-    }
-    if (a < ATTR_COUNT || !entry->ibuf) {
-        VitaSkin_FreeEntry(entry);
+    for (int b = 0; b < numBatches; b++) {
+        vitaSkinCacheEntry_t *entry;
+        int                   numBV = 0, numIdx = 0, slot, a;
+
+        for (i = 0; i < sf->numVerts; i++) remap[i] = -1;
+        for (t = 0; t < sf->numTriangles; t++) {
+            if (batchOf[t] != b) continue;
+            numIdx += 3;
+            for (j = 0; j < 3; j++) {
+                const int vi = sf->pTriangles[t * 3 + j];
+                if (remap[vi] < 0) remap[vi] = (short)numBV++;
+            }
+        }
+
+        if (s_skin_cache_count >= VITA_SKIN_CACHE_CAP) {
+            result = -6;
+            goto fail;
+        }
+        slot  = s_skin_cache_count++;
+        entry = &s_skin_cache[slot];
         Com_Memset(entry, 0, sizeof(*entry));
-        s_skin_cache_count--;
-        return -9;                                /* out of GPU-mapped RAM → CPU */
-    }
+        entry->sf           = sf;
+        entry->localChnTiki = NULL;
+        entry->hasMorphs    = hasMorphs;
+        if (!first) first = slot;
+        if (prev) s_skin_cache[prev].next = slot;
+        prev = slot;
 
-    v = sf->pVerts;
-    for (i = 0; i < sf->numVerts; i++) {
-        skelWeight_t *w = (skelWeight_t *)((byte *)v + sizeof(skeletorVertex_t)
-                                           + sizeof(skeletorMorph_t) * v->numMorphs);
-        int           pick[VITA_SKIN_MAX_WEIGHTS];
-
-        if (v->numMorphs > 0) {
-            entry->hasMorphs = qtrue;
+        /* One tightly packed GPU-mapped array per attribute + a u16 index list, built
+         * once. vglVertexAttribPointerMapped / vglIndexPointerMapped then draw straight
+         * from them with no per-draw copy. */
+        for (a = 0; a < ATTR_COUNT; a++) {
+            entry->attr[a] = (float *)vglAlloc(sizeof(float) * s_attr_size[a] * numBV, VGL_MEM_RAM_TYPE);
+            if (!entry->attr[a]) break;
         }
-        int           numPick = v->numWeights < VITA_SKIN_MAX_WEIGHTS ? v->numWeights : VITA_SKIN_MAX_WEIGHTS;
-        float         weightScale = 1.0f;
-
-        /* the numPick strongest weights, renormalized when some were dropped */
-        {
-            int   k, m;
-            float kept = 0.0f, total = 0.0f;
-            for (k = 0; k < v->numWeights; k++) {
-                total += w[k].boneWeight;
+        entry->ibuf = (unsigned short *)vglAlloc(sizeof(unsigned short) * numIdx, VGL_MEM_RAM_TYPE);
+        if (a < ATTR_COUNT || !entry->ibuf) {
+            result = -9;                          /* out of GPU-mapped RAM → CPU */
+            goto fail;
+        }
+        if (hasMorphs) {
+            entry->orig = (unsigned short *)malloc(sizeof(unsigned short) * numBV);
+            if (!entry->orig) {
+                result = -9;
+                goto fail;
             }
-            for (m = 0; m < numPick; m++) {
-                int best = -1;
-                for (k = 0; k < v->numWeights; k++) {
-                    int used = 0, u;
-                    for (u = 0; u < m; u++) {
-                        if (pick[u] == k) used = 1;
+        }
+
+        for (i = 0; i < sf->numVerts; i++) {
+            const vitaSkinVert_t *vi = &vtx[i];
+            const int             o  = remap[i];
+            if (o < 0) continue;
+            if (entry->orig) entry->orig[o] = (unsigned short)i;
+            for (j = 0; j < VITA_SKIN_MAX_WEIGHTS; j++) {
+                float *wo = entry->attr[ATTR_W0 + j] + o * 4;
+                if (j < vi->numPick) {
+                    const skelWeight_t *wj      = &vi->w[vi->pick[j]];
+                    const int           slotIdx = VitaSkin_LookupOrAddBoneSlot(entry, vi->channel[j]);
+                    if (slotIdx < 0) {            /* the partition above keeps this within the palette */
+                        result = -7;
+                        goto fail;
                     }
-                    if (!used && (best < 0 || w[k].boneWeight > w[best].boneWeight)) {
-                        best = k;
-                    }
+                    wo[0] = wj->offset[0];
+                    wo[1] = wj->offset[1];
+                    wo[2] = wj->offset[2];
+                    wo[3] = wj->boneWeight * vi->weightScale;
+                    entry->attr[ATTR_IDX][o * 4 + j] = (float)slotIdx;
+                } else {
+                    wo[0] = wo[1] = wo[2] = wo[3] = 0.0f;
+                    entry->attr[ATTR_IDX][o * 4 + j] = 0.0f;
                 }
-                pick[m] = best;
-                kept += w[best].boneWeight;
             }
-            if (v->numWeights > numPick && kept > 0.0f) {
-                weightScale = total / kept;
+            entry->attr[ATTR_TEXCOORD][o * 2 + 0] = vi->v->texCoords[0];
+            entry->attr[ATTR_TEXCOORD][o * 2 + 1] = vi->v->texCoords[1];
+            entry->attr[ATTR_NORMAL][o * 3 + 0]   = vi->v->normal[0];
+            entry->attr[ATTR_NORMAL][o * 3 + 1]   = vi->v->normal[1];
+            entry->attr[ATTR_NORMAL][o * 3 + 2]   = vi->v->normal[2];
+        }
+        numIdx = 0;
+        for (t = 0; t < sf->numTriangles; t++) {
+            if (batchOf[t] != b) continue;
+            for (j = 0; j < 3; j++) {
+                entry->ibuf[numIdx++] = (unsigned short)remap[sf->pTriangles[t * 3 + j]];
             }
         }
+        entry->numVerts   = numBV;
+        entry->numIndexes = numIdx;
+    }
 
-        for (j = 0; j < VITA_SKIN_MAX_WEIGHTS; j++) {
-            float *wo = entry->attr[ATTR_W0 + j] + i * 4;
-            if (j < numPick) {
-                const skelWeight_t *wj = &w[pick[j]];
-                int channel = skelmodel->pBones[wj->boneIndex].channel;
-                int slotIdx = VitaSkin_LookupOrAddBoneSlot(entry, channel);
-                if (slotIdx < 0) {
-                    VitaSkin_FreeEntry(entry);
-                    Com_Memset(entry, 0, sizeof(*entry));
-                    s_skin_cache_count--;
-                    return -7;
-                }
-                wo[0] = wj->offset[0];
-                wo[1] = wj->offset[1];
-                wo[2] = wj->offset[2];
-                wo[3] = wj->boneWeight * weightScale;
-                entry->attr[ATTR_IDX][i * 4 + j] = (float)slotIdx;
-            } else {
-                wo[0] = wo[1] = wo[2] = wo[3] = 0.0f;
-                entry->attr[ATTR_IDX][i * 4 + j] = 0.0f;
-            }
+    ri.Printf(PRINT_DEVELOPER, "[VITA-SKIN] built slot %d '%s' (%d verts, %d tris, %d batch%s)\n", first,
+              sf->name[0] ? sf->name : "?", sf->numVerts, sf->numTriangles, numBatches, numBatches > 1 ? "es" : "");
+    result = first;
+    goto done;
+
+fail:
+    /* the batches are the last slots allocated: give them all back */
+    if (first) {
+        for (i = first; i < s_skin_cache_count; i++) {
+            VitaSkin_FreeEntry(&s_skin_cache[i]);
+            Com_Memset(&s_skin_cache[i], 0, sizeof(s_skin_cache[i]));
         }
-        entry->attr[ATTR_TEXCOORD][i * 2 + 0] = v->texCoords[0];
-        entry->attr[ATTR_TEXCOORD][i * 2 + 1] = v->texCoords[1];
-        entry->attr[ATTR_NORMAL][i * 3 + 0]   = v->normal[0];
-        entry->attr[ATTR_NORMAL][i * 3 + 1]   = v->normal[1];
-        entry->attr[ATTR_NORMAL][i * 3 + 2]   = v->normal[2];
-
-        v = (skeletorVertex_t *)((byte *)v + sizeof(skeletorVertex_t)
-                                  + sizeof(skeletorMorph_t) * v->numMorphs
-                                  + sizeof(skelWeight_t) * v->numWeights);
+        s_skin_cache_count = first;
     }
-
-    for (i = 0; i < numIdx; i++) {
-        entry->ibuf[i] = (unsigned short)sf->pTriangles[i];
-    }
-    entry->numVerts   = sf->numVerts;
-    entry->numIndexes = numIdx;
-    }
-
-    ri.Printf(PRINT_DEVELOPER,
-        "[VITA-SKIN] built slot %d '%s' (%d verts, %d tris, %d bones)\n",
-        slot, sf->name[0] ? sf->name : "?", sf->numVerts, sf->numTriangles, entry->numBoneSlots);
-    return slot;
+done:
+    free(vtx);
+    free(remap);
+    free(batchOf);
+    return result;
 }
 
 static void VitaSkin_MatMul(float *out, const float *a, const float *b)
@@ -784,36 +885,19 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         return qfalse;
     }
 
-    if (e->localChnTiki != tiki) {
-        for (i = 0; i < e->numBoneSlots; i++) {
-            e->localChn[i] = ri.TIKI_GetLocalChannel(tiki, e->boneChannel[i]);
+    /* Every batch needs all its bones on this model: checked before drawing any of them. */
+    for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+        if (be->sf != sf || !be->ibuf) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
+        if (be->localChnTiki != tiki) {
+            for (i = 0; i < be->numBoneSlots; i++) {
+                be->localChn[i] = ri.TIKI_GetLocalChannel(tiki, be->boneChannel[i]);
+            }
+            be->localChnTiki = tiki;
         }
-        e->localChnTiki = tiki;
-    }
-
-    /* Pack the bone matrix palette for THIS entity (transposed, see header). */
-    for (i = 0; i < e->numBoneSlots; i++) {
-        int localChn = e->localChn[i];
-        if (localChn < 0) { vita_skin_fail = 5; return qfalse; }              /* channel absent → CPU */
-        skelBoneCache_t *b = &bones[localChn];
-        int base = i * 12;
-        /* Pre-multiply by the model scale (tiki->load_scale * entity->scale).
-         * The CPU path does VectorScale(out, scale, outXyz) on the final
-         * skinned position; scaling each bone's rotation rows + translation
-         * by `scale` yields skinned*scale identically (the shader normalizes
-         * the rotated normal, so the scale doesn't leak into lighting). */
-        boneMatrixData[base + 0] = b->matrix[0][0] * scale;
-        boneMatrixData[base + 1] = b->matrix[1][0] * scale;
-        boneMatrixData[base + 2] = b->matrix[2][0] * scale;
-        boneMatrixData[base + 3] = b->offset[0] * scale;
-        boneMatrixData[base + 4] = b->matrix[0][1] * scale;
-        boneMatrixData[base + 5] = b->matrix[1][1] * scale;
-        boneMatrixData[base + 6] = b->matrix[2][1] * scale;
-        boneMatrixData[base + 7] = b->offset[1] * scale;
-        boneMatrixData[base + 8] = b->matrix[0][2] * scale;
-        boneMatrixData[base + 9] = b->matrix[1][2] * scale;
-        boneMatrixData[base +10] = b->matrix[2][2] * scale;
-        boneMatrixData[base +11] = b->offset[2] * scale;
+        for (i = 0; i < be->numBoneSlots; i++) {
+            if (be->localChn[i] < 0) { vita_skin_fail = 5; return qfalse; }      /* channel absent → CPU */
+        }
+        if (!be->next || be->next >= s_skin_cache_count) break;
     }
 
     /* MVP from the engine's own matrices. (Do NOT use glGetFloatv with
@@ -924,7 +1008,6 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         s_skin_program_bound = qtrue;
     }
     glUniformMatrix4fv(s_loc_mvp, 1, 0, mvp);                        SKIN_GLCHK("uniform mvp");
-    glUniform4fv(s_loc_boneMatrix, e->numBoneSlots * 3, boneMatrixData); SKIN_GLCHK("uniform boneMat");
     glUniform4fv(s_loc_mvZ, 1, mvZ);
     glUniform4fv(s_loc_fog, 1, fog);
     glUniform4fv(s_loc_fogColor, 1, fogColor);
@@ -942,11 +1025,34 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     /* vgl* pipeline, copy-less: attributes and indices come straight from the
      * GPU-mapped arrays built once in VitaSkin_BuildSurf. It does NOT touch
      * fixed-function client state, so the next CPU surface stays intact. */
-    for (a = 0; a < ATTR_COUNT; a++) {
-        vglVertexAttribPointerMapped(a, e->attr[a]);
-    }                                                                SKIN_GLCHK("vglVertexAttribPointerMapped");
-    vglIndexPointerMapped(e->ibuf);                                  SKIN_GLCHK("vglIndexPointerMapped");
-    vglDrawObjects(GL_TRIANGLES, e->numIndexes, 0 /* shader does mvp */); SKIN_GLCHK("vglDrawObjects");
+    /* One draw per batch, each with its own bone palette (transposed rows, pre-multiplied
+     * by the model scale: the CPU path scales the final skinned position, and scaling the
+     * bone rotation rows + translation gives the same; the shader normalizes the normal). */
+    for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+        for (i = 0; i < be->numBoneSlots; i++) {
+            const skelBoneCache_t *b    = &bones[be->localChn[i]];
+            float                 *m    = &boneMatrixData[i * 12];
+            m[0]  = b->matrix[0][0] * scale;
+            m[1]  = b->matrix[1][0] * scale;
+            m[2]  = b->matrix[2][0] * scale;
+            m[3]  = b->offset[0] * scale;
+            m[4]  = b->matrix[0][1] * scale;
+            m[5]  = b->matrix[1][1] * scale;
+            m[6]  = b->matrix[2][1] * scale;
+            m[7]  = b->offset[1] * scale;
+            m[8]  = b->matrix[0][2] * scale;
+            m[9]  = b->matrix[1][2] * scale;
+            m[10] = b->matrix[2][2] * scale;
+            m[11] = b->offset[2] * scale;
+        }
+        glUniform4fv(s_loc_boneMatrix, be->numBoneSlots * 3, boneMatrixData); SKIN_GLCHK("uniform boneMat");
+        for (a = 0; a < ATTR_COUNT; a++) {
+            vglVertexAttribPointerMapped(a, be->attr[a]);
+        }                                                            SKIN_GLCHK("vglVertexAttribPointerMapped");
+        vglIndexPointerMapped(be->ibuf);                             SKIN_GLCHK("vglIndexPointerMapped");
+        vglDrawObjects(GL_TRIANGLES, be->numIndexes, 0 /* shader does mvp */); SKIN_GLCHK("vglDrawObjects");
+        if (!be->next || be->next >= s_skin_cache_count) break;
+    }
 
     if (!s_skin_err_traced) {
         R_VitaGpuSkin_Unbind();                                      SKIN_GLCHK("glUseProgram(0)");
