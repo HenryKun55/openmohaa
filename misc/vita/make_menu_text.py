@@ -123,6 +123,13 @@ PICTURES = {
         ("SAVE", [(76, 124, 181, 152)]),
         ("DELETE", [(61, 176, 198, 203)]),
     ]),
+    # the whole folder, drawn over the pieces above (ui/loadsave.urc)
+    "loadsave_a.tga": ("stamp", {"dark": True}, [
+        ("TOP SECRET", [(274, 10, 436, 38)], "typed"),
+        ("LOAD", [(332, 70, 437, 101)]),
+        ("SAVE", [(332, 124, 437, 152)]),
+        ("DELETE", [(317, 176, 454, 203)]),
+    ]),
     "load_h.tga": ("stamp", {"dark": True}, [("LOAD", [(12, 8, 114, 50)])]),
     "save_h.tga": ("stamp", {"dark": True}, [("SAVE", [(11, 13, 117, 54)])]),
     "delete_h.tga": ("stamp", {"dark": True}, [("DELETE", [(20, 19, 240, 54)])]),
