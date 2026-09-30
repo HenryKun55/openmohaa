@@ -8,11 +8,17 @@ come in a separate language pack, see [Menu pictures](#menu-pictures); the brief
 papers stay as they are.
 
 Players pick it in the Vita settings (tap Select twice) > **Display** >
-**Text Language**. "Game" keeps the language of their own game files.
+**Text Language**. "English" keeps the text of their own game files. On the first start
+the game picks the Vita's system language when there is a translation for it. The same
+files also translate the Vita settings menu itself.
 
 | Language | File | Status |
 |---|---|---|
 | Português (Brasil) | [`misc/vita/lang/pt.txt`](../misc/vita/lang/pt.txt) | done |
+| Español | [`misc/vita/lang/es.txt`](../misc/vita/lang/es.txt) | machine translation, needs a native review |
+| Français | [`misc/vita/lang/fr.txt`](../misc/vita/lang/fr.txt) | machine translation, needs a native review |
+| Deutsch | [`misc/vita/lang/de.txt`](../misc/vita/lang/de.txt) | machine translation, needs a native review |
+| Italiano | [`misc/vita/lang/it.txt`](../misc/vita/lang/it.txt) | machine translation, needs a native review |
 
 ## Adding a language
 
