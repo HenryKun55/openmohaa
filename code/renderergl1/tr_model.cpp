@@ -1185,27 +1185,6 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
 
     assert(bFound);
 
-#ifdef __vita__
-    /* Phase 2b: GPU skinning. Try to draw this surface through the vertex
-     * shader (vgl* pipeline). If it handles it, skip the whole CPU skin
-     * path below. Ineligible surfaces (morphs/face anim, >4 weights, or a
-     * missing bone channel) return qfalse and fall through to the CPU loop.
-     * bones is the same palette the CPU path uses a few lines down. */
-    if (r_vita_gpu_skinning && r_vita_gpu_skinning->integer && R_VitaGpuSkin_IsReady()) {
-        extern int vita_skin_fail;
-        skelBoneCache_t *gpuBones = &backEnd.data->skelBones[backEnd.currentEntity->e.bonestart];
-        if (R_VitaGpuSkin_DrawSurf(sf, tiki, skelmodel, gpuBones, scale)) {
-            vp_rt[VPR_SKIN_GPU]++;
-            s_skelMeshGpu = qtrue;
-            return;
-        }
-        vp_rt[VPR_SKIN_CPU]++;
-        vp_rt[VPR_SKINFAIL + (vita_skin_fail >= 0 && vita_skin_fail < 6 ? vita_skin_fail : 0)]++;
-    } else {
-        vp_rt[VPR_SKIN_CPU]++;
-        vp_rt[VPR_SKINFAIL + 1]++;
-    }
-#endif
 
     //
     // Process LOD
@@ -1263,6 +1242,28 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
     } else {
         render_count = sf->numVerts;
     }
+
+#ifdef __vita__
+    /* Phase 2b: GPU skinning. Try to draw this surface through the vertex
+     * shader (vgl* pipeline), at the LOD just computed (render_count). If it
+     * handles it, skip the whole CPU skin path below; ineligible surfaces
+     * return qfalse and fall through to the CPU loop. bones is the same
+     * palette the CPU path uses a few lines down. */
+    if (r_vita_gpu_skinning && r_vita_gpu_skinning->integer && R_VitaGpuSkin_IsReady()) {
+        extern int vita_skin_fail;
+        skelBoneCache_t *gpuBones = &backEnd.data->skelBones[backEnd.currentEntity->e.bonestart];
+        if (R_VitaGpuSkin_DrawSurf(sf, tiki, skelmodel, gpuBones, scale, render_count)) {
+            vp_rt[VPR_SKIN_GPU]++;
+            s_skelMeshGpu = qtrue;
+            return;
+        }
+        vp_rt[VPR_SKIN_CPU]++;
+        vp_rt[VPR_SKINFAIL + (vita_skin_fail >= 0 && vita_skin_fail < 6 ? vita_skin_fail : 0)]++;
+    } else {
+        vp_rt[VPR_SKIN_CPU]++;
+        vp_rt[VPR_SKINFAIL + 1]++;
+    }
+#endif
 
     indexes = sf->numTriangles * 3;
     RB_CHECKOVERFLOW(render_count, indexes);

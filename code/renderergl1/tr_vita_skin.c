@@ -283,6 +283,13 @@ static const char *s_skin_frag_src =
  * GPU is done with its frame); everything else reads a buffer of zeros. Batches are cut
  * at VITA_SKIN_MAX_BATCH_VERTS vertices so the zeros cover any of them. */
 #define VITA_SKIN_MAX_BATCH_VERTS  4096
+
+/* Level of detail: the skeletal meshes are progressive (a vertex past N collapses into
+ * an earlier one), the CPU path draws a far model with fewer vertices. A one-batch
+ * surface gets index lists at these fractions of its vertices; the draw uses the
+ * smallest one that keeps at least the vertices the CPU path would. */
+#define VITA_SKIN_LODS 5
+static const float s_lodFraction[VITA_SKIN_LODS] = { 0.75f, 0.5f, 0.35f, 0.25f, 0.15f };
 #define VITA_SKIN_MORPH_FRAMES     4
 #define VITA_SKIN_MORPH_VERTS      12288  /* per frame (vec4 each): ~20 faces */
 #define VITA_SKIN_HASH_SIZE   2048   /* power of two */
@@ -314,6 +321,11 @@ typedef struct {
      * goes to, 9 = none (malloc'd, morph surfaces only). */
     unsigned short    *orig;
     unsigned char     *morphSlot;
+    /* LOD index lists, by decreasing vertex count (lodCount 0 = full detail only) */
+    int                lodCount;
+    int                lodVerts[VITA_SKIN_LODS];
+    int                lodNumIdx[VITA_SKIN_LODS];
+    unsigned short    *lodIbuf[VITA_SKIN_LODS];
 } vitaSkinCacheEntry_t;
 
 static vitaSkinCacheEntry_t s_skin_cache[VITA_SKIN_CACHE_CAP];
@@ -516,6 +528,11 @@ static void VitaSkin_FreeEntry(vitaSkinCacheEntry_t *e)
     e->orig = NULL;
     if (e->morphSlot) free(e->morphSlot);
     e->morphSlot = NULL;
+    for (int l = 0; l < e->lodCount; l++) {
+        if (e->lodIbuf[l]) vglFree(e->lodIbuf[l]);
+        e->lodIbuf[l] = NULL;
+    }
+    e->lodCount = 0;
 }
 
 /* Free all per-surface caches + clear the registry. Called at level load
@@ -800,6 +817,39 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
         entry->numIndexes = numIdx;
     }
 
+    /* LOD index lists (one-batch surfaces: a collapsed vertex of a split surface may be
+     * in another batch). Same collapse as RB_SkelMesh: vertices past renderCount go to
+     * their collapse target, and triangles that become degenerate are dropped. */
+    if (numBatches == 1 && sf->pCollapse) {
+        vitaSkinCacheEntry_t *entry = &s_skin_cache[first];
+        short                *collapse = (short *)malloc(sizeof(short) * sf->numVerts);
+        if (collapse) {
+            for (int l = 0; l < VITA_SKIN_LODS; l++) {
+                const int rc = (int)(sf->numVerts * s_lodFraction[l]);
+                unsigned short *ib;
+                int             n = 0;
+                if (rc < 3) break;
+                for (i = 0; i < rc; i++) collapse[i] = (short)i;
+                for (i = rc; i < sf->numVerts; i++) collapse[i] = collapse[sf->pCollapse[i]];
+                ib = (unsigned short *)vglAlloc(sizeof(unsigned short) * sf->numTriangles * 3, VGL_MEM_RAM_TYPE);
+                if (!ib) break;
+                for (t = 0; t < sf->numTriangles; t++) {
+                    const int a = collapse[sf->pTriangles[t * 3]], b = collapse[sf->pTriangles[t * 3 + 1]],
+                              c = collapse[sf->pTriangles[t * 3 + 2]];
+                    if (a == b || b == c || c == a || remap[a] < 0 || remap[b] < 0 || remap[c] < 0) continue;
+                    ib[n++] = (unsigned short)remap[a];
+                    ib[n++] = (unsigned short)remap[b];
+                    ib[n++] = (unsigned short)remap[c];
+                }
+                entry->lodIbuf[l]   = ib;
+                entry->lodVerts[l]  = rc;
+                entry->lodNumIdx[l] = n;
+                entry->lodCount     = l + 1;
+            }
+            free(collapse);
+        }
+    }
+
     ri.Printf(PRINT_DEVELOPER, "[VITA-SKIN] built slot %d '%s' (%d verts, %d tris, %d batch%s)\n", first,
               sf->name[0] ? sf->name : "?", sf->numVerts, sf->numTriangles, numBatches, numBatches > 1 ? "es" : "");
     result = first;
@@ -927,7 +977,7 @@ static void VitaSkin_LogRefusal(const char *what, const char *name, int code, co
 int vita_skin_fail;	// RT-PROF: why the last R_VitaGpuSkin_DrawSurf fell back to the CPU
 int vita_skin_failsub;	// RT-PROF3: the stage check or surface build code behind it
 
-qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *bonesV, float scale)
+qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *bonesV, float scale, int renderCount)
 {
     skelSurfaceGame_t *sf        = (skelSurfaceGame_t *)sfV;
     dtiki_t           *tiki      = (dtiki_t *)tikiV;
@@ -1178,8 +1228,21 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         if (morphData) {
             morphData += be->numVerts * 4;
         }
-        vglIndexPointerMapped(be->ibuf);                             SKIN_GLCHK("vglIndexPointerMapped");
-        vglDrawObjects(GL_TRIANGLES, be->numIndexes, 0 /* shader does mvp */); SKIN_GLCHK("vglDrawObjects");
+        {
+            /* the smallest LOD list keeping at least renderCount vertices */
+            const unsigned short *ib = be->ibuf;
+            int                   numIdx = be->numIndexes;
+            for (int l = 0; l < be->lodCount && be->lodVerts[l] >= renderCount; l++) {
+                ib     = be->lodIbuf[l];
+                numIdx = be->lodNumIdx[l];
+            }
+            if (numIdx <= 0) {
+                if (!be->next || be->next >= s_skin_cache_count) break;
+                continue;
+            }
+            vglIndexPointerMapped(ib);                               SKIN_GLCHK("vglIndexPointerMapped");
+            vglDrawObjects(GL_TRIANGLES, numIdx, 0 /* shader does mvp */); SKIN_GLCHK("vglDrawObjects");
+        }
         if (!be->next || be->next >= s_skin_cache_count) break;
     }
 
