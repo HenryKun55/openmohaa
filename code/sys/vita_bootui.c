@@ -33,6 +33,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <psp2/appmgr.h>
 #include <psp2/ctrl.h>
+#include <psp2/display.h>
 #include <psp2/kernel/threadmgr.h>
 
 #include <stdarg.h>
@@ -54,7 +55,8 @@ typedef struct __attribute__((packed)) { /* 14 bytes, as in the file */
     uint32_t offset;
 } glyph_t;
 
-static uint32_t      *s_fb;
+static uint32_t      *s_fb;      /* where the band is put together, off screen */
+static uint32_t      *s_screen;  /* the picture on display */
 static uint32_t      *s_band;   /* the picture under the band, to redraw it */
 static glyph_t        s_glyph[224];
 static unsigned char *s_bits;
@@ -223,7 +225,15 @@ static char *BootUI_ReadFile(const char *path)
 /* The band with up to two messages, a progress bar (progress < 0: none) and a hint. */
 static void BootUI_Show(const char *title, const char *detail, float progress, const char *hint)
 {
-    int h = 0, y;
+    static char last[1024];
+    char        key[1024];
+    int         h = 0, y;
+
+    /* drawn again only when something changes (the bar: when it grows by a pixel) */
+    snprintf(key, sizeof(key), "%s|%s|%d|%s", title ? title : "", detail ? detail : "",
+             progress < 0.0f ? -1 : (int)((FB_W - 240) * (progress > 1.0f ? 1.0f : progress)), hint ? hint : "");
+    if (!strcmp(key, last)) return;
+    snprintf(last, sizeof(last), "%s", key);
 
     /* the band's height: the texts, the bar and the hint, under each other */
     if (title) h = BootUI_Wrapped(h, title, 0, 0);
@@ -254,6 +264,10 @@ static void BootUI_Show(const char *title, const char *detail, float progress, c
     if (hint && hint[0]) {
         BootUI_Text((FB_W - BootUI_TextWidth(hint)) / 2, y + 8, hint, 0x40C8F0);
     }
+    /* whole, right after the vertical blank: the display reaches the band's rows only
+     * after the copy is done, so it never shows a half drawn band */
+    sceDisplayWaitVblankStart();
+    memcpy(s_screen + BAND_Y * FB_W, s_fb + BAND_Y * FB_W, BAND_H * FB_W * 4);
 }
 
 static unsigned int BootUI_Buttons(void)
@@ -293,10 +307,16 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
     if (!lang[0]) snprintf(lang, sizeof(lang), "%s", Sys_DefaultTextLanguage());
     if (!BootUI_LoadFont()) return;
 
-    s_fb   = framebuffer;
-    s_band = malloc(BAND_H * FB_W * 4);
-    if (!s_band) return;
-    memcpy(s_band, s_fb + BAND_Y * FB_W, BAND_H * FB_W * 4);
+    s_screen = framebuffer;
+    s_fb     = malloc(FB_H * FB_W * 4);
+    s_band   = malloc(BAND_H * FB_W * 4);
+    if (!s_fb || !s_band) {
+        free(s_fb);
+        free(s_band);
+        s_fb = s_band = NULL;
+        return;
+    }
+    memcpy(s_band, s_screen + BAND_Y * FB_W, BAND_H * FB_W * 4);
     if (strcmp(lang, "en")) {
         char path[64];
         snprintf(path, sizeof(path), "app0:main/vita/lang/%s.txt", lang);
@@ -342,9 +362,12 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
         BootUI_WaitButton(~0u);
     }
 
-    memcpy(s_fb + BAND_Y * FB_W, s_band, BAND_H * FB_W * 4); /* the picture as it was */
+    sceDisplayWaitVblankStart();
+    memcpy(s_screen + BAND_Y * FB_W, s_band, BAND_H * FB_W * 4); /* the picture as it was */
     free(s_band);
+    free(s_fb);
     s_band = NULL;
+    s_fb   = NULL;
     free(s_lang);
     s_lang = NULL;
     free(s_bits);
