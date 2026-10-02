@@ -10,7 +10,7 @@ and writes, under misc/vita/art_local/ (git-ignored: the art is EA's, so it is
 never committed to the repository):
 
     sce_sys/icon0.png                        128x128  bubble icon
-    sce_sys/livearea/contents/bg.png         840x500  LiveArea background
+    sce_sys/livearea/contents/bg.png         840x500  LiveArea background, with the credits
     sce_sys/livearea/contents/startup.png    280x158  launch gate image
     sce_sys/pic0.png                         960x544  shown from the bubble tap until the game draws
     splash.png                               960x544  loading screen (pic0.png's pixels)
@@ -160,6 +160,35 @@ def save(img, rel):
     print("wrote", path, img.size)
 
 
+# Credits and disclaimer at the bottom of the LiveArea, so everyone who opens the bubble
+# knows what this is. No version number: updates from the Vita replace the game's files
+# but not sce_sys, so it would go stale (the menu shows the installed version).
+CREDITS = [
+    "OpenMoHAA for PS Vita  -  PS Vita port by HenryKun55, made with love",
+    "Medal of Honor (c) Electronic Arts. Not affiliated with Electronic Arts or Sony.",
+    "Needs your own copy of the game. Free software (GPL v2): github.com/HenryKun55/openmohaa",
+]
+
+
+def draw_credits(img):
+    font = ImageFont.truetype(os.path.join(HERE, "fonts", "Oswald.ttf"), 16)
+    font.set_variation_by_name("Regular")
+    w, h = img.size
+    line, top = 21, h - 21 * len(CREDITS) - 10
+    # darker band under the text, fading in from above
+    band = Image.new("L", (w, h), 0)
+    bd = ImageDraw.Draw(band)
+    for y in range(top - 24, h):
+        bd.line([(0, y), (w, y)], fill=min(190, max(0, (y - (top - 24)) * 190 // 24)))
+    img.paste(Image.new("RGBA", (w, h), (0, 0, 0, 255)), (0, 0), band)
+    d = ImageDraw.Draw(img)
+    for i, text in enumerate(CREDITS):
+        tw = d.textlength(text, font=font)
+        x, y = (w - tw) / 2, top + i * line
+        d.text((x + 1, y + 1), text, font=font, fill=(0, 0, 0, 255))
+        d.text((x, y), text, font=font, fill=(255, 220, 140, 255) if i == 0 else (225, 225, 225, 255))
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -170,6 +199,7 @@ def main():
     # LiveArea background: the landing craft, logo centred.
     bg = backdrop(photo, (840, 500), focus_y=0.58, darken=0.5, top_shade=0.6).convert("RGBA")
     place_logo(bg, logo, 420, (420, 215))
+    draw_credits(bg)
     save(bg, "sce_sys/livearea/contents/bg.png")
 
     # Boot picture: the LiveArea background at full screen. The Vita shows it from the
