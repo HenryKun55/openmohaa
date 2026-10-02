@@ -97,6 +97,20 @@ extern void vglIndexPointerMapped( const void *pointer );
 extern void *vglAlloc( unsigned int size, int type );
 extern void vglFree( void *addr );
 #define VGL_MEM_RAM_TYPE 1   /* vglMemType VGL_MEM_RAM: USER_RW RAM, GPU-mapped */
+#define VGL_MEM_VRAM_TYPE 0  /* VGL_MEM_VRAM: CDRAM */
+#define VGL_MEM_SLOW_TYPE 2  /* VGL_MEM_SLOW: PHYCONT_USER_RW RAM */
+
+/* Vertex and index data written once and then only read by the GPU: CDRAM first (the
+ * GPU's own memory, and where the space is: on the device vitaGL's RAM pool is used up
+ * by the time a level is loaded, "vitaGL free: vram 29 MB, ram 0 MB, phycont 26 MB",
+ * and every character fell back to CPU skinning), then phycont, then RAM. */
+static void *VitaSkin_GpuAlloc(unsigned int size)
+{
+    void *p = vglAlloc(size, VGL_MEM_VRAM_TYPE);
+    if (!p) p = vglAlloc(size, VGL_MEM_SLOW_TYPE);
+    if (!p) p = vglAlloc(size, VGL_MEM_RAM_TYPE);
+    return p;
+}
 
 #ifndef GL_VERTEX_SHADER
 #define GL_VERTEX_SHADER          0x8B31
@@ -753,10 +767,10 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
          * once. vglVertexAttribPointerMapped / vglIndexPointerMapped then draw straight
          * from them with no per-draw copy. */
         for (a = 0; a < ATTR_COUNT; a++) {
-            entry->attr[a] = (float *)vglAlloc(sizeof(float) * s_attr_size[a] * numBV, VGL_MEM_RAM_TYPE);
+            entry->attr[a] = (float *)VitaSkin_GpuAlloc(sizeof(float) * s_attr_size[a] * numBV);
             if (!entry->attr[a]) break;
         }
-        entry->ibuf = (unsigned short *)vglAlloc(sizeof(unsigned short) * numIdx, VGL_MEM_RAM_TYPE);
+        entry->ibuf = (unsigned short *)VitaSkin_GpuAlloc(sizeof(unsigned short) * numIdx);
         if (a < ATTR_COUNT || !entry->ibuf) {
             result = -9;                          /* out of GPU-mapped RAM → CPU */
             goto fail;
@@ -831,7 +845,7 @@ static int VitaSkin_BuildSurf(skelSurfaceGame_t *sf, skelHeaderGame_t *skelmodel
                 if (rc < 3) break;
                 for (i = 0; i < rc; i++) collapse[i] = (short)i;
                 for (i = rc; i < sf->numVerts; i++) collapse[i] = collapse[sf->pCollapse[i]];
-                ib = (unsigned short *)vglAlloc(sizeof(unsigned short) * sf->numTriangles * 3, VGL_MEM_RAM_TYPE);
+                ib = (unsigned short *)VitaSkin_GpuAlloc(sizeof(unsigned short) * sf->numTriangles * 3);
                 if (!ib) break;
                 for (t = 0; t < sf->numTriangles; t++) {
                     const int a = collapse[sf->pTriangles[t * 3]], b = collapse[sf->pTriangles[t * 3 + 1]],
