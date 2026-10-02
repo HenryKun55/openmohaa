@@ -138,6 +138,12 @@ static const VitaPerfChoice g_pcShadows[] = {
     { "Precise", "2", "seta cg_shadows 2" },
 };
 /* r_vita_smp_serial: where the main thread waits for the render thread (diagnostic). */
+/* sv_vita_thread: 0 game logic on the main thread, 2 on core 2 in parallel with the
+ * client frame (1, on core 2 but waited for, was the first step: not offered). */
+static const VitaPerfChoice g_pcSvThread[] = {
+    { "Off", "0", "seta sv_vita_thread 0" },
+    { "On",  "2", "seta sv_vita_thread 2" },
+};
 static const VitaPerfChoice g_pcSmpSerial[] = {
     { "Off",      "0", "set r_vita_smp_serial 0" },  /* full overlap (normal) */
     { "Full",     "1", "set r_vita_smp_serial 1" },  /* no overlap at all */
@@ -276,7 +282,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "Force multitexture", "Draws walls and their lighting in one pass." },
     { "Render thr. serial", "Diagnostic: limits the render thread's overlap with the game." },
     { "Engine 2D Pass", "Diagnostic: turns all 2D drawing off." },
-    { "Server thread", "Experimental: game logic on its own CPU core." },
+    { "Server thread", "Experimental: game logic on the third CPU core, in parallel with the rest of the frame." },
 
     /* DEBUG: world */
     { "BSP World" },
@@ -460,7 +466,7 @@ static VitaPerfMenuItem g_dmRender[] = {
     { "World VBO",           "r_vita_vbo_world",    qfalse, 0, NULL, qtrue },
     { "Force multitexture",  "r_vita_force_mtex",   qfalse, 0 },
     { "Render thr. serial",  "r_vita_smp_serial",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSmpSerial) },
-    { "Server thread",       "sv_vita_thread",      qfalse, 0 },
+    { "Server thread",       "sv_vita_thread",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSvThread) },
     { "Engine 2D Pass",      "vita_skip_draw2d",    qtrue,  0 }, /* ON = normal, OFF = stripped */
 };
 

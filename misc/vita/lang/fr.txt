@@ -844,7 +844,7 @@
 { "Engine 2D Pass" "Passe 2D" }
 { "Diagnostic: turns all 2D drawing off." "Diagnostic: désactive tout le dessin 2D." }
 { "Server thread" "Thread du serveur" }
-{ "Experimental: game logic on its own CPU core." "Expérimental: logique du jeu sur son propre coeur du CPU." }
+{ "Experimental: game logic on the third CPU core, in parallel with the rest of the frame." "Expérimental: logique du jeu sur le troisième coeur du CPU, en parallèle avec le reste de l'image." }
 { "BSP World" "Carte (BSP)" }
 { "Brush Models" "Brush models" }
 { "Static Models" "Modèles statiques" }

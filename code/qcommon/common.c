@@ -532,6 +532,8 @@ void QDECL Com_Error( int code, const char *fmt, ... ) {
 		com_vitaSvErrorCode = code;
 		longjmp( com_vitaSvAbort, 1 );
 	}
+	// an error on the main thread shuts the server down: the game frames end first
+	SV_VitaJoinGame();
 #endif
 
 #ifdef COM_ERROR_DROP_ASSERT
@@ -2704,6 +2706,11 @@ void Com_Frame( void ) {
 		return;			// an ERR_DROP was thrown
 	}
 
+#ifdef __vita__
+	// the game frames started on the server thread last frame (sv_vita_thread 2) end
+	// before anything here reads or changes the game
+	SV_VitaJoinGame();
+#endif
 	SV_SetFrameNumber(com_frameNumber);
 #ifdef __vita__
 	Com_VitaDrainIoPrints();

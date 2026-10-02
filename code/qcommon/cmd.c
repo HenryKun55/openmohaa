@@ -97,9 +97,52 @@ Cbuf_AddText
 Adds command text at the end of the buffer, does NOT add a final \n
 ============
 */
+#ifdef __vita__
+/*
+Commands the game sends while its frames run on the server thread (sv_vita_thread 2) are
+kept here and added to the buffer once the main thread has waited for those frames
+(SV_VitaJoinGame), so the two threads never write the buffer at once.
+*/
+#include <psp2/kernel/threadmgr.h>
+extern int com_vitaSvThreadId;
+static char   cbuf_vitaDeferred[MAX_CMD_BUFFER];
+static size_t cbuf_vitaDeferredSize;
+
+static qboolean Cbuf_VitaOnServerThread( void ) {
+	return com_vitaSvThreadId >= 0 && sceKernelGetThreadId() == com_vitaSvThreadId;
+}
+
+static void Cbuf_VitaDefer( const char *text, qboolean newline ) {
+	size_t l = strlen( text );
+	if ( cbuf_vitaDeferredSize + l + 1 >= sizeof( cbuf_vitaDeferred ) ) {
+		return;
+	}
+	Com_Memcpy( cbuf_vitaDeferred + cbuf_vitaDeferredSize, text, l );
+	cbuf_vitaDeferredSize += l;
+	if ( newline ) {
+		cbuf_vitaDeferred[cbuf_vitaDeferredSize++] = '\n';
+	}
+}
+
+void Cbuf_VitaFlushDeferred( void ) {
+	if ( !cbuf_vitaDeferredSize ) {
+		return;
+	}
+	cbuf_vitaDeferred[cbuf_vitaDeferredSize] = 0;
+	cbuf_vitaDeferredSize = 0;
+	Cbuf_AddText( cbuf_vitaDeferred );
+}
+#endif
+
 void Cbuf_AddText( const char *text ) {
 	size_t l;
-	
+
+#ifdef __vita__
+	if ( Cbuf_VitaOnServerThread() ) {
+		Cbuf_VitaDefer( text, qfalse );
+		return;
+	}
+#endif
 	l = strlen (text);
 
 	if (cmd_text.cursize + l >= cmd_text.maxsize)
@@ -124,6 +167,12 @@ void Cbuf_InsertText( const char *text ) {
 	size_t	len;
 	intptr_t	i;
 
+#ifdef __vita__
+	if ( Cbuf_VitaOnServerThread() ) {
+		Cbuf_VitaDefer( text, qtrue );
+		return;
+	}
+#endif
 	len = strlen( text ) + 1;
 	if ( len + cmd_text.cursize > cmd_text.maxsize ) {
 		Com_Printf( "Cbuf_InsertText overflowed\n" );
@@ -152,6 +201,12 @@ Cbuf_ExecuteText
 */
 void Cbuf_ExecuteText (int exec_when, const char *text)
 {
+#ifdef __vita__
+	/* from the game's frames on the server thread: run it after them (Cbuf_AddText) */
+	if ( Cbuf_VitaOnServerThread() && exec_when == EXEC_NOW && text ) {
+		exec_when = EXEC_APPEND;
+	}
+#endif
 	switch (exec_when)
 	{
 	case EXEC_NOW:
@@ -988,6 +1043,11 @@ A complete command line has been parsed, so try to execute it
 void	Cmd_ExecuteString( const char *text ) {	
 	cmd_function_t	*cmd, **prev;
 	cmdalias_t		*a;
+
+#ifdef __vita__
+	/* any command may touch the game: its frames on the server thread finish first */
+	SV_VitaJoinGame();
+#endif
 
 	// execute the command line
 	Cmd_TokenizeString( text );		

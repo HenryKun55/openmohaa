@@ -577,6 +577,9 @@ This is NOT called for map_restart
 ================
 */
 void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qboolean bTransition ) {
+#ifdef __vita__
+	SV_VitaJoinGame();	// the game frames on the server thread end first
+#endif
 	int			i;
 	int			iStart;
 	int			iEnd;
@@ -1213,6 +1216,9 @@ before Sys_Quit or SyScriptError
 ================
 */
 void SV_Shutdown( const char *finalmsg ) {
+#ifdef __vita__
+	SV_VitaJoinGame();	// the game frames on the server thread end first
+#endif
 	if ( !com_sv_running || !com_sv_running->integer ) {
 		return;
 	}

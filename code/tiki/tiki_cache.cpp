@@ -44,6 +44,22 @@ struct pchar {
 con_map<pchar, dtikianim_t *> *tikianimcache;
 con_map<pchar, dtiki_t *>     *tikicache;
 static skeletor_c             *skel_entity_cache[TIKI_MAX_ENTITY_CACHE];
+#ifdef __vita__
+/* The game's own skeletors while its frames run on the server thread (sv_vita_thread 2,
+ * sv_main.c): the renderer sets each entity's pose on its skeletor and computes its bones
+ * right after, so the game must not set another pose on the same one in between. */
+#include <psp2/kernel/threadmgr.h>
+extern "C" int com_vitaSvThreadId;
+static skeletor_c *skel_entity_cache_sv[TIKI_MAX_ENTITY_CACHE];
+
+static skeletor_c **TIKI_VitaEntityCache(void)
+{
+    if (com_vitaSvThreadId >= 0 && sceKernelGetThreadId() == com_vitaSvThreadId) {
+        return skel_entity_cache_sv;
+    }
+    return skel_entity_cache;
+}
+#endif
 
 template<>
 int HashCode<pchar>(const pchar& key)
@@ -329,6 +345,9 @@ void *TIKI_GetSkeletor(dtiki_t *tiki, int entnum)
     skeletor_c *skel;
     int         i;
     int         index;
+#ifdef __vita__
+    skeletor_c **const skel_entity_cache = TIKI_VitaEntityCache();
+#endif
 
     if (entnum == ENTITYNUM_NONE) {
         if (!tiki->skeletor) {
@@ -388,6 +407,12 @@ static void TIKI_DeleteSkeletor(int entnum)
         if (skel) {
             delete skel;
         }
+#ifdef __vita__
+        skel = skel_entity_cache_sv[entnum * TIKI_MAX_ENTITY_CACHE_PER_ENT + i];
+        if (skel) {
+            delete skel;
+        }
+#endif
     }
 }
 
@@ -402,6 +427,9 @@ void TIKI_Begin(void)
 
     for (i = 0; i < TIKI_MAX_ENTITY_CACHE; i++) {
         skel_entity_cache[i] = 0;
+#ifdef __vita__
+        skel_entity_cache_sv[i] = 0;
+#endif
     }
 
     tiki_started = true;

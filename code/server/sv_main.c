@@ -1044,10 +1044,19 @@ happen before SV_Frame is called
 #ifdef __vita__
 /*
  * Server game thread (Vita). The game simulation (ge->RunFrame: AI, scripts, physics,
- * 13-18 ms a server frame in m1l1 combat on hardware) runs on its own thread on core 2.
+ * 13-25 ms a server frame on hardware) runs on its own thread on core 2.
  * sv_vita_thread 1: the main thread hands the frames over and waits for them (no
- * overlap yet, validates the thread itself). Errors raised on it come back through
- * com_vitaSv* (Com_Error) and are raised again on the main thread.
+ * overlap, validates the thread itself).
+ * sv_vita_thread 2: the frames run while the main thread goes on with the client frame
+ * (cgame, the renderer's front end), on the core that was idle. The main thread waits
+ * for them (SV_VitaJoinGame) at the start of the next frame, before it reads the
+ * player's commands (ClientThink is game code), and before anything else that touches
+ * the game: commands, map changes, shutdown, errors. The snapshot of those frames goes
+ * out then, one client frame later than without the thread. While they run, the game's
+ * console commands are kept aside (Cbuf, cmd.c) and its bone poses use skeletors of
+ * their own (TIKI_GetSkeletor), so they never meet the renderer's.
+ * Errors raised on the thread come back through com_vitaSv* (Com_Error) and are raised
+ * again on the main thread.
  */
 #include <psp2/kernel/threadmgr.h>
 #include <setjmp.h>
@@ -1061,6 +1070,8 @@ static cvar_t  *sv_vita_thread;
 static SceUID   s_svThread = -1, s_svWork = -1, s_svDone = -1;
 static int      s_svNumFrames, s_svFrameMsec;
 static qboolean s_svError;
+static qboolean s_svPending;	/* frames handed over and not waited for yet (mode 2) */
+static int      SV_VitaThreadMode( void );
 
 static void SV_VitaRunGameFrames( int numFrames, int frameMsec ) {
 	while ( numFrames-- > 0 ) {
@@ -1129,17 +1140,54 @@ static void SV_VitaGameFrames( int numFrames, int frameMsec ) {
 	if ( !sv_vita_thread ) {
 		sv_vita_thread = Cvar_Get( "sv_vita_thread", "0", CVAR_ARCHIVE );
 	}
-	if ( !sv_vita_thread->integer || !SV_VitaStartThread() ) {
+	if ( !SV_VitaThreadMode() || !SV_VitaStartThread() ) {
 		SV_VitaRunGameFrames( numFrames, frameMsec );
 		return;
 	}
 	s_svNumFrames = numFrames;
 	s_svFrameMsec = frameMsec;
+	s_svPending   = qtrue;
 	sceKernelSignalSema( s_svWork, 1 );
+	if ( SV_VitaThreadMode() < 2 ) {
+		SV_VitaJoinGame();
+	}
+}
+
+/* Waits for the game frames running on the server thread, if any (main thread only). */
+void SV_VitaJoinGame( void ) {
+	extern void Cbuf_VitaFlushDeferred( void );
+
+	if ( !s_svPending ) {
+		return;
+	}
+	if ( com_vitaSvThreadId >= 0 && sceKernelGetThreadId() == com_vitaSvThreadId ) {
+		return;
+	}
 	sceKernelWaitSema( s_svDone, 1, NULL );
+	s_svPending = qfalse;
+	Cbuf_VitaFlushDeferred();
 	if ( s_svError ) {
+		s_svError = qfalse;
 		Com_Error( com_vitaSvErrorCode, "%s", com_vitaSvErrorMsg );
 	}
+}
+
+/* Mode 2: the game frames go to the server thread at the end of SV_Frame.
+ * sv_vita_thread_test (not saved) overrides sv_vita_thread for test runs. */
+static cvar_t *sv_vita_thread_test;
+
+static int SV_VitaThreadMode( void ) {
+	if ( !sv_vita_thread ) {
+		sv_vita_thread = Cvar_Get( "sv_vita_thread", "0", CVAR_ARCHIVE );
+	}
+	if ( !sv_vita_thread_test ) {
+		sv_vita_thread_test = Cvar_Get( "sv_vita_thread_test", "-1", CVAR_TEMP );
+	}
+	return sv_vita_thread_test->integer >= 0 ? sv_vita_thread_test->integer : sv_vita_thread->integer;
+}
+
+static qboolean SV_VitaOverlap( void ) {
+	return SV_VitaThreadMode() >= 2;
 }
 #endif
 
@@ -1230,6 +1278,25 @@ void SV_Frame( int msec ) {
 
 	// run the game simulation in chunks
 #ifdef __vita__
+	if ( SV_VitaOverlap() ) {
+		/* the frames handed over last time are done (SV_VitaJoinGame, Com_Frame):
+		 * their snapshot goes out now, then the next frames start on the thread */
+		int numFrames = 0;
+
+		SV_CheckTimeouts();
+		SV_SendClientMessages();
+		SV_MasterHeartbeat();
+		SV_ProcessGamespyQueries();
+		SV_HandleNonPVSSound();
+		svs.lastTime = svs.time;
+
+		while ( sv.timeResidual >= frameMsec ) {
+			sv.timeResidual -= frameMsec;
+			numFrames++;
+		}
+		SV_VitaGameFrames( numFrames, frameMsec );
+		return;
+	}
 	{
 		int numFrames = 0;
 		while ( sv.timeResidual >= frameMsec ) {
