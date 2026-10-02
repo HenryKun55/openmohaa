@@ -1038,6 +1038,164 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 RB_RenderSpriteSurfList
 ==================
 */
+#ifdef __vita__
+/* SPRITE-PROF (perf log): sprites, the draws they took, and the shaders that start the
+ * most draws. Sprites are drawn back to front, so different shaders interleave. */
+#define VITA_SPRITE_TOP 64
+static const shader_t *s_vspShader[VITA_SPRITE_TOP];
+static int             s_vspDraws[VITA_SPRITE_TOP], s_vspSprites[VITA_SPRITE_TOP];
+static int             s_vspNumShaders, s_vspTotal, s_vspTotalDraws, s_vspFrames;
+
+static void RB_VitaSpriteCount(const shader_t *shader, qboolean newDraw)
+{
+	int k;
+	for (k = 0; k < s_vspNumShaders && s_vspShader[k] != shader; k++) {
+	}
+	if (k == s_vspNumShaders) {
+		if (k == VITA_SPRITE_TOP) return;
+		s_vspShader[s_vspNumShaders++] = shader;
+		s_vspDraws[k] = s_vspSprites[k] = 0;
+	}
+	s_vspSprites[k]++;
+	s_vspTotal++;
+	if (newDraw) {
+		s_vspDraws[k]++;
+		s_vspTotalDraws++;
+	}
+}
+
+static void RB_VitaSpriteReport(void)
+{
+	char line[512];
+	int  n, j, k, best;
+
+	if (++s_vspFrames < 60) return;
+	n = Com_sprintf(line, sizeof(line), "SPRITE-PROF (per frame): sprites=%d draws=%d shaders=%d |",
+		s_vspTotal / s_vspFrames, s_vspTotalDraws / s_vspFrames, s_vspNumShaders);
+	for (j = 0; j < 5; j++) {
+		best = -1;
+		for (k = 0; k < s_vspNumShaders; k++) {
+			if (s_vspDraws[k] > 0 && (best < 0 || s_vspDraws[k] > s_vspDraws[best])) best = k;
+		}
+		if (best < 0) break;
+		n += Com_sprintf(line + n, sizeof(line) - n, " %s=%d/%d", s_vspShader[best]->name,
+			s_vspDraws[best] / s_vspFrames, s_vspSprites[best] / s_vspFrames);
+		s_vspDraws[best] = 0;
+	}
+	ri.Printf(PRINT_ALL, "%s\n", line);
+	s_vspNumShaders = s_vspTotal = s_vspTotalDraws = s_vspFrames = 0;
+}
+#endif
+
+#ifdef __vita__
+/*
+The volumetric smoke (vsssource, vsssource2) is "noMerge": each sprite turns its textures
+with its own clock (tcMod rotate, shaderTime = now - the sprite's start), so every sprite
+was its own draw, ~90 a frame in the landing craft. When that rotation is all that differs
+between sprites (vertex colors, plain texture coordinates, no animMap, waves or deforms),
+it is applied here to each sprite's 4 vertices, the same way RB_CalcRotateTexCoords does,
+and the sprites of a shader share the batch.
+*/
+static qboolean RB_VitaSpriteBakeable(const shader_t *shader)
+{
+	int s, b, t;
+
+	if (!r_vita_staticmerge || !r_vita_staticmerge->integer || !(shader->flags & 1) || shader->numDeforms
+		|| shader->entityMergable || !shader->numUnfoggedPasses) {
+		return qfalse;
+	}
+	for (s = 0; s < shader->numUnfoggedPasses; s++) {
+		const shaderStage_t *st = shader->unfoggedStages[s];
+		if (!st) return qfalse;
+		if (st->rgbGen != CGEN_VERTEX && st->rgbGen != CGEN_EXACT_VERTEX && st->rgbGen != CGEN_IDENTITY
+			&& st->rgbGen != CGEN_IDENTITY_LIGHTING) {
+			return qfalse;
+		}
+		if (st->alphaGen != AGEN_VERTEX && st->alphaGen != AGEN_IDENTITY && st->alphaGen != AGEN_SKIP) {
+			return qfalse;
+		}
+		for (b = 0; b < NUM_TEXTURE_BUNDLES && st->bundle[b].image[0]; b++) {
+			if (st->bundle[b].tcGen != TCGEN_TEXTURE || st->bundle[b].numImageAnimations > 1) return qfalse;
+			for (t = 0; t < st->bundle[b].numTexMods; t++) {
+				const texModInfo_t *tm = &st->bundle[b].texMods[t];
+				if (tm->type == TMOD_NONE) break;
+				if (tm->type != TMOD_ROTATE || tm->rotateSpeed == 1234567) return qfalse;
+			}
+		}
+	}
+	/* one stage: the bundles' rotations go to texCoords[v][0] and [1] */
+	return shader->numUnfoggedPasses == 1;
+}
+
+/* Two bakeable sprite shaders that draw alike but for their tcMod rotates (vsssource and
+ * vsssource2 turn the same textures in opposite directions): with the rotations baked
+ * per sprite, their sprites can share a batch. */
+static qboolean RB_VitaSpritesCompatible(const shader_t *a, const shader_t *b)
+{
+	const shaderStage_t *sa, *sb;
+	int                  k;
+
+	if (a == b) return qtrue;
+	if (!a || !b || a->cullType != b->cullType || a->sort != b->sort || a->polygonOffset != b->polygonOffset) {
+		return qfalse;
+	}
+	sa = a->unfoggedStages[0];
+	sb = b->unfoggedStages[0];
+	if (sa->stateBits != sb->stateBits || sa->rgbGen != sb->rgbGen || sa->alphaGen != sb->alphaGen
+		|| sa->multitextureEnv != sb->multitextureEnv) {
+		return qfalse;
+	}
+	for (k = 0; k < NUM_TEXTURE_BUNDLES; k++) {
+		if (sa->bundle[k].image[0] != sb->bundle[k].image[0]) return qfalse;
+	}
+	return qtrue;
+}
+
+/* The tcMod rotates of bundle b, at the sprite's time, on vertices first..tess.numVertexes. */
+static void RB_VitaBakeSpriteTexCoords(const shader_t *shader, int first, float shaderTime)
+{
+	const shaderStage_t *st = shader->unfoggedStages[0];
+	vec2_t               orig[4];
+	int                  b, t, v, n = tess.numVertexes - first;
+
+	if (n <= 0 || n > 4) return;
+	for (v = 0; v < n; v++) {
+		orig[v][0] = tess.texCoords[first + v][0][0];
+		orig[v][1] = tess.texCoords[first + v][0][1];
+	}
+	for (b = NUM_TEXTURE_BUNDLES - 1; b >= 0; b--) {
+		vec2_t stc[4];
+		for (v = 0; v < n; v++) {
+			stc[v][0] = orig[v][0];
+			stc[v][1] = orig[v][1];
+		}
+		if (st->bundle[b].image[0]) {
+			for (t = 0; t < st->bundle[b].numTexMods; t++) {
+				const texModInfo_t *tm = &st->bundle[b].texMods[t];
+				float degs, sinValue, cosValue, m00, m10, m01, m11, tx, ty;
+				int   index;
+				if (tm->type == TMOD_NONE) break;
+				degs     = -tm->rotateSpeed * tm->rotateCoef * shaderTime - tm->rotateStart;
+				index    = degs * (FUNCTABLE_SIZE / 360.0f);
+				sinValue = tr.sinTable[index & FUNCTABLE_MASK];
+				cosValue = tr.sinTable[(index + FUNCTABLE_SIZE / 4) & FUNCTABLE_MASK];
+				m00 = cosValue; m10 = -sinValue; tx = 0.5 - 0.5 * cosValue + 0.5 * sinValue;
+				m01 = sinValue; m11 = cosValue;  ty = 0.5 - 0.5 * sinValue - 0.5 * cosValue;
+				for (v = 0; v < n; v++) {
+					const float s0 = stc[v][0], t0 = stc[v][1];
+					stc[v][0] = s0 * m00 + t0 * m10 + tx;
+					stc[v][1] = s0 * m01 + t0 * m11 + ty;
+				}
+			}
+		}
+		for (v = 0; v < n; v++) {
+			tess.texCoords[first + v][b][0] = stc[v][0];
+			tess.texCoords[first + v][b][1] = stc[v][1];
+		}
+	}
+}
+#endif
+
 void RB_RenderSpriteSurfList(drawSurf_t* drawSurfs, int numDrawSurfs) {
 	shader_t	*shader;
 	shader_t	*oldShader;
@@ -1060,11 +1218,24 @@ void RB_RenderSpriteSurfList(drawSurf_t* drawSurfs, int numDrawSurfs) {
 		shader = tr.sortedShaders[((refSprite_t*)drawSurf->surface)->shaderNum];
 		depthRange = (((refSprite_t*)drawSurf->surface)->renderfx & RF_DEPTHHACK) != 0;
 
+#ifdef __vita__
+		const qboolean vitaBake = RB_VitaSpriteBakeable(shader);
+		const qboolean newDraw  = vitaBake ? !g_vitaBakedTexCoords || !RB_VitaSpritesCompatible(oldShader, shader)
+			: (shader != oldShader || (oldShader->flags & RF_THIRD_PERSON) != 0) && !shader->entityMergable;
+		if (r_vita_perflog && r_vita_perflog->integer) {
+			RB_VitaSpriteCount(shader, newDraw);
+		}
+        if (newDraw)
+#else
         if ((shader != oldShader || (oldShader->flags & RF_THIRD_PERSON) != 0) && !shader->entityMergable)
+#endif
         {
 			if (oldShader) {
 				RB_EndSurface();
 			}
+#ifdef __vita__
+			g_vitaBakedTexCoords = vitaBake;
+#endif
 
             RB_BeginSurface(shader);
             oldShader = shader;
@@ -1086,13 +1257,30 @@ void RB_RenderSpriteSurfList(drawSurf_t* drawSurfs, int numDrawSurfs) {
         backEnd.shaderStartTime = ((refSprite_t*)drawSurf->surface)->shaderTime;
 
         // add the triangles for this surface
+#ifdef __vita__
+		{
+			const int first = tess.numVertexes;
+			rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
+			if (g_vitaBakedTexCoords) {
+				RB_VitaBakeSpriteTexCoords(shader, tess.numVertexes < first ? 0 : first,
+					backEnd.refdef.floatTime - backEnd.shaderStartTime);
+			}
+		}
+#else
         rb_surfaceTable[*drawSurf->surface](drawSurf->surface);
+#endif
 	}
 
 	if (oldShader) {
 		RB_EndSurface();
 	}
+#ifdef __vita__
+	g_vitaBakedTexCoords = qfalse;
+#endif
 
+#ifdef __vita__
+	if (r_vita_perflog && r_vita_perflog->integer) RB_VitaSpriteReport();
+#endif
     // go back to the world modelview matrix
     qglLoadMatrixf(backEnd.viewParms.world.modelMatrix);
 	// go back to the previous depth range

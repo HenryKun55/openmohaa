@@ -1489,6 +1489,10 @@ extern cvar_t	*r_vita_staticmerge;
  * space (RB_StaticMesh) and the modelview stays the world's (tr_backend.c). */
 extern qboolean	g_vitaStaticWorld;
 qboolean RB_VitaStaticMergeable(const shader_t *shader);
+/* Sprites whose only per-sprite state is the time of a tcMod rotate (the volumetric smoke):
+ * the rotation is applied to each sprite's texcoords when it is stamped (bundle b in
+ * tess.texCoords[v][b]) and ComputeTexCoords uses them as they are (tr_shade.c). */
+extern qboolean	g_vitaBakedTexCoords;
 #endif
 
 extern cvar_t	*r_ignore;				// used for debugging anything

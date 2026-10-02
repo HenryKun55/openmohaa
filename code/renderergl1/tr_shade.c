@@ -1375,9 +1375,26 @@ static void ComputeColors( shaderStage_t *pStage )
 ComputeTexCoords
 ===============
 */
+#ifdef __vita__
+qboolean g_vitaBakedTexCoords = qfalse;
+#endif
+
 static void ComputeTexCoords( shaderStage_t *pStage ) {
 	int		i;
 	int		b;
+
+#ifdef __vita__
+	if ( g_vitaBakedTexCoords ) {
+		/* rotated per sprite already (RB_RenderSpriteSurfList) */
+		for ( b = 0; b < NUM_TEXTURE_BUNDLES && pStage->bundle[b].image[0]; b++ ) {
+			for ( i = 0 ; i < tess.numVertexes ; i++ ) {
+				tess.svars.texcoords[b][i][0] = tess.texCoords[i][b][0];
+				tess.svars.texcoords[b][i][1] = tess.texCoords[i][b][1];
+			}
+		}
+		return;
+	}
+#endif
 
 	for ( b = 0; b < NUM_TEXTURE_BUNDLES && pStage->bundle[b].image[0]; b++ ) {
 		int tm;
