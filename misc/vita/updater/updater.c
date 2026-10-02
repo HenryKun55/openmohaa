@@ -721,10 +721,24 @@ static void ShowBootPicture(void)
 /* OMHA00001, from the game's start: remove the helper title, then back to the game. */
 static void Cleanup(void)
 {
-    int res = -1;
+    int    res = -1, tries = 0;
+    char   count[8] = "";
+    SceUID fd;
 
-    sceIoRemove(CLEANUP_FLAG); /* first: never loop, even if the removal fails */
+    /* the flag holds how many starts already tried: removed first, written again on a
+     * failure for the next start, at most 3 times, so this never loops */
+    fd = sceIoOpen(CLEANUP_FLAG, SCE_O_RDONLY, 0);
+    if (fd >= 0) {
+        sceIoRead(fd, count, sizeof(count) - 1);
+        sceIoClose(fd);
+        tries = atoi(count);
+    }
+    sceIoRemove(CLEANUP_FLAG);
     ShowBootPicture();
+    /* launching the game left the helper suspended in the background, not closed, and a
+     * title that is open cannot be removed (0x80103A07): close it first */
+    Log("cleanup: closing the other app = 0x%08X", (unsigned)sceAppMgrDestroyOtherApp());
+    sceKernelDelayThread(500 * 1000);
     if (LoadPaf() >= 0 && sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL) >= 0
         && scePromoterUtilityInit() >= 0) {
         /* the helper may still be closing: try for a few seconds */
@@ -735,7 +749,15 @@ static void Cleanup(void)
         }
         InstallerDown();
     }
-    Log("cleanup: removing %s = 0x%08X", HELPER_TITLE, (unsigned)res);
+    Log("cleanup: removing %s = 0x%08X (try %d)", HELPER_TITLE, (unsigned)res, tries + 1);
+    if (res < 0 && Exists("ux0:app/" HELPER_TITLE) && tries + 1 < 3) {
+        fd = sceIoOpen(CLEANUP_FLAG, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+        if (fd >= 0) {
+            snprintf(count, sizeof(count), "%d", tries + 1);
+            sceIoWrite(fd, count, strlen(count));
+            sceIoClose(fd);
+        }
+    }
     sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
     sceKernelExitProcess(0);
 }
