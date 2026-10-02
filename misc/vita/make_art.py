@@ -13,7 +13,7 @@ never committed to the repository):
     sce_sys/livearea/contents/bg.png         840x500  LiveArea background
     sce_sys/livearea/contents/startup.png    280x158  launch gate image
     sce_sys/pic0.png                         960x544  shown from the bubble tap until the game draws
-    splash.png                               960x544  boot / loading screen
+    splash.png                               960x544  loading screen (pic0.png's pixels)
 
 cmake/platforms/vita.cmake packs these into the VPK when they exist, otherwise
 the generic OpenMoHAA art in misc/vita/sce_sys is used.
@@ -151,28 +151,6 @@ def place_logo(canvas, logo, width, center, shadow=True):
     return (x, y, lw, lh)
 
 
-def serif_font(size):
-    for path in (
-        "/System/Library/Fonts/Supplemental/Georgia Bold.ttf",
-        "/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf",
-    ):
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size)
-    return ImageFont.load_default()
-
-
-def spaced_text(canvas, text, font, center_x, y, fill, spacing):
-    d = ImageDraw.Draw(canvas)
-    widths = [d.textlength(ch, font=font) for ch in text]
-    total = sum(widths) + spacing * (len(text) - 1)
-    x = center_x - total / 2
-    for ch, cw in zip(text, widths):
-        d.text((x + 1, y + 1), ch, font=font, fill=(0, 0, 0, 200))
-        d.text((x, y), ch, font=font, fill=fill)
-        x += cw + spacing
-
-
 def save(img, rel):
     path = os.path.join(OUT, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -195,10 +173,12 @@ def main():
     save(bg, "sce_sys/livearea/contents/bg.png")
 
     # Boot picture: the LiveArea background at full screen. The Vita shows it from the
-    # bubble tap, and the game keeps it on screen until vitaGL starts (sys_vita.c).
+    # bubble tap, the game keeps it on screen until vitaGL starts (sys_vita.c) and then
+    # draws splash.png, the very same pixels, so the three look like one picture.
     p0 = backdrop(photo, (960, 544), focus_y=0.58, darken=0.5, top_shade=0.6).convert("RGBA")
     place_logo(p0, logo, 480, (480, 250))
     save(p0, "sce_sys/pic0.png")
+    boot = Image.open(os.path.join(OUT, "sce_sys/pic0.png")).convert("RGB")
 
     # Launch gate image (shown as the bubble opens).
     st = backdrop(photo, (280, 158), focus_y=0.55, darken=0.45, top_shade=0.5).convert("RGBA")
@@ -210,14 +190,11 @@ def main():
     place_logo(ic, logo, 124, (64, 66), shadow=True)
     save(ic, "sce_sys/icon0.png")
 
-    # Boot / loading screen (full resolution, RGB PNG, not palettized).
-    sp = backdrop(photo, (960, 544), focus_y=0.58, darken=0.45, top_shade=0.6).convert("RGBA")
-    x, y, lw, lh = place_logo(sp, logo, 500, (480, 230))
-    spaced_text(sp, "LOADING", serif_font(22), 480, y + lh + 46, (226, 214, 190, 255), 7)
+    # Loading screen drawn by the game once vitaGL starts: pic0.png's pixels exactly
+    # (RGB, as the game's PNG loader wants), so nothing changes on screen.
     path = os.path.join(OUT, "splash.png")
-    os.makedirs(OUT, exist_ok=True)
-    sp.convert("RGB").save(path, optimize=True)
-    print("wrote", path, sp.size)
+    boot.save(path, optimize=True)
+    print("wrote", path, boot.size)
 
 
 if __name__ == "__main__":
