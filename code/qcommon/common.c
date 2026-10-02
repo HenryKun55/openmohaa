@@ -2152,6 +2152,14 @@ void Com_Init( char *commandLine ) {
 	/* (No auto-boot. SV_Map_f rewrites "map briefing/briefingN" to
 	 * "map mNl1" so clicking Mission N from the campaign menu jumps
 	 * straight into the level — single dlopen, fresh module state. */
+
+	/* Test runs: vita_test.cfg (put next to the paks by the test scripts, removed by them
+	 * afterwards) runs once everything is up. autoexec.cfg runs before SV_Init, too early
+	 * for "map" ("Unknown command"). */
+	if ( FS_ReadFile( "vita_test.cfg", NULL ) > 0 ) {
+		Com_Printf( "[VITA] running vita_test.cfg\n" );
+		Cbuf_AddText( "exec vita_test.cfg\n" );
+	}
 #endif
 }
 
