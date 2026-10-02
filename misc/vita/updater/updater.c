@@ -9,8 +9,8 @@
  *
  * No second app is installed: the Vita's installer refuses to install over a running
  * title (0x80101114) and this runs as the game's title, so the files are replaced
- * directly. What the installer would also do, refreshing the LiveArea bubble from
- * sce_sys, does not happen; a release that changes the bubble is installed by hand.
+ * directly. sce_sys (param.sfo, LiveArea) is left as installed: the system holds it, and
+ * a release that changes the bubble is installed by hand.
  *
  * The boot picture stays on screen while it works; every failure is reported on screen,
  * in result.txt and in update.log.
@@ -437,10 +437,14 @@ static int PutFile(const char *src, const char *dst)
     return res;
 }
 
-/* Every file under from/ in place of the one under to/; eboot.bin (top level) is left for
- * last, so a game that has it is complete. updater.bin is in use (this program): when it
- * cannot be replaced, the old one stays, which is harmless. */
-static void PutTree(const char *from, const char *to, int top)
+/* Every file under from/ in place of the one under to/. At the top level, sce_sys is left
+ * out (the system holds the running title's param.sfo, 0x8001000D, and the LiveArea is not
+ * refreshed from it anyway) and eboot.bin is left for last, so a game that has it is
+ * complete. updater.bin is in use (this program): when it cannot be replaced, the old one
+ * stays, which is harmless.
+ * check = 1 changes nothing: it only opens each file that will be replaced for writing,
+ * so a file the Vita will not let go of stops the update before the game is touched. */
+static void PutTree(const char *from, const char *to, int top, int check)
 {
     SceUID      dir = sceIoDopen(from);
     SceIoDirent ent;
@@ -449,16 +453,30 @@ static void PutTree(const char *from, const char *to, int top)
     if (dir < 0) {
         Fail("install", dir, "Could not read %s.", from);
     }
-    MkdirAll(to);
+    if (!check) MkdirAll(to);
     memset(&ent, 0, sizeof(ent));
     while (sceIoDread(dir, &ent) > 0) {
+        const int isUpdater = top && !strcmp(ent.d_name, "updater.bin");
+
         snprintf(src, sizeof(src), "%s/%s", from, ent.d_name);
         snprintf(dst, sizeof(dst), "%s/%s", to, ent.d_name);
-        if (SCE_S_ISDIR(ent.d_stat.st_mode)) {
-            PutTree(src, dst, 0);
+        if (top && !strcmp(ent.d_name, "sce_sys")) {
+            /* left as installed */
+        } else if (SCE_S_ISDIR(ent.d_stat.st_mode)) {
+            PutTree(src, dst, 0, check);
+        } else if (check) {
+            SceIoStat st;
+            if (!isUpdater && sceIoGetstat(dst, &st) >= 0) {
+                SceUID fd = sceIoOpen(dst, SCE_O_WRONLY, 0777); /* no truncate: nothing changes */
+                if (fd < 0) {
+                    Fail("install", fd, "The Vita does not let %s be replaced. Nothing was changed: the installed "
+                                        "game still works.", dst);
+                }
+                sceIoClose(fd);
+            }
         } else if (!(top && !strcmp(ent.d_name, "eboot.bin"))) {
             int res = PutFile(src, dst);
-            if (res < 0 && top && !strcmp(ent.d_name, "updater.bin")) {
+            if (res < 0 && isUpdater) {
                 Log("updater.bin is in use, the old one stays (0x%08X)", (unsigned)res);
             } else if (res < 0) {
                 Fail("install", res, "Could not replace %s. The game may be incomplete now: install the "
@@ -579,8 +597,10 @@ static void Install(void)
     ExtractVpk(vpk, PKG_DIR);
     CheckPackage(PKG_DIR);
 
+    PutTree(PKG_DIR, GAME_DIR, 1, 1);
+    Log("every file can be replaced");
     sceKernelPowerLock(0);
-    PutTree(PKG_DIR, GAME_DIR, 1);
+    PutTree(PKG_DIR, GAME_DIR, 1, 0);
     snprintf(src, sizeof(src), "%s/eboot.bin", PKG_DIR);
     snprintf(dst, sizeof(dst), "%s/eboot.bin", GAME_DIR);
     res = PutFile(src, dst);
