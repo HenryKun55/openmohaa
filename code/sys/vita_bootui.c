@@ -278,16 +278,18 @@ static unsigned int BootUI_Buttons(void)
     return pad.buttons;
 }
 
-/* Waits for one of the buttons in mask (pressed after the call); returns it. */
-static unsigned int BootUI_WaitButton(unsigned int mask)
+/* Waits for one of the buttons in mask (pressed after the call); returns it, or 0 after
+ * timeoutMs (0: no timeout). */
+static unsigned int BootUI_WaitButton(unsigned int mask, int timeoutMs)
 {
     unsigned int prev = BootUI_Buttons();
-    for (;;) {
+    for (int waited = 0; !timeoutMs || waited < timeoutMs; waited += 16) {
         const unsigned int now = BootUI_Buttons(), pressed = now & ~prev & mask;
         if (pressed) return pressed;
         prev = now;
         sceKernelDelayThread(16 * 1000);
     }
+    return 0;
 }
 
 // ---------- the check ----------
@@ -334,7 +336,7 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
         snprintf(text, sizeof(text), BootUI_Tr("Version %s is available (you have %s)."), VitaUpdate_NewVersion(),
                  VitaUpdate_CurrentVersion());
         BootUI_Show(text, BootUI_Tr("Settings and saves are kept."), -1.0f, BootUI_Tr("X: update now   O: later"));
-        if (BootUI_WaitButton(SCE_CTRL_CROSS | SCE_CTRL_CIRCLE) == SCE_CTRL_CROSS) {
+        if (BootUI_WaitButton(SCE_CTRL_CROSS | SCE_CTRL_CIRCLE, 0) == SCE_CTRL_CROSS) {
             VitaUpdate_Download();
             while ((st = VitaUpdate_State()) == VU_DOWNLOADING) {
                 long long done, total;
@@ -359,7 +361,7 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
     if (st == VU_ERROR && strcmp(VitaUpdate_Error(), "The Vita is not connected to Wi-Fi.")) {
         BootUI_Show(BootUI_Tr(VitaUpdate_Error()), VitaUpdate_ErrorDetail(), -1.0f,
                     BootUI_Tr("Press any button to continue."));
-        BootUI_WaitButton(~0u);
+        BootUI_WaitButton(~0u, 15000); /* nobody looking: the game goes on by itself */
     }
 
     sceDisplayWaitVblankStart();
