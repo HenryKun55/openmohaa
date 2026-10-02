@@ -4472,6 +4472,48 @@ bool ScriptThread::CanScriptTracePrint(void)
     return m_ScriptVM->CanScriptTracePrint();
 }
 
+/*
+The name of a bound key as a hint shows it. On the Vita the controller buttons are
+named as on the console (the engine hands them over first, see sv_game.c), in the
+Text Language.
+*/
+static const char *G_BoundKeyName(const char *bindName)
+{
+#ifdef __vita__
+    static const struct {
+        const char *bind;
+        const char *name;
+    } names[] = {
+        {"PAD0_A",                "Cross"          },
+        {"PAD0_B",                "Circle"         },
+        {"PAD0_X",                "Square"         },
+        {"PAD0_Y",                "Triangle"       },
+        {"PAD0_LEFTSHOULDER",     "L"              },
+        {"PAD0_RIGHTSHOULDER",    "R"              },
+        {"PAD0_START",            "START"          },
+        {"PAD0_BACK",             "SELECT"         },
+        {"PAD0_DPAD_UP",          "D-pad up"       },
+        {"PAD0_DPAD_DOWN",        "D-pad down"     },
+        {"PAD0_DPAD_LEFT",        "D-pad left"     },
+        {"PAD0_DPAD_RIGHT",       "D-pad right"    },
+        {"PAD0_LEFTSTICK_UP",     "left stick up"  },
+        {"PAD0_LEFTSTICK_DOWN",   "left stick down"},
+        {"PAD0_LEFTSTICK_LEFT",   "left stick left"},
+        {"PAD0_LEFTSTICK_RIGHT",  "left stick right"},
+        {"PAD0_RIGHTSTICK_UP",    "right stick up" },
+        {"PAD0_RIGHTSTICK_DOWN",  "right stick down"},
+        {"PAD0_RIGHTSTICK_LEFT",  "right stick left"},
+        {"PAD0_RIGHTSTICK_RIGHT", "right stick right"},
+    };
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        if (!Q_stricmp(bindName, names[i].bind)) {
+            return gi.LV_ConvertString(names[i].name);
+        }
+    }
+#endif
+    return bindName;
+}
+
 void ScriptThread::EventGetBoundKey1(Event *ev)
 {
     int         iKey1;
@@ -4481,7 +4523,7 @@ void ScriptThread::EventGetBoundKey1(Event *ev)
 
     gi.Key_GetKeysForCommand(sCommand, &iKey1, &iKey2);
     if (iKey1) {
-        pszKeyName = gi.Key_KeynumToBindString(iKey1);
+        pszKeyName = G_BoundKeyName(gi.Key_KeynumToBindString(iKey1));
     } else {
         pszKeyName = "";
     }
@@ -4498,7 +4540,7 @@ void ScriptThread::EventGetBoundKey2(Event *ev)
 
     gi.Key_GetKeysForCommand(sCommand, &iKey1, &iKey2);
     if (iKey2) {
-        pszKeyName = gi.Key_KeynumToBindString(iKey2);
+        pszKeyName = G_BoundKeyName(gi.Key_KeynumToBindString(iKey2));
     } else {
         pszKeyName = "";
     }

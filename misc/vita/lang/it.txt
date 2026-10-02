@@ -878,6 +878,25 @@
 { "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign." "Nemmeno le espansioni Spearhead e Breakthrough sono ancora disponibili: questa versione contiene la campagna di Allied Assault." }
 { "Press any button to go back." "Premi un tasto qualsiasi per tornare indietro." }
 
+// Vita buttons named in hints (code/fgame/scriptthread.cpp G_BoundKeyName); L, R,
+// START and SELECT are shown as they are.
+{ "Cross" "X" }
+{ "Circle" "Cerchio" }
+{ "Square" "Quadrato" }
+{ "Triangle" "Triangolo" }
+{ "D-pad up" "croce direzionale su" }
+{ "D-pad down" "croce direzionale giù" }
+{ "D-pad left" "croce direzionale sinistra" }
+{ "D-pad right" "croce direzionale destra" }
+{ "left stick up" "levetta sinistra su" }
+{ "left stick down" "levetta sinistra giù" }
+{ "left stick left" "levetta sinistra a sinistra" }
+{ "left stick right" "levetta sinistra a destra" }
+{ "right stick up" "levetta destra su" }
+{ "right stick down" "levetta destra giù" }
+{ "right stick left" "levetta destra a sinistra" }
+{ "right stick right" "levetta destra a destra" }
+
 // Vita settings debug menu, GPU TEST tab.
 { "GPU TEST" "TEST GPU" }
 { "Transparent surfaces" "Superfici trasparenti" }

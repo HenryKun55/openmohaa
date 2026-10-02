@@ -1742,6 +1742,35 @@ void PF_Key_GetKeysForCommand( const char *command, int *key1, int *key2 )
 {
 	if( com_cl_running->integer ) {
 		Key_GetKeysForCommand( command, key1, key2 );
+#if defined( __vita__ ) || defined( __SWITCH__ )
+		// Hints name the key bound to a command ("Press your use key ( TAB )"): the
+		// keyboard keys come first in key order and mean nothing on a console, so the
+		// game is given the controller buttons first, in the order a player looks for them.
+		{
+			static const char *const order[] = {
+				"PAD0_A", "PAD0_B", "PAD0_X", "PAD0_Y", "PAD0_LEFTSHOULDER", "PAD0_RIGHTSHOULDER",
+				"PAD0_LEFTTRIGGER", "PAD0_RIGHTTRIGGER", "PAD0_START", "PAD0_BACK",
+				"PAD0_DPAD_UP", "PAD0_DPAD_DOWN", "PAD0_DPAD_LEFT", "PAD0_DPAD_RIGHT",
+				"PAD0_LEFTSTICK_UP", "PAD0_LEFTSTICK_DOWN", "PAD0_LEFTSTICK_LEFT", "PAD0_LEFTSTICK_RIGHT",
+				"PAD0_RIGHTSTICK_UP", "PAD0_RIGHTSTICK_DOWN", "PAD0_RIGHTSTICK_LEFT", "PAD0_RIGHTSTICK_RIGHT",
+				"PAD0_LEFTSTICK_CLICK", "PAD0_RIGHTSTICK_CLICK"
+			};
+			int found[2] = { -1, -1 }, n = 0;
+			size_t i;
+
+			for ( i = 0; i < ARRAY_LEN( order ) && n < 2; i++ ) {
+				const int key = Key_StringToKeynum( order[i] );
+				const char *binding = key >= 0 ? Key_GetBinding( key ) : NULL;
+				if ( binding && !Q_stricmp( binding, command ) ) {
+					found[n++] = key;
+				}
+			}
+			if ( n > 0 ) {
+				*key1 = found[0];
+				*key2 = n > 1 ? found[1] : 0; // 0 = none, for the scripts
+			}
+		}
+#endif
 	} else {
 		*key1 = 0;
 		*key2 = 0;

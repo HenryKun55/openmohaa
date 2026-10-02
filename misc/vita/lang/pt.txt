@@ -140,7 +140,7 @@
 { "Enigma machine stolen" "Máquina Enigma roubada" }
 { "You have no explosives." "Você não tem explosivos." }
 { "You have acquired radio detonated explosives!" "Você pegou explosivos com detonador por rádio!" }
-{ "Hold use key to activate/deactivate bomb" "Segure a tecla de usar para ativar/desativar a bomba" }
+{ "Hold use key to activate/deactivate bomb" "Segure o botão de usar para ativar/desativar a bomba" }
 { "Manifest stolen" "Manifesto roubado" }
 { "Can't duck under water" "Não dá para agachar embaixo d'água" }
 { "You got the KAR98D Sniper Rifle." "Você pegou o fuzil de precisão KAR98D." }
@@ -162,7 +162,7 @@
 { "You have recieved health" "Você recebeu vida" }
 { "Lt. Joe Baylor has been killed in action." "O Ten. Joe Baylor foi morto em combate." }
 { "NOT ALL OBJECTIVES HAVE BEEN COMPLETED!" "NEM TODOS OS OBJETIVOS FORAM CONCLUÍDOS!" }
-{ "To call in air support switch to the binoculars. Then look at the target and press your Fire key." "Para pedir apoio aéreo, troque para o binóculo. Depois olhe para o alvo e aperte a tecla de atirar." }
+{ "To call in air support switch to the binoculars. Then look at the target and press your Fire key." "Para pedir apoio aéreo, troque para o binóculo. Depois olhe para o alvo e aperte o botão de atirar." }
 { "Once you find a radio you will be able to call in air support." "Quando achar um rádio, você poderá pedir apoio aéreo." }
 { "You have recieved health from a medic" "Você recebeu vida de um médico" }
 { " seconds to escape" " segundos para escapar" }
@@ -224,43 +224,43 @@
 { " of " " de " }
 { "HINT: Use the wheel to open the doors." "DICA: use a roda para abrir as portas." }
 { "HINT: Use the plunger to blow the door open." "DICA: use o detonador para explodir a porta." }
-{ "Move the tank with your Forward and Backward keys." "Mova o tanque com as teclas Frente e Trás." }
-{ "Use your Strafe keys to turn." "Use as teclas de passo lateral para virar." }
-{ "Turn the turret with the Mouse." "Gire a torre com o mouse." }
-{ "Hold your Jump key to align the base with the turret." "Segure a tecla de pular para alinhar a base com a torre." }
+{ "Move the tank with your Forward and Backward keys." "Mova o tanque com os botões Frente e Trás." }
+{ "Use your Strafe keys to turn." "Use os botões de passo lateral para virar." }
+{ "Turn the turret with the Mouse." "Gire a torre com o analógico direito." }
+{ "Hold your Jump key to align the base with the turret." "Segure o botão de pular para alinhar a base com a torre." }
 { "Align the balls to reach your current objective" "Alinhe as esferas para chegar ao objetivo atual" }
-{ "Use the mouse or keyboard to look up and around at the towers" "Use o mouse ou o teclado para olhar para cima e para as torres" }
+{ "Use the mouse or keyboard to look up and around at the towers" "Use o analógico direito para olhar para cima e para as torres" }
 { "Find a way through the gate" "Ache um caminho pelo portão" }
 { "Hello Mike Powell. Welcome to training." "Olá, Mike Powell. Bem-vindo ao treinamento." }
 { "Follow the arrow on your compass to reach your current objective." "Siga a seta da bússola para chegar ao objetivo atual." }
 { "As you get closer, the balls will contract." "Conforme você se aproxima, as esferas se juntam." }
 { "Press " "Aperte " }
 { " to move forward." " para andar para frente." }
-{ "Use your mouse or " "Use o mouse ou " }
+{ "Use your mouse or " "Use o analógico direito ou " }
 { " and " " e " }
 { " to turn left and right." " para virar para a esquerda e para a direita." }
-{ "Use the mouse or keyboard to look up and around at the towers." "Use o mouse ou o teclado para olhar para cima e para as torres." }
-{ "Press your jump key ( " "Aperte a tecla de pular ( " }
-{ " ) and movement keys to surpass these crates." " ) e as teclas de movimento para passar por cima destas caixas." }
-{ "Press your duck key ( " "Aperte a tecla de agachar ( " }
-{ " ) and movement keys to pass under the barbwire." " ) e as teclas de movimento para passar por baixo do arame farpado." }
-{ "Use the movement keys and look up to climb the ladder. You may also press your use button. " "Use as teclas de movimento e olhe para cima para subir a escada. Você também pode apertar a tecla de usar. " }
-{ "Press your use key ( " "Aperte a tecla de usar ( " }
+{ "Use the mouse or keyboard to look up and around at the towers." "Use o analógico direito para olhar para cima e para as torres." }
+{ "Press your jump key ( " "Aperte o botão de pular ( " }
+{ " ) and movement keys to surpass these crates." " ) e os botões de movimento para passar por cima destas caixas." }
+{ "Press your duck key ( " "Aperte o botão de agachar ( " }
+{ " ) and movement keys to pass under the barbwire." " ) e os botões de movimento para passar por baixo do arame farpado." }
+{ "Use the movement keys and look up to climb the ladder. You may also press your use button. " "Use os botões de movimento e olhe para cima para subir a escada. Você também pode apertar o botão de usar. " }
+{ "Press your use key ( " "Aperte o botão de usar ( " }
 { " ) to open these doors." " ) para abrir estas portas." }
 { "Some doors might not open. These doors will make a different sound." "Algumas portas podem não abrir. Essas portas fazem um som diferente." }
 { "When you get close to health and ammunition you will use them automatically." "Quando chegar perto de vida e munição, você vai pegá-las automaticamente." }
-{ "You may have to press your use key ( " "Talvez você precise apertar a tecla de usar ( " }
+{ "You may have to press your use key ( " "Talvez você precise apertar o botão de usar ( " }
 { " ) to activate items that are farther away." " ) para ativar itens que estão mais longe." }
-{ "Approach the explosives and press your use key ( " "Chegue perto dos explosivos e aperte a tecla de usar ( " }
+{ "Approach the explosives and press your use key ( " "Chegue perto dos explosivos e aperte o botão de usar ( " }
 { " ) to pick them up." " ) para pegá-los." }
-{ "Find the red ghost image of the bomb and press your use key ( " "Ache a imagem vermelha transparente da bomba e aperte a tecla de usar ( " }
+{ "Find the red ghost image of the bomb and press your use key ( " "Ache a imagem vermelha transparente da bomba e aperte o botão de usar ( " }
 { " ) on it to plant explosives on the tank." " ) sobre ela para plantar explosivos no tanque." }
 { " ) to control the targets on the firing range." " ) para controlar os alvos do estande de tiro." }
 { "Continue on to the exit when you are done." "Siga para a saída quando terminar." }
 { "Explore the firing range." "Explore o estande de tiro." }
-{ "Press the USE key ( " "Aperte a tecla USAR ( " }
+{ "Press the USE key ( " "Aperte o botão USAR ( " }
 { " ) to activate targets." " ) para ativar os alvos." }
-{ "Touch or press the USE key ( " "Toque ou aperte a tecla USAR ( " }
+{ "Touch or press the USE key ( " "Toque ou aperte o botão USAR ( " }
 { " ) to get weapons and ammo to use on the firing range" " ) para pegar armas e munição para usar no estande de tiro" }
 { "Continue on to the exit." "Siga para a saída." }
 { "Take control of the MG42 by approaching it and pressing USE" "Assuma a MG42 chegando perto dela e apertando USAR" }
@@ -280,17 +280,17 @@
 { "If your weapon is not holstered" "Se a sua arma não estiver guardada" }
 { "your cover will be blown." "seu disfarce será descoberto." }
 { "Be prepared to show your papers when asked." "Esteja pronto para mostrar seus documentos quando pedirem." }
-{ "Press the ( " "Aperte a tecla ( " }
+{ "Press the ( " "Aperte o botão ( " }
 { " ) key to holster your weapon." " ) para guardar sua arma." }
 { " ) key to show your papers." " ) para mostrar seus documentos." }
 { "Once you destroy the anti-aircraft gun, you will be able to call in air support." "Depois de destruir o canhão antiaéreo, você poderá pedir apoio aéreo." }
-{ "Press the FORWARD key  ( " "Aperte a tecla FRENTE ( " }
+{ "Press the FORWARD key  ( " "Aperte o botão FRENTE ( " }
 { " ) to move out of the truck" " ) para sair do caminhão" }
-{ "Press the OBJECTIVE key  ( " "Aperte a tecla OBJETIVOS ( " }
+{ "Press the OBJECTIVE key  ( " "Aperte o botão OBJETIVOS ( " }
 { " ) to see your objectives" " ) para ver seus objetivos" }
-{ "Find your way to the mounted machine gun and press the USE key  ( " "Vá até a metralhadora fixa e aperte a tecla USAR ( " }
+{ "Find your way to the mounted machine gun and press the USE key  ( " "Vá até a metralhadora fixa e aperte o botão USAR ( " }
 { " ) to take control" " ) para assumir o controle" }
-{ "Press the USE key  ( " "Aperte a tecla USAR ( " }
+{ "Press the USE key  ( " "Aperte o botão USAR ( " }
 { " ) to use mounted weapons" " ) para usar armas fixas" }
 { "has entered the battle" "entrou na batalha" }
 { "has left the battle" "saiu da batalha" }
@@ -305,22 +305,22 @@
 { "A bomb is still set!" "Ainda tem uma bomba armada!" }
 { "Allies have destroyed the Southern Cannon!" "Os Aliados destruíram o canhão sul!" }
 { "Allies have destroyed the Northern Cannon!" "Os Aliados destruíram o canhão norte!" }
-{ "Use your MOUSE and the movement keys to look at the towers." "Use o MOUSE e as teclas de movimento para olhar para as torres." }
+{ "Use your MOUSE and the movement keys to look at the towers." "Use o analógico direito e o analógico esquerdo para olhar para as torres." }
 { " ) to open doors." " ) para abrir portas." }
 { "Touch the health and ammo to pick it up." "Toque na vida e na munição para pegá-las." }
 { " ) to activate items that are far away." " ) para ativar itens que estão longe." }
 { " ) to get the explosives." " ) para pegar os explosivos." }
 { " ) to get weapons and ammo." " ) para pegar armas e munição." }
-{ "Use your MOUSE or " "Use o MOUSE ou " }
+{ "Use your MOUSE or " "Use o analógico direito ou " }
 { "Good work Powell, get ready for your first mission" "Bom trabalho, Powell, prepare-se para sua primeira missão" }
-{ "Press your JUMP key ( " "Aperte a tecla PULAR ( " }
-{ "Press your DUCK key ( " "Aperte a tecla AGACHAR ( " }
-{ "Use the movement keys and look up to climb the ladder. You may also press your USE key." "Use as teclas de movimento e olhe para cima para subir a escada. Você também pode apertar a tecla USAR." }
-{ "Press your USE key ( " "Aperte a tecla USAR ( " }
-{ "Find the red ghost image of the bomb and press the USE key ( " "Ache a imagem vermelha transparente da bomba e aperte a tecla USAR ( " }
+{ "Press your JUMP key ( " "Aperte o botão PULAR ( " }
+{ "Press your DUCK key ( " "Aperte o botão AGACHAR ( " }
+{ "Use the movement keys and look up to climb the ladder. You may also press your USE key." "Use os botões de movimento e olhe para cima para subir a escada. Você também pode apertar o botão USAR." }
+{ "Press your USE key ( " "Aperte o botão USAR ( " }
+{ "Find the red ghost image of the bomb and press the USE key ( " "Ache a imagem vermelha transparente da bomba e aperte o botão USAR ( " }
 { " ) to plant explosives on the tank." " ) para plantar explosivos no tanque." }
 { "75 seconds to escape the sub" "75 segundos para escapar do submarino" }
-{ "Use your MOUSE to turn and aim." "Use o MOUSE para virar e mirar." }
+{ "Use your MOUSE to turn and aim." "Use o analógico direito para virar e mirar." }
 { "Your hard drive is full, unable to save game." "O cartão de memória está cheio, não foi possível salvar o jogo." }
 { "Your hard drive is full. Unable to save game." "O cartão de memória está cheio. Não foi possível salvar o jogo." }
 { "Error" "Erro" }
@@ -338,23 +338,23 @@
 { " to use the scope on the sniper rifle." " para usar a luneta do fuzil de precisão." }
 { "You can only climb one side of a ladder." "Só dá para subir por um lado da escada." }
 { "Approach this ladder from the west to climb it." "Chegue a esta escada pelo oeste para subir." }
-{ "Look up and press your forward key ( " "Olhe para cima e aperte a tecla de andar para frente ( " }
+{ "Look up and press your forward key ( " "Olhe para cima e aperte o botão de andar para frente ( " }
 { " ) to climb a ladder." " ) para subir uma escada." }
 { "Follow the arrow on your compass to reach your objectives." "Siga a seta da bússola para chegar aos seus objetivos." }
 { "Press ( " "Aperte ( " }
 { " ) to see your objectives." " ) para ver seus objetivos." }
 { "Lieutenant Powell, it's time to commence field training." "Tenente Powell, é hora de começar o treinamento de campo." }
 { "Pay attention and you might even stand a chance on the battlefield." "Preste atenção e talvez você até tenha chance no campo de batalha." }
-{ "First I want you to use your mouse to look at each of the four guard towers." "Primeiro, use o mouse para olhar para cada uma das quatro torres de vigia." }
-{ "Good. Press now press your FORWARDS key ( " "Bom. Agora aperte a tecla FRENTE ( " }
+{ "First I want you to use your mouse to look at each of the four guard towers." "Primeiro, use o analógico direito para olhar para cada uma das quatro torres de vigia." }
+{ "Good. Press now press your FORWARDS key ( " "Bom. Agora aperte o botão FRENTE ( " }
 { " ) to move in the direction you are facing." " ) para andar na direção em que está olhando." }
-{ "Press your BACKWARDS key ( " "Aperte a tecla TRÁS ( " }
+{ "Press your BACKWARDS key ( " "Aperte o botão TRÁS ( " }
 { " ) to move back." " ) para andar para trás." }
 { "Press STRAFE LEFT ( " "Aperte PASSO À ESQUERDA ( " }
 { " ) to move left and STRAFE RIGHT ( " " ) para ir para a esquerda e PASSO À DIREITA ( " }
 { " ) to move right." " ) para ir para a direita." }
-{ "Using these four keys together with the mouse is critical to your success against the enemy." "Usar essas quatro teclas junto com o mouse é essencial para vencer o inimigo." }
-{ "Press your OBJECTIVES key ( " "Aperte a tecla OBJETIVOS ( " }
+{ "Using these four keys together with the mouse is critical to your success against the enemy." "Usar esses quatro botões junto com o analógico direito é essencial para vencer o inimigo." }
+{ "Press your OBJECTIVES key ( " "Aperte o botão OBJETIVOS ( " }
 { " ) to see your list of current objectives." " ) para ver sua lista de objetivos atuais." }
 { "When you complete an objective it is checked off on this list." "Quando você conclui um objetivo, ele é marcado nesta lista." }
 { "Your current objective is highlighted in yellow." "Seu objetivo atual fica destacado em amarelo." }
@@ -362,22 +362,22 @@
 { "As you near your objective, the ball bearings on the compass will get closer together." "Conforme você se aproxima do objetivo, as esferas da bússola se juntam." }
 { "Now notice that the arrow on your compass is pointing at one of the towers." "Repare que a seta da sua bússola está apontando para uma das torres." }
 { "Approach the tower indicated by the arrow." "Vá até a torre indicada pela seta." }
-{ "Good. Now press your OBJECTIVES key ( " "Bom. Agora aperte a tecla OBJETIVOS ( " }
+{ "Good. Now press your OBJECTIVES key ( " "Bom. Agora aperte o botão OBJETIVOS ( " }
 { " ) again." " ) de novo." }
 { "You have a new objective. Complete this objective." "Você tem um novo objetivo. Conclua este objetivo." }
-{ "Press the JUMP ( " "Aperte as teclas PULAR ( " }
+{ "Press the JUMP ( " "Aperte os botões PULAR ( " }
 { " ) and FORWARD ( " " ) e FRENTE ( " }
 { " ) keys to jump up this pile of crates." " ) para subir nesta pilha de caixas." }
-{ "Press the DUCK key ( " "Aperte a tecla AGACHAR ( " }
+{ "Press the DUCK key ( " "Aperte o botão AGACHAR ( " }
 { " ) and then move FORWARD ( " " ) e depois ande para FRENTE ( " }
 { " ) to pass under the barbed wire." " ) para passar por baixo do arame farpado." }
 { " ) again to stand up." " ) de novo para levantar." }
-{ "Press the FORWARD key ( " "Aperte a tecla FRENTE ( " }
+{ "Press the FORWARD key ( " "Aperte o botão FRENTE ( " }
 { " ) and look up and you will climb up the ladder." " ) e olhe para cima para subir a escada." }
 { " ) to grab a ladder from above or below." " ) para agarrar uma escada por cima ou por baixo." }
-{ "Look down and Press the FORWARD key ( " "Olhe para baixo e aperte a tecla FRENTE ( " }
+{ "Look down and Press the FORWARD key ( " "Olhe para baixo e aperte o botão FRENTE ( " }
 { " ) and you will descend the ladder." " ) e você vai descer a escada." }
-{ "Approach the explosives and press the USE key ( " "Chegue perto dos explosivos e aperte a tecla USAR ( " }
+{ "Approach the explosives and press the USE key ( " "Chegue perto dos explosivos e aperte o botão USAR ( " }
 { "Notice that an image of the explosives has appeared in the upper right corner of your hud." "Repare que uma imagem dos explosivos apareceu no canto superior direito da tela." }
 { "This is how you know what items you have in your inventory." "É assim que você sabe quais itens tem no inventário." }
 { "The other image is of the radio which I am using to communicate with you." "A outra imagem é do rádio que estou usando para falar com você." }
@@ -389,34 +389,34 @@
 { "Some doors might be locked. The sound will clue you in." "Algumas portas podem estar trancadas. O som vai te dar a dica." }
 { "You will automatically pick up first-aid supplies when your health is below 100%." "Você pega os primeiros socorros automaticamente quando sua vida está abaixo de 100%." }
 { "Same for ammunition and weapons--but remember that each weapon has a maximum amount of ammo you can carry." "O mesmo vale para munição e armas, mas lembre que cada arma tem um limite de munição que você pode carregar." }
-{ "Sometimes items are too far to be automatically picked up. Press the USE key ( " "Às vezes os itens estão longe demais para serem pegos automaticamente. Aperte a tecla USAR ( " }
+{ "Sometimes items are too far to be automatically picked up. Press the USE key ( " "Às vezes os itens estão longe demais para serem pegos automaticamente. Aperte o botão USAR ( " }
 { " ) to grab these items." " ) para pegar esses itens." }
-{ "Select the Colt 45 by pressing the PISTOL key. ( " "Selecione a Colt 45 apertando a tecla PISTOLA. ( " }
+{ "Select the Colt 45 by pressing the PISTOL key. ( " "Selecione a Colt 45 apertando o botão PISTOLA. ( " }
 { " )" " )" }
-{ "To neutralize an enemy without drawing undue attention, press the SECONDARY ATTACK key ( " "Para neutralizar um inimigo sem chamar atenção, aperte a tecla ATAQUE SECUNDÁRIO ( " }
+{ "To neutralize an enemy without drawing undue attention, press the SECONDARY ATTACK key ( " "Para neutralizar um inimigo sem chamar atenção, aperte o botão ATAQUE SECUNDÁRIO ( " }
 { " ) to activate the pistol whip." " ) para dar uma coronhada com a pistola." }
-{ "Press the PRIMARY ATTACK key ( " "Aperte a tecla ATAQUE PRINCIPAL ( " }
+{ "Press the PRIMARY ATTACK key ( " "Aperte o botão ATAQUE PRINCIPAL ( " }
 { " ) to fire any of your weapons." " ) para atirar com qualquer arma." }
 { "Note that you are more accurate with all weapons when firing in short bursts and while not moving." "Repare que você tem mais precisão com todas as armas atirando em rajadas curtas e parado." }
 { "Shoot the target a couple of times with the pistol." "Atire no alvo algumas vezes com a pistola." }
-{ "Switch to the Thompson by pressing the SMG key. ( " "Troque para a Thompson apertando a tecla SUBMETRALHADORA. ( " }
-{ "You may reload any of your weapons at any time by pressing the RELOAD key. ( " "Você pode recarregar qualquer arma a qualquer hora apertando a tecla RECARREGAR. ( " }
+{ "Switch to the Thompson by pressing the SMG key. ( " "Troque para a Thompson apertando o botão SUBMETRALHADORA. ( " }
+{ "You may reload any of your weapons at any time by pressing the RELOAD key. ( " "Você pode recarregar qualquer arma a qualquer hora apertando o botão RECARREGAR. ( " }
 { "You should always reload all of your weapons before going into combat." "Sempre recarregue todas as suas armas antes de entrar em combate." }
 { "Shoot the target twenty times with the Thompson." "Atire no alvo vinte vezes com a Thompson." }
-{ "Switch to the Springfield '03 Sniper Rifle by pressing the RIFLE key. ( " "Troque para o fuzil de precisão Springfield '03 apertando a tecla FUZIL. ( " }
-{ "Press the SECONDARY ATTACK key ( " "Aperte a tecla ATAQUE SECUNDÁRIO ( " }
+{ "Switch to the Springfield '03 Sniper Rifle by pressing the RIFLE key. ( " "Troque para o fuzil de precisão Springfield '03 apertando o botão FUZIL. ( " }
+{ "Press the SECONDARY ATTACK key ( " "Aperte o botão ATAQUE SECUNDÁRIO ( " }
 { " ) to toggle the sniper scope on and off." " ) para ligar e desligar a luneta." }
 { "Use the scope and hit the farthest target on the red dot three times." "Use a luneta e acerte três vezes o alvo mais distante, no ponto vermelho." }
-{ "Select the Frag Grenades by pressing the GRENADE key. ( " "Selecione as granadas de fragmentação apertando a tecla GRANADA. ( " }
+{ "Select the Frag Grenades by pressing the GRENADE key. ( " "Selecione as granadas de fragmentação apertando o botão GRANADA. ( " }
 { "The PRIMARY ATTACK ( " "O ATAQUE PRINCIPAL ( " }
 { " ) for the grenades is a long throw." " ) das granadas é um arremesso longo." }
 { "Use the SECONDARY ATTACK ( " "Use o ATAQUE SECUNDÁRIO ( " }
 { " ) for shorter tosses." " ) para arremessos mais curtos." }
-{ "How long you hold the SECONDARY ATTACK key ( " "Quanto tempo você segura a tecla ATAQUE SECUNDÁRIO ( " }
+{ "How long you hold the SECONDARY ATTACK key ( " "Quanto tempo você segura o botão ATAQUE SECUNDÁRIO ( " }
 { " ) down affects how far you throw." " ) define a distância do arremesso." }
 { "Use bank shots with the grenades to clear rooms where the enemy might be hiding." "Use as granadas ricocheteando nas paredes para limpar salas onde o inimigo pode estar escondido." }
 { "Throw a grenade into each of the concrete boxes." "Jogue uma granada em cada uma das caixas de concreto." }
-{ "Approach the MG42 stationary machine gun and press the USE key ( " "Chegue perto da metralhadora fixa MG42 e aperte a tecla USAR ( " }
+{ "Approach the MG42 stationary machine gun and press the USE key ( " "Chegue perto da metralhadora fixa MG42 e aperte o botão USAR ( " }
 { " ) to activate it." " ) para ativá-la." }
 { "Destroy the target with the machine gun." "Destrua o alvo com a metralhadora." }
 { " ) on the red door at the end of the range to exit the firing range." " ) na porta vermelha no fim do estande para sair do estande de tiro." }
@@ -430,21 +430,21 @@
 { " ) to grab items off tables." " ) para pegar itens das mesas." }
 { "Climb the stairs and find the MG42 mounted machine gun." "Suba a escada e ache a metralhadora fixa MG42." }
 { " ) to use mounted weapons." " ) para usar armas fixas." }
-{ "Move the tank with your Forward key ( " "Mova o tanque com a tecla Frente ( " }
-{ " ) and Backward key. ( " " ) e a tecla Trás. ( " }
+{ "Move the tank with your Forward key ( " "Mova o tanque com o botão Frente ( " }
+{ " ) and Backward key. ( " " ) e o botão Trás. ( " }
 { " ) to turn left and STRAFE RIGHT ( " " ) para virar para a esquerda e PASSO À DIREITA ( " }
 { " ) to turn right." " ) para virar para a direita." }
-{ "Hold your Jump key ( " "Segure a tecla de pular ( " }
+{ "Hold your Jump key ( " "Segure o botão de pular ( " }
 { " ) to align the base with the turret." " ) para alinhar a base com a torre." }
 { "To call in air support switch to the binoculars. ( " "Para pedir apoio aéreo, troque para o binóculo. ( " }
-{ " ) Then look at the target and press your Fire key. ( " " ) Depois olhe para o alvo e aperte a tecla de atirar. ( " }
+{ " ) Then look at the target and press your Fire key. ( " " ) Depois olhe para o alvo e aperte o botão de atirar. ( " }
 { "Private Durden has been killed in action." "O Soldado Durden foi morto em combate." }
 { "Private Cobb has been killed in action." "O Soldado Cobb foi morto em combate." }
 { "You have acquired the StG44 blueprints!" "Você pegou as plantas da StG44!" }
 { "Sometimes an objective may be located directly above or below where the compass appears to indicate." "Às vezes um objetivo pode estar logo acima ou abaixo do lugar que a bússola parece indicar." }
 { "You need a new set of papers to procede pass this point." "Você precisa de novos documentos para passar deste ponto." }
 { "You have not completed all of the objectives." "Você não concluiu todos os objetivos." }
-{ "Holster your weapon by pressing the [" "Guarde sua arma apertando a tecla [" }
+{ "Holster your weapon by pressing the [" "Guarde sua arma apertando o botão [" }
 { "] key to avoid losing your cover" "] para não perder o disfarce" }
 { "Scour the area for the missing Bazooka team" "Vasculhe a área atrás da equipe de bazuca desaparecida" }
 { "The Bazooka team is missing, they must be found" "A equipe de bazuca sumiu. Temos que encontrá-la!" }
@@ -464,9 +464,9 @@
 { "T/4 Medic Glenn has been killed in action." "O Médico T/4 Glenn foi morto em combate." }
 { "Sergeant Hammon has been killed in action." "O Sargento Hammon foi morto em combate." }
 { "T/2 Engineer Campbell has been killed in action." "O Engenheiro T/2 Campbell foi morto em combate." }
-{ "Approach alarms and press the USE key ( " "Chegue perto dos alarmes e aperte a tecla USAR ( " }
+{ "Approach alarms and press the USE key ( " "Chegue perto dos alarmes e aperte o botão USAR ( " }
 { " ) to toggle them off or on." " ) para ligá-los ou desligá-los." }
-{ "Use your mouse to look at each of the four guard towers." "Use o mouse para olhar para cada uma das quatro torres de vigia." }
+{ "Use your mouse to look at each of the four guard towers." "Use o analógico direito para olhar para cada uma das quatro torres de vigia." }
 { " to move forwards." " para andar para frente." }
 { " to move backwards." " para andar para trás." }
 { " to move left and " " para ir para a esquerda e " }
@@ -513,7 +513,7 @@
 { "The bridge was destroyed. You failed the mission." "A ponte foi destruída. Você falhou na missão." }
 
 // Script hints missing from the game's table (maps/m1l1.scr).
-{ "Find your way to the MG42 mounted machine gun and press the USE key  ( " "Vá até a metralhadora fixa MG42 e aperte a tecla USAR ( " }
+{ "Find your way to the MG42 mounted machine gun and press the USE key  ( " "Vá até a metralhadora fixa MG42 e aperte o botão USAR ( " }
 { " ) to take control." " ) para assumir o controle." }
 
 // Pickup messages built by the game with a number or a name in the middle: &&& stands
@@ -876,6 +876,25 @@
 { "Multiplayer is not available on this version." "O multiplayer não está disponível nesta versão." }
 { "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign." "As expansões Spearhead e Breakthrough também ainda não estão disponíveis: esta versão roda a campanha de Allied Assault." }
 { "Press any button to go back." "Aperte qualquer botão para voltar." }
+
+// Vita buttons named in hints (code/fgame/scriptthread.cpp G_BoundKeyName); L, R,
+// START and SELECT are shown as they are.
+{ "Cross" "X" }
+{ "Circle" "Bola" }
+{ "Square" "Quadrado" }
+{ "Triangle" "Triângulo" }
+{ "D-pad up" "direcional para cima" }
+{ "D-pad down" "direcional para baixo" }
+{ "D-pad left" "direcional para a esquerda" }
+{ "D-pad right" "direcional para a direita" }
+{ "left stick up" "analógico esquerdo para cima" }
+{ "left stick down" "analógico esquerdo para baixo" }
+{ "left stick left" "analógico esquerdo para a esquerda" }
+{ "left stick right" "analógico esquerdo para a direita" }
+{ "right stick up" "analógico direito para cima" }
+{ "right stick down" "analógico direito para baixo" }
+{ "right stick left" "analógico direito para a esquerda" }
+{ "right stick right" "analógico direito para a direita" }
 
 // Vita settings debug menu, GPU TEST tab.
 { "GPU TEST" "TESTE GPU" }
