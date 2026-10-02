@@ -171,6 +171,7 @@ static void splash_draw_quad(void)
 void Vita_BootSplash_Show(void)
 {
     extern void GLimp_EndFrame(void);
+    extern void Sys_VitaBootPicture_Release(void);
 
     fprintf(stdout, "[splash] loading %s\n", SPLASH_PATH);
     fflush(stdout);
@@ -184,6 +185,7 @@ void Vita_BootSplash_Show(void)
             glClear(GL_COLOR_BUFFER_BIT);
             GLimp_EndFrame();
         }
+        Sys_VitaBootPicture_Release();
         return;
     }
 
@@ -202,6 +204,8 @@ void Vita_BootSplash_Show(void)
         splash_draw_quad();
         GLimp_EndFrame();
     }
+    /* vitaGL's frames are on screen now: the boot picture's buffer can go */
+    Sys_VitaBootPicture_Release();
 }
 
 void Vita_BootSplash_NoteEngineFrame(void) { /* no-op now */ }

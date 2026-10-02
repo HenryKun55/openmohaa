@@ -25,7 +25,9 @@
 #include <psp2/power.h>
 #include <psp2/appmgr.h>
 #include <psp2/apputil.h>
+#include <psp2/display.h>
 #include <malloc.h>
+#include <png.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,8 +111,75 @@ static int Sys_VitaClockProbe(void)
  * end of the code past that boundary; resize it if the error ever comes back. */
 __attribute__((used)) const unsigned char g_vitaSegmentPad[8 * 1024] = { 1 };
 
+/* ---- boot picture ------------------------------------------------------------
+ * The Vita shows sce_sys/pic0.png from the bubble tap until the app sets a display
+ * buffer; from then the screen would stay black until vitaGL starts (module preload,
+ * clocks, memory set-up). The same picture is put in a plain CDRAM display buffer as
+ * the very first thing, and released once vitaGL has shown its own frames
+ * (Vita_BootSplash_Show, which then shows the loading picture). */
+#define BOOT_PIC_W    960
+#define BOOT_PIC_H    544
+#define BOOT_FB_SIZE  0x200000u /* 960 x 544 x 4, rounded up to the CDRAM granularity */
+
+static SceUID s_bootPicBlock = -1;
+
+static void Sys_VitaBootPicture_Show(void)
+{
+    png_image image;
+    void     *base = NULL;
+    SceUID    block;
+
+    memset(&image, 0, sizeof(image));
+    image.version = PNG_IMAGE_VERSION;
+    if (!png_image_begin_read_from_file(&image, "app0:sce_sys/pic0.png")) {
+        return; /* a VPK built without the game's art: nothing to show */
+    }
+    if (image.width != BOOT_PIC_W || image.height != BOOT_PIC_H) {
+        png_image_free(&image);
+        return;
+    }
+    block = sceKernelAllocMemBlock("boot_picture", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, BOOT_FB_SIZE, NULL);
+    if (block < 0 || sceKernelGetMemBlockBase(block, &base) < 0) {
+        png_image_free(&image);
+        if (block >= 0) sceKernelFreeMemBlock(block);
+        return;
+    }
+    image.format = PNG_FORMAT_RGBA; /* R first in memory: the display's A8B8G8R8 */
+    if (!png_image_finish_read(&image, NULL, base, BOOT_PIC_W * 4, NULL)) {
+        png_image_free(&image);
+        sceKernelFreeMemBlock(block);
+        return;
+    }
+    {
+        SceDisplayFrameBuf fb;
+        memset(&fb, 0, sizeof(fb));
+        fb.size        = sizeof(fb);
+        fb.base        = base;
+        fb.pitch       = BOOT_PIC_W;
+        fb.pixelformat = SCE_DISPLAY_PIXELFORMAT_A8B8G8R8;
+        fb.width       = BOOT_PIC_W;
+        fb.height      = BOOT_PIC_H;
+        if (sceDisplaySetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME) < 0) {
+            sceKernelFreeMemBlock(block);
+            return;
+        }
+    }
+    s_bootPicBlock = block;
+}
+
+/* Called once vitaGL's own frames are on screen. */
+void Sys_VitaBootPicture_Release(void)
+{
+    if (s_bootPicBlock >= 0) {
+        sceKernelFreeMemBlock(s_bootPicBlock);
+        s_bootPicBlock = -1;
+    }
+}
+
 void Sys_PlatformInit(void)
 {
+    Sys_VitaBootPicture_Show();
+
     sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
 
     sceIoMkdir("ux0:data", 0777);
