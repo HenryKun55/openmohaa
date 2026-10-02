@@ -46,6 +46,12 @@ Step-by-step guide (which files, GOG or discs, USB, updating):
 [docs/PORTING-VITA.md](docs/PORTING-VITA.md#install-on-the-vita). Updating never
 touches your settings or saves.
 
+**Updates:** from v0.3 on, the game updates itself. When it starts, before the intro
+videos, it looks for a new version on GitHub, asks before downloading it, installs it
+and starts again, with your settings and saves kept. It needs Wi-Fi and **Enable
+Unsafe Homebrew** on (Settings > HENkaku Settings); it can be turned off with **Check
+for updates** in the Vita settings (System tab).
+
 ## Tested with
 
 | | Tested | Should work, not tested yet |
