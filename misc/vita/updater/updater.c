@@ -50,7 +50,8 @@
 #define UPDATE_DIR  DATA_DIR "/update"
 #define PKG_DIR     UPDATE_DIR "/pkg"
 #define HELPER_DIR  UPDATE_DIR "/helper"
-#define CLEANUP_FLAG UPDATE_DIR "/cleanup"
+#define CLEANUP_FLAG UPDATE_DIR "/cleanup"   /* the helper title is to be removed */
+#define CLEANED_FLAG UPDATE_DIR "/cleanup_ran" /* the game starts again from the cleanup */
 #define GAME_TITLE   "OMHA00001"
 #define HELPER_TITLE "OMHA00002"
 #define PLAN_FILE   UPDATE_DIR "/plan.txt"
@@ -590,6 +591,14 @@ static void MoveLanguagePack(const char *src, const char *dst)
     Log("language pack: %s -> %s", src, dst);
 }
 
+/* The game's next start removes the helper title (Cleanup) until it is gone. */
+static void MarkHelperForRemoval(void)
+{
+    SceUID fd = sceIoOpen(CLEANUP_FLAG, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    if (fd >= 0) sceIoClose(fd);
+    sceIoRemove(CLEANED_FLAG); /* a stale one would skip that start */
+}
+
 static int Exists(const char *path)
 {
     SceIoStat st;
@@ -642,6 +651,7 @@ static void Stage(void)
     InstallerUp();
     scePromoterUtilityDeletePkg(HELPER_TITLE); /* one left by an earlier update, if any */
     Promote(HELPER_DIR, "the installer");
+    MarkHelperForRemoval(); /* from here on the game removes it, even if the update fails */
     InstallerDown();
     RemoveTree(HELPER_DIR);
 
@@ -653,11 +663,8 @@ static void Stage(void)
 static void Helper(void)
 {
     char vpk[256] = "", langSrc[256] = "", langDst[256] = "";
-    SceUID fd;
 
-    /* the game removes this title at its next start, whatever happens here */
-    fd = sceIoOpen(CLEANUP_FLAG, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
-    if (fd >= 0) sceIoClose(fd);
+    MarkHelperForRemoval(); /* the game removes this title at its next start, whatever happens here */
 
     ReadPlan(vpk, sizeof(vpk), langSrc, langDst, sizeof(langSrc));
     Log("installing v%s", g_version);
@@ -718,22 +725,14 @@ static void ShowBootPicture(void)
     }
 }
 
-/* OMHA00001, from the game's start: remove the helper title, then back to the game. */
+/* OMHA00001, from the game's start: remove the helper title, then back to the game. The
+ * flag stays until the helper is gone, so every start of the game tries again; the game
+ * skips the start that comes back from here (CLEANED_FLAG), so this never loops. */
 static void Cleanup(void)
 {
-    int    res = -1, tries = 0;
-    char   count[8] = "";
+    int    res = -1;
     SceUID fd;
 
-    /* the flag holds how many starts already tried: removed first, written again on a
-     * failure for the next start, at most 3 times, so this never loops */
-    fd = sceIoOpen(CLEANUP_FLAG, SCE_O_RDONLY, 0);
-    if (fd >= 0) {
-        sceIoRead(fd, count, sizeof(count) - 1);
-        sceIoClose(fd);
-        tries = atoi(count);
-    }
-    sceIoRemove(CLEANUP_FLAG);
     ShowBootPicture();
     /* launching the game left the helper suspended in the background, not closed, and a
      * title that is open cannot be removed (0x80103A07): close it first */
@@ -749,15 +748,12 @@ static void Cleanup(void)
         }
         InstallerDown();
     }
-    Log("cleanup: removing %s = 0x%08X (try %d)", HELPER_TITLE, (unsigned)res, tries + 1);
-    if (res < 0 && Exists("ux0:app/" HELPER_TITLE) && tries + 1 < 3) {
-        fd = sceIoOpen(CLEANUP_FLAG, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
-        if (fd >= 0) {
-            snprintf(count, sizeof(count), "%d", tries + 1);
-            sceIoWrite(fd, count, strlen(count));
-            sceIoClose(fd);
-        }
+    Log("cleanup: removing %s = 0x%08X", HELPER_TITLE, (unsigned)res);
+    if (res >= 0 || !Exists("ux0:app/" HELPER_TITLE)) {
+        sceIoRemove(CLEANUP_FLAG);
     }
+    fd = sceIoOpen(CLEANED_FLAG, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    if (fd >= 0) sceIoClose(fd);
     sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
     sceKernelExitProcess(0);
 }
