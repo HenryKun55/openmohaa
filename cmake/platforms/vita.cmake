@@ -311,7 +311,7 @@ function(package_vita_vpk)
     set(UPDATER_DIR ${CMAKE_SOURCE_DIR}/misc/vita/updater)
     add_executable(vita_updater ${UPDATER_DIR}/updater.c ${UPDATER_DIR}/debugScreen.c)
     target_link_libraries(vita_updater
-        crypto z
+        png crypto z m
         SceDisplay_stub SceCtrl_stub SceSysmodule_stub ScePromoterUtil_stub SceAppMgr_stub
         ScePower_stub SceLibKernel_stub SceKernelThreadMgr_stub SceIofilemgr_stub SceProcessmgr_stub)
     set(UPDATER_BIN ${CMAKE_BINARY_DIR}/updater.bin)

@@ -32,6 +32,9 @@
 #include <psp2/sysmodule.h>
 
 #include <openssl/sha.h>
+#include <png.h>
+#include <psp2/display.h>
+#include <psp2/kernel/sysmem.h>
 #include <zlib.h>
 
 #include <stdarg.h>
@@ -683,13 +686,45 @@ static void Helper(void)
     LaunchAndExit(GAME_TITLE);
 }
 
+/* The game's boot picture on screen (as sys_vita.c shows it), so the cleanup between two
+ * starts of the game is not seen. */
+static void ShowBootPicture(void)
+{
+    png_image image;
+    void     *base = NULL;
+    SceUID    block = sceKernelAllocMemBlock("boot_picture", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, 0x200000, NULL);
+
+    if (block < 0 || sceKernelGetMemBlockBase(block, &base) < 0) return;
+    memset(base, 0, 0x200000);
+    memset(&image, 0, sizeof(image));
+    image.version = PNG_IMAGE_VERSION;
+    if (png_image_begin_read_from_file(&image, "app0:sce_sys/pic0.png")) {
+        if (image.width == 960 && image.height == 544) {
+            image.format = PNG_FORMAT_RGBA;
+            png_image_finish_read(&image, NULL, base, 960 * 4, NULL);
+        }
+        png_image_free(&image);
+    }
+    {
+        SceDisplayFrameBuf fb;
+        memset(&fb, 0, sizeof(fb));
+        fb.size        = sizeof(fb);
+        fb.base        = base;
+        fb.pitch       = 960;
+        fb.pixelformat = SCE_DISPLAY_PIXELFORMAT_A8B8G8R8;
+        fb.width       = 960;
+        fb.height      = 544;
+        sceDisplaySetFrameBuf(&fb, SCE_DISPLAY_SETBUF_NEXTFRAME);
+    }
+}
+
 /* OMHA00001, from the game's start: remove the helper title, then back to the game. */
 static void Cleanup(void)
 {
     int res = -1;
 
     sceIoRemove(CLEANUP_FLAG); /* first: never loop, even if the removal fails */
-    Say("Finishing the update...\n");
+    ShowBootPicture();
     if (LoadPaf() >= 0 && sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL) >= 0
         && scePromoterUtilityInit() >= 0) {
         /* the helper may still be closing: try for a few seconds */
@@ -709,17 +744,18 @@ int main(void)
 {
     char self[16] = "";
 
-    psvDebugScreenInit();
     /* keep the Vita awake while installing */
     scePowerSetArmClockFrequency(444);
     sceAppMgrAppParamGetString(0, 12, self, sizeof(self)); /* 12: TITLE_ID */
     Log("updater.bin running as %s", self);
 
+    if (strcmp(self, HELPER_TITLE) && !Exists(PLAN_FILE) && Exists(CLEANUP_FLAG)) {
+        Cleanup(); /* silent: the boot picture stays on screen */
+    }
+    psvDebugScreenInit();
     Say("\e[33;1mOpenMoHAA updater\e[0m\n\n");
     if (!strcmp(self, HELPER_TITLE)) {
         Helper();
-    } else if (!Exists(PLAN_FILE) && Exists(CLEANUP_FLAG)) {
-        Cleanup();
     } else {
         Stage();
     }
