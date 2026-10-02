@@ -597,6 +597,11 @@ static void Install(void)
     ExtractVpk(vpk, PKG_DIR);
     CheckPackage(PKG_DIR);
 
+    /* While the title's folder is mounted as app0: the Vita refuses writes to it
+     * (0x8001000D), even with the game closed and only this program running: unmount it,
+     * as VitaShell does to update itself. Nothing is read from app0: after this. */
+    res = sceAppMgrUmount("app0:");
+    Log("unmounting app0: = 0x%08X", (unsigned)res);
     PutTree(PKG_DIR, GAME_DIR, 1, 1);
     Log("every file can be replaced");
     sceKernelPowerLock(0);
@@ -621,7 +626,11 @@ static void Install(void)
     WriteResult("ok", "done", 0, "");
     Log("installed v%s", g_version);
 
-    sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL); /* app0: is ux0:app/OMHA00001, now the new version */
+    /* app0: is unmounted: start the new version from its folder */
+    res = sceAppMgrLoadExec(GAME_DIR "/eboot.bin", NULL, NULL);
+    Log("starting " GAME_DIR "/eboot.bin = 0x%08X", (unsigned)res);
+    res = sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
+    Log("starting app0:eboot.bin = 0x%08X", (unsigned)res);
     Fail("start", 0, "The new version is installed, but could not be started: start OpenMoHAA again from the "
                      "LiveArea.");
 }
