@@ -626,9 +626,8 @@ static void Install(void)
     WriteResult("ok", "done", 0, "");
     Log("installed v%s", g_version);
 
-    /* app0: is unmounted: start the new version from its folder */
-    res = sceAppMgrLoadExec(GAME_DIR "/eboot.bin", NULL, NULL);
-    Log("starting " GAME_DIR "/eboot.bin = 0x%08X", (unsigned)res);
+    /* app0: still names the title's folder for the next program (only ux0:app paths are
+     * refused, 0x8080201E), and that folder now holds the new version */
     res = sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
     Log("starting app0:eboot.bin = 0x%08X", (unsigned)res);
     Fail("start", 0, "The new version is installed, but could not be started: start OpenMoHAA again from the "
