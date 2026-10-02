@@ -305,9 +305,9 @@ function(package_vita_vpk)
         list(APPEND VITA_LANG_FILES ${LANG_OUT})
     endforeach()
 
-    # updater.bin: installs a downloaded release over the game (misc/vita/updater). A
-    # separate program, because an app cannot install over itself while it runs; not a
-    # "safe" self (-s), as the Vita's installer is only open to unsafe homebrew.
+    # updater.bin: puts a downloaded release in place of the game's files (misc/vita/updater).
+    # A separate program, so the game is closed while its files are replaced; not a "safe"
+    # self (-s), as only unsafe homebrew may write to ux0:app.
     set(UPDATER_DIR ${CMAKE_SOURCE_DIR}/misc/vita/updater)
     add_executable(vita_updater ${UPDATER_DIR}/updater.c ${UPDATER_DIR}/debugScreen.c)
     target_link_libraries(vita_updater
@@ -319,7 +319,6 @@ function(package_vita_vpk)
         COMMAND ${CMAKE_STRIP} -g $<TARGET_FILE:vita_updater>
         COMMAND ${VITA_ELF_CREATE} $<TARGET_FILE:vita_updater> ${CMAKE_BINARY_DIR}/vita_updater.velf
         COMMAND ${VITA_MAKE_FSELF} ${CMAKE_BINARY_DIR}/vita_updater.velf ${UPDATER_BIN}
-        COMMAND ${VITA_MKSFOEX} -s TITLE_ID=OMHA00002 "OpenMoHAA Updater" ${CMAKE_BINARY_DIR}/updater_helper_param.sfo
         COMMENT "Creating ${UPDATER_BIN}"
         VERBATIM
     )
@@ -351,14 +350,6 @@ function(package_vita_vpk)
                     --add ${CMAKE_BINARY_DIR}/game_suprx=game.suprx
                     --add ${CMAKE_BINARY_DIR}/cgame_suprx=cgame.suprx
                     --add ${UPDATER_BIN}=updater.bin
-                    # The helper title updater.bin installs to replace the game (an app cannot
-                    # be installed over while it runs): updater.bin itself as OMHA00002.
-                    --add ${UPDATER_BIN}=updater/helper/eboot.bin
-                    --add ${CMAKE_BINARY_DIR}/updater_helper_param.sfo=updater/helper/sce_sys/param.sfo
-                    --add ${VITA_SCE_DIR}/icon0.png=updater/helper/sce_sys/icon0.png
-                    --add ${VITA_SCE_DIR}/livearea/contents/bg.png=updater/helper/sce_sys/livearea/contents/bg.png
-                    --add ${VITA_SCE_DIR}/livearea/contents/startup.png=updater/helper/sce_sys/livearea/contents/startup.png
-                    --add ${VITA_SCE_DIR}/livearea/contents/template.xml=updater/helper/sce_sys/livearea/contents/template.xml
                     # CA certificates for the update check's HTTPS (curl.se/ca, MPL 2.0)
                     --add ${UPDATER_DIR}/cacert.pem=cacert.pem
                     ${VPK_FILE}

@@ -860,14 +860,10 @@ int VitaUpdate_TakeInstallResult(char *version, int versionSize, char *error, in
         snprintf(error, errorSize, "The installer found nothing to install.");
     } else if (!strcmp(step, "extract")) {
         snprintf(error, errorSize, "The installer could not unpack the new version.");
-    } else if (!strcmp(step, "helper")) {
-        snprintf(error, errorSize, "The installer could not prepare the new version.");
-    } else if (!strcmp(step, "header")) {
-        snprintf(error, errorSize, "The installer could not prepare the new version.");
     } else if (!strcmp(step, "language")) {
         snprintf(error, errorSize, "The game was updated, but its language pack could not be replaced.");
     } else {
-        snprintf(error, errorSize, "The Vita's installer rejected the new version.");
+        snprintf(error, errorSize, "The new version could not be installed.");
     }
     snprintf(detail, detailSize, "%s (%s) %s", step, code, det);
     return -1;

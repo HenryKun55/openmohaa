@@ -959,9 +959,8 @@
 { "The installer could not start. Enable Unsafe Homebrew in Settings > HENkaku Settings and try again." "Der Installer konnte nicht starten. Aktiviere Unsafe Homebrew unter Einstellungen > HENkaku Settings und versuch es nochmal." }
 { "The installer found nothing to install." "Der Installer hat nichts zum Installieren gefunden." }
 { "The installer could not unpack the new version." "Der Installer konnte die neue Version nicht entpacken." }
-{ "The installer could not prepare the new version." "Der Installer konnte die neue Version nicht vorbereiten." }
 { "The game was updated, but its language pack could not be replaced." "Das Spiel wurde aktualisiert, aber das Sprachpaket konnte nicht ersetzt werden." }
-{ "The Vita's installer rejected the new version." "Der Installer der Vita hat die neue Version abgelehnt." }
+{ "The new version could not be installed." "Die neue Version konnte nicht installiert werden." }
 
 // Words drawn in menu pictures, used by misc/vita/make_menu_text.py (not by the game).
 { "SELECT DIFFICULTY" "SCHWIERIGKEIT" }

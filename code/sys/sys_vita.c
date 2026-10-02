@@ -182,19 +182,6 @@ void Sys_VitaBootPicture_Release(void)
 
 void Sys_PlatformInit(void)
 {
-    /* After an update: updater.bin removes its helper title (OMHA00002), then starts the
-     * game again. It keeps the flag until the helper is gone, so every start tries again,
-     * but for the start that comes back from it (cleanup_ran), so this never loops; the flag
-     * is removed here when updater.bin cannot start at all. */
-    {
-        SceIoStat st;
-        if (sceIoGetstat("ux0:data/openmohaa/update/cleanup_ran", &st) >= 0) {
-            sceIoRemove("ux0:data/openmohaa/update/cleanup_ran");
-        } else if (sceIoGetstat("ux0:data/openmohaa/update/cleanup", &st) >= 0) {
-            sceAppMgrLoadExec("app0:updater.bin", NULL, NULL);
-            sceIoRemove("ux0:data/openmohaa/update/cleanup");
-        }
-    }
     Sys_VitaBootPicture_Show();
 
     sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
