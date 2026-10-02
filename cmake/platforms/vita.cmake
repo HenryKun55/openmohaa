@@ -23,6 +23,7 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
     ${SOURCE_DIR}/sys/sys_vita.c
     # New version check / download (the install is done by misc/vita/updater).
     ${SOURCE_DIR}/sys/vita_update.c
+    ${SOURCE_DIR}/sys/vita_bootui.c
     ${SOURCE_DIR}/sys/vita_corepp_shims.cpp
     # Custom dlopen wrapping sceKernelLoadStartModule for .suprx — used
     # by sys_loadlib.h on Vita (SDL_LoadObject is stubbed in SDL2-Vita).
@@ -338,6 +339,9 @@ function(package_vita_vpk)
                     # Settings menu font with accented letters (misc/vita/make_font.py).
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont=main/fonts/vita-14.RitualFont
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/DejaVu-LICENSE.txt=main/fonts/DejaVu-LICENSE.txt
+                    # Start-up screens font (misc/vita/make_boot_font.py, Oswald: OFL)
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-boot.font=main/fonts/vita-boot.font
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/fonts/OFL.txt=main/fonts/Oswald-OFL.txt
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga=main/gfx/fonts/vita-14.tga
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader=main/scripts/vita.shader
                     ${VITA_LANG_ADD}
@@ -367,6 +371,7 @@ function(package_vita_vpk)
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-boot.font
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader
                 ${VITA_LANG_FILES}
                 ${VITA_ART_DEPENDS}

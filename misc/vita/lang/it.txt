@@ -928,10 +928,13 @@
 { "Downloading version %s..." "Download della versione %s..." }
 { "O: cancel" "O: annulla" }
 { "Version %s is downloaded and checked." "La versione %s è scaricata e verificata." }
-{ "To install it the game closes and the installer opens; then start the game again." "Per installarla il gioco si chiude e si apre l'installer; poi riapri il gioco." }
+{ "The game will close, install the new version and start again." "Il gioco si chiuderà, installerà la nuova versione e si riaprirà." }
 { "X: install now   O: later" "X: installa ora   O: dopo" }
 { "Details: ux0:data/openmohaa/update/update.log" "Dettagli: ux0:data/openmohaa/update/update.log" }
 { "X: try again   O: close" "X: riprova   O: chiudi" }
+{ "Settings and saves are kept." "Impostazioni e salvataggi restano." }
+{ "X: update now   O: later" "X: aggiorna ora   O: dopo" }
+{ "Press any button to continue." "Premi un tasto qualsiasi per continuare." }
 { "The Vita's network could not start." "La rete della Vita non si è avviata." }
 { "Out of memory." "Memoria insufficiente." }
 { "The Vita is not connected to Wi-Fi." "La Vita non è connessa al Wi-Fi." }

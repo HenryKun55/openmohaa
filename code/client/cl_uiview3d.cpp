@@ -1057,9 +1057,7 @@ static float VitaMenu_PrintWrapped(class UIFont *font, float x, float y, const c
 }
 
 #ifdef __vita__
-/* Once per start, in the main menu: report the last install, then look for a new
- * version (Vita settings > System > Check for updates). A check started here stays
- * silent unless it finds one or fails for another reason than the Wi-Fi being off. */
+/* Once per start, in the main menu: report the last install (updater.bin's result). */
 void CL_VitaUpdate_Frame(void)
 {
     static qboolean s_resultRead, s_checked;
@@ -1083,21 +1081,11 @@ void CL_VitaUpdate_Frame(void)
             VitaUpdate_Open(qfalse);
         }
     }
-    if (!s_checked && !g_vuResult && Sys_Milliseconds() - s_menuSince > 2000) {
-        s_checked = qtrue;
-        if (Cvar_Get("vita_update_check", "1", CVAR_ARCHIVE)->integer) {
-            VitaUpdate_Check(Cvar_VariableString("vita_language"));
-        }
-    }
-    if (st != s_lastState) {
-        if (!g_vuActive && st == VU_AVAILABLE) {
-            VitaUpdate_Open(qfalse);
-        } else if (!g_vuActive && st == VU_ERROR && s_lastState == VU_CHECKING
-                   && strcmp(VitaUpdate_Error(), "The Vita is not connected to Wi-Fi.")) {
-            VitaUpdate_Open(qfalse);
-        }
-        s_lastState = st;
-    }
+    /* The automatic check runs at start-up, before the intro (sys_vita.c, vita_bootui.c):
+     * here only "Check now" from the Vita settings. */
+    (void)st;
+    (void)s_lastState;
+    (void)s_checked;
 }
 
 static void VitaUpdate_Draw(class UIFont *font, float screenW, float screenH)
@@ -1166,7 +1154,7 @@ static void VitaUpdate_Draw(class UIFont *font, float screenW, float screenH)
         hint = "O: cancel";
     } else if (st == VU_READY) {
         y = VitaMenu_PrintWrapped(font, textX, y, va(VT("Version %s is downloaded and checked."), VitaUpdate_NewVersion()), wrap);
-        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VT("To install it the game closes and the installer opens; then start the game again."), wrap);
+        y = VitaMenu_PrintWrapped(font, textX, y + 6.0f, VT("The game will close, install the new version and start again."), wrap);
         hint = "X: install now   O: later";
     } else if (st == VU_ERROR) {
         font->setColor(URed);
@@ -1316,6 +1304,10 @@ void CL_VitaPerfMenu_Init(void)
 {
     Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
     Cmd_AddCommand("vitasettings", CL_VitaSettings_f);
+#ifdef __vita__
+    /* read at start-up from the config by vita_bootui.c: 1 = look for a new version */
+    Cvar_Get("vita_update_check", "1", CVAR_ARCHIVE);
+#endif
     Cmd_AddCommand("vitadebug", CL_VitaDebug_f);
     Cmd_AddCommand("+vitaselect", CL_VitaSelectDown_f);
     Cmd_AddCommand("-vitaselect", CL_VitaSelectUp_f);

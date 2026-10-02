@@ -123,6 +123,7 @@ __attribute__((used)) const unsigned char g_vitaSegmentPad[8 * 1024] = { 1 };
 #define BOOT_FB_SIZE  0x200000u /* 960 x 544 x 4, rounded up to the CDRAM granularity */
 
 static SceUID s_bootPicBlock = -1;
+static void  *s_bootPicBase;
 
 static void Sys_VitaBootPicture_Show(void)
 {
@@ -130,26 +131,26 @@ static void Sys_VitaBootPicture_Show(void)
     void     *base = NULL;
     SceUID    block;
 
-    memset(&image, 0, sizeof(image));
-    image.version = PNG_IMAGE_VERSION;
-    if (!png_image_begin_read_from_file(&image, "app0:sce_sys/pic0.png")) {
-        return; /* a VPK built without the game's art: nothing to show */
-    }
-    if (image.width != BOOT_PIC_W || image.height != BOOT_PIC_H) {
-        png_image_free(&image);
-        return;
-    }
     block = sceKernelAllocMemBlock("boot_picture", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, BOOT_FB_SIZE, NULL);
     if (block < 0 || sceKernelGetMemBlockBase(block, &base) < 0) {
-        png_image_free(&image);
         if (block >= 0) sceKernelFreeMemBlock(block);
         return;
     }
-    image.format = PNG_FORMAT_RGBA; /* R first in memory: the display's A8B8G8R8 */
-    if (!png_image_finish_read(&image, NULL, base, BOOT_PIC_W * 4, NULL)) {
+    /* black when a VPK was built without the game's art */
+    memset(base, 0, BOOT_FB_SIZE);
+    memset(&image, 0, sizeof(image));
+    image.version = PNG_IMAGE_VERSION;
+    if (png_image_begin_read_from_file(&image, "app0:sce_sys/pic0.png")) {
+        if (image.width == BOOT_PIC_W && image.height == BOOT_PIC_H) {
+            image.format = PNG_FORMAT_RGBA; /* R first in memory: the display's A8B8G8R8 */
+            if (!png_image_finish_read(&image, NULL, base, BOOT_PIC_W * 4, NULL)) {
+                memset(base, 0, BOOT_FB_SIZE);
+            }
+        }
         png_image_free(&image);
-        sceKernelFreeMemBlock(block);
-        return;
+    }
+    for (int i = 0; i < BOOT_PIC_W * BOOT_PIC_H; i++) {
+        ((unsigned int *)base)[i] |= 0xFF000000u; /* opaque */
     }
     {
         SceDisplayFrameBuf fb;
@@ -166,6 +167,7 @@ static void Sys_VitaBootPicture_Show(void)
         }
     }
     s_bootPicBlock = block;
+    s_bootPicBase  = base;
 }
 
 /* Called once vitaGL's own frames are on screen. */
@@ -174,6 +176,7 @@ void Sys_VitaBootPicture_Release(void)
     if (s_bootPicBlock >= 0) {
         sceKernelFreeMemBlock(s_bootPicBlock);
         s_bootPicBlock = -1;
+        s_bootPicBase  = NULL;
     }
 }
 
@@ -192,6 +195,13 @@ void Sys_PlatformInit(void)
     Sys_VitaBootPicture_Show();
 
     sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
+
+    /* New version check, over the boot picture, before anything plays (Vita settings >
+     * System > Check for updates; code/sys/vita_bootui.c). */
+    {
+        extern void Sys_VitaBootUpdateCheck(unsigned int *framebuffer);
+        Sys_VitaBootUpdateCheck((unsigned int *)s_bootPicBase);
+    }
 
     sceIoMkdir("ux0:data", 0777);
     sceIoMkdir(VITA_DATA_ROOT, 0777);
