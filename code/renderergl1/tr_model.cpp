@@ -1600,6 +1600,7 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
 {
 #ifdef __vita__
     if (vita_skip_mask && (vita_skip_mask->integer & 2)) return;
+    vp_rt[VPR_STATIC_SURFS]++;
 #endif
     int                i, j;
     dtiki_t           *tiki;
@@ -1724,9 +1725,32 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
         tess.numIndexes += j;
     }
 
+#ifdef __vita__
+    if (g_vitaStaticWorld) {
+        /* merged batch (tr_backend.c): the instance's transform applied here, as
+         * R_RotateForStaticModel would through the modelview */
+        const cStaticModelUnpacked_t *SM    = backEnd.currentStaticModel;
+        const float                   scale = SM->tiki->load_scale * SM->scale;
+        for (j = 0; j < render_count; j++) {
+            const float *p = surf->pStaticXyz[j], *n = surf->pStaticNormal[j];
+            for (i = 0; i < 3; i++) {
+                tess.xyz[baseVertex + j][i] = SM->origin[i]
+                    + scale * (SM->axis[0][i] * p[0] + SM->axis[1][i] * p[1] + SM->axis[2][i] * p[2]);
+                tess.normal[baseVertex + j][i] = SM->axis[0][i] * n[0] + SM->axis[1][i] * n[1] + SM->axis[2][i] * n[2];
+            }
+            tess.xyz[baseVertex + j][3]    = p[3];
+            tess.normal[baseVertex + j][3] = n[3];
+        }
+    }
+#endif
     for (j = 0; j < render_count; j++) {
-        Vector4Copy(surf->pStaticXyz[j], tess.xyz[baseVertex + j]);
-        Vector4Copy(surf->pStaticNormal[j], tess.normal[baseVertex + j]);
+#ifdef __vita__
+        if (!g_vitaStaticWorld)
+#endif
+        {
+            Vector4Copy(surf->pStaticXyz[j], tess.xyz[baseVertex + j]);
+            Vector4Copy(surf->pStaticNormal[j], tess.normal[baseVertex + j]);
+        }
         tess.texCoords[baseVertex + j][0][0] = surf->pStaticTexCoords[j][0][0];
         tess.texCoords[baseVertex + j][0][1] = surf->pStaticTexCoords[j][0][1];
         tess.texCoords[baseVertex + j][1][0] = surf->pStaticTexCoords[j][1][0];

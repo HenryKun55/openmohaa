@@ -2014,6 +2014,7 @@ void RB_EndSurface( void ) {
 
 	if ( tess.numIndexes ) {
 		vp_rt[VPR_BATCHES]++;
+		if ( type == SF_TIKI_STATIC ) vp_rt[VPR_STATIC_BATCHES]++;
 		vp_rt[VPR_VERTS] += tess.numVertexes;
 	}
 	RB_EndSurface_Real();

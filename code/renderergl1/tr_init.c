@@ -1320,12 +1320,14 @@ R_Register
  *   bit 6 (64) = sphere shaders (light_lines etc)
  * Set via autoexec: `seta vita_skip_mask 1` to test skipping just skel. */
 cvar_t *vita_skip_mask = NULL;
+cvar_t *r_vita_staticmerge = NULL;
 
 void R_Register( void )
 {
 #ifdef __vita__
 	/* not archived: the Vita settings' GPU TEST switches must not stick across starts */
 	vita_skip_mask = ri.Cvar_Get( "vita_skip_mask", "0", 0 );
+	r_vita_staticmerge = ri.Cvar_Get( "r_vita_staticmerge", "1", 0 );
 	vita_skip_mask->flags &= ~CVAR_ARCHIVE;
 	ri.Printf( PRINT_ALL, "^3[VITA] vita_skip_mask = %d^7  (bit0=skel  bit1=static  bit2=swipe  bit3=sprite  bit4=terrain  bit5=sky  bit6=FACE  bit7=TRIS  bit8=GRID  bit9=polychain  bit10=marks  bit11=transparent)\n", vita_skip_mask->integer );
 #endif

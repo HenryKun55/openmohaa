@@ -89,6 +89,8 @@ enum {
 	VPR_SKINFAIL,								// counters per fallback reason (6 slots, vita_skin_fail)
 	VPR_SKINFAIL_END = VPR_SKINFAIL + 6,
 	VPR_SKIN_GPU_US = VPR_SKINFAIL_END,			// time of the skeletal surfaces drawn by GPU skinning
+	VPR_STATIC_SURFS,							// counter: static model surfaces (RB_StaticMesh)
+	VPR_STATIC_BATCHES,							// counter: the draws they took (merged: fewer)
 	VPR_COUNT
 };
 

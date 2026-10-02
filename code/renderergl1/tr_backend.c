@@ -741,6 +741,39 @@ static void RB_VitaFlushVboBatchIfNeeded(const surfaceType_t *surface)
 }
 #endif
 
+#ifdef __vita__
+qboolean g_vitaStaticWorld = qfalse;
+
+/*
+Static models (the beach's hedgehogs, wire posts...) are one draw per instance: each has
+its own modelview, so every instance ends the batch, and each draw costs ~100 us through
+vitaGL. Their lighting is baked in their vertex colors, so for a shader that does not look
+at the model (light grid, spherical lights, deforms), the instances can share one batch:
+RB_StaticMesh puts their vertices in world space and the modelview stays the world's.
+Fog, environment mapping and distance fades are computed in the space of backEnd.ori, so
+they stay right with world-space vertices and the world's ori.
+*/
+qboolean RB_VitaStaticMergeable(const shader_t *shader)
+{
+	const qboolean ok = r_vita_staticmerge && r_vita_staticmerge->integer && shader
+		&& !shader->needsLGrid && !shader->needsLSpherical && !shader->numDeforms;
+	/* each static model shader once, with why it cannot be merged (perf log) */
+	if (shader && r_vita_perflog && r_vita_perflog->integer) {
+		static const shader_t *seen[256];
+		static int numSeen;
+		int k;
+		for (k = 0; k < numSeen && seen[k] != shader; k++) {
+		}
+		if (k == numSeen && numSeen < 256) {
+			seen[numSeen++] = shader;
+			ri.Printf(PRINT_ALL, "[VITA-STATIC] shader '%s' merge=%d lgrid=%d lspherical=%d deforms=%d\n", shader->name,
+				ok, shader->needsLGrid, shader->needsLSpherical, shader->numDeforms);
+		}
+	}
+	return ok;
+}
+#endif
+
 void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	shader_t		*shader, *oldShader;
 	int				entityNum, oldEntityNum;
@@ -798,8 +831,16 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 		// change the tess parameters if needed
 		// a "entityMergable" shader is a shader that can have surfaces from seperate
 		// entities merged into a single batch, like smoke and blood puff sprites
+#ifdef __vita__
+		/* another instance of a static model, merged into the running batch */
+		/* bStaticModel is the sort's bit (1 << QSORT_STATICMODEL_SHIFT), not qtrue; -1 = none yet */
+		const qboolean vitaMerge = bStaticModel && oldbStaticModel > 0 && g_vitaStaticWorld
+			&& RB_VitaStaticMergeable(shader);
+#else
+		const qboolean vitaMerge = qfalse;
+#endif
 		if (shader != oldShader || dlightMap != oldDlightMap || (oldShader->flags & 1)
-			|| ( entityNum != oldEntityNum && !shader->entityMergable )
+			|| ( entityNum != oldEntityNum && !shader->entityMergable && !vitaMerge )
 			|| ( bStaticModel != oldbStaticModel && !shader->entityMergable )) {
 			if (oldShader != NULL) {
 				RB_EndSurface();
@@ -821,9 +862,18 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				backEnd.currentEntity = 0;
 				backEnd.spareSphere.TessFunction = 0;
 				backEnd.currentStaticModel = &backEnd.refdef.staticModels[entityNum];
+#ifdef __vita__
+				g_vitaStaticWorld = RB_VitaStaticMergeable(shader);
+				if (g_vitaStaticWorld) {
+					backEnd.ori = backEnd.viewParms.world;
+				} else
+#endif
 				R_RotateForStaticModel(backEnd.currentStaticModel, &backEnd.viewParms, &backEnd.ori );
 			}
 			else {
+#ifdef __vita__
+				g_vitaStaticWorld = qfalse;
+#endif
 				backEnd.currentStaticModel = NULL;
 				if (entityNum != ENTITYNUM_WORLD) {
 					backEnd.currentEntity = &backEnd.refdef.entities[entityNum];

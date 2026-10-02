@@ -1484,6 +1484,11 @@ extern cvar_t	*r_flareSize;
 extern cvar_t	*r_flareFade;
 #ifdef __vita__
 extern cvar_t	*vita_skip_mask;
+extern cvar_t	*r_vita_staticmerge;
+/* Static models merged into one batch per shader: their vertices go to the batch in world
+ * space (RB_StaticMesh) and the modelview stays the world's (tr_backend.c). */
+extern qboolean	g_vitaStaticWorld;
+qboolean RB_VitaStaticMergeable(const shader_t *shader);
 #endif
 
 extern cvar_t	*r_ignore;				// used for debugging anything

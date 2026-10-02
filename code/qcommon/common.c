@@ -2597,12 +2597,13 @@ static void Com_VitaProfRenderThread( int frames ) {
 		for ( i = 0; i <= VPR_NSURF; i++ ) {
 			drawAll += vp_rt[VPR_DRAW + i];
 		}
-		Com_Printf( "RT-PROF2: surflist=%.1f (entity/shader setup=%.1f) | skin surfaces gpu=%d cpu=%d, cpu why: morph=%d off=%d stage=%d inelig=%d stale=%d chan=%d\n",
+		Com_Printf( "RT-PROF2: surflist=%.1f (entity/shader setup=%.1f) | skin surfaces gpu=%d cpu=%d, cpu why: morph=%d off=%d stage=%d inelig=%d stale=%d chan=%d | static surfs=%d draws=%d\n",
 			vp_rt[VPR_LIST] / 1000.0f / frames,
 			( (int)vp_rt[VPR_LIST] - (int)tessAll - (int)drawAll ) / 1000.0f / frames,
 			vp_rt[VPR_SKIN_GPU] / frames, vp_rt[VPR_SKIN_CPU] / frames, vp_rt[VPR_SKINFAIL + 0] / frames,
 			vp_rt[VPR_SKINFAIL + 1] / frames, vp_rt[VPR_SKINFAIL + 2] / frames, vp_rt[VPR_SKINFAIL + 3] / frames,
-			vp_rt[VPR_SKINFAIL + 4] / frames, vp_rt[VPR_SKINFAIL + 5] / frames );
+			vp_rt[VPR_SKINFAIL + 4] / frames, vp_rt[VPR_SKINFAIL + 5] / frames,
+			vp_rt[VPR_STATIC_SURFS] / frames, vp_rt[VPR_STATIC_BATCHES] / frames );
 	}
 	{
 		// RT-PROF3: the costliest CPU-skinned surfaces. reason: morph = face animating,
