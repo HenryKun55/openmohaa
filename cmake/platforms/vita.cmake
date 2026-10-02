@@ -252,6 +252,13 @@ function(package_vita_vpk)
             ${VITA_ART_DIR}/sce_sys/livearea/contents/bg.png
             ${VITA_ART_DIR}/sce_sys/livearea/contents/startup.png)
     endif()
+    set(VITA_PIC0_ADD "")
+    if(EXISTS ${VITA_ART_DIR}/sce_sys/pic0.png)
+        # Boot picture: shown by the Vita from the bubble tap, kept by sys_vita.c until
+        # vitaGL starts.
+        set(VITA_PIC0_ADD --add ${VITA_ART_DIR}/sce_sys/pic0.png=sce_sys/pic0.png)
+        list(APPEND VITA_ART_DEPENDS ${VITA_ART_DIR}/sce_sys/pic0.png)
+    endif()
     if(EXISTS ${VITA_ART_DIR}/splash.png)
         # Shown by sdl/vita_boot_splash.c during boot and level loads.
         set(VITA_SPLASH_ADD --add ${VITA_ART_DIR}/splash.png=splash.png)
@@ -323,6 +330,7 @@ function(package_vita_vpk)
                     --add ${VITA_ICON_DIR}/livearea/contents/bg.png=sce_sys/livearea/contents/bg.png
                     --add ${VITA_ICON_DIR}/livearea/contents/startup.png=sce_sys/livearea/contents/startup.png
                     ${VITA_SPLASH_ADD}
+                    ${VITA_PIC0_ADD}
                     --add ${VITA_SCE_DIR}/livearea/contents/template.xml=sce_sys/livearea/contents/template.xml
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_autoexec.cfg=main/vita_autoexec.cfg
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg=main/vita_defaults.cfg

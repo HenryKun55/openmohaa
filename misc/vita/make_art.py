@@ -12,6 +12,7 @@ never committed to the repository):
     sce_sys/icon0.png                        128x128  bubble icon
     sce_sys/livearea/contents/bg.png         840x500  LiveArea background
     sce_sys/livearea/contents/startup.png    280x158  launch gate image
+    sce_sys/pic0.png                         960x544  shown from the bubble tap until the game draws
     splash.png                               960x544  boot / loading screen
 
 cmake/platforms/vita.cmake packs these into the VPK when they exist, otherwise
@@ -192,6 +193,12 @@ def main():
     bg = backdrop(photo, (840, 500), focus_y=0.58, darken=0.5, top_shade=0.6).convert("RGBA")
     place_logo(bg, logo, 420, (420, 215))
     save(bg, "sce_sys/livearea/contents/bg.png")
+
+    # Boot picture: the LiveArea background at full screen. The Vita shows it from the
+    # bubble tap, and the game keeps it on screen until vitaGL starts (sys_vita.c).
+    p0 = backdrop(photo, (960, 544), focus_y=0.58, darken=0.5, top_shade=0.6).convert("RGBA")
+    place_logo(p0, logo, 480, (480, 250))
+    save(p0, "sce_sys/pic0.png")
 
     # Launch gate image (shown as the bubble opens).
     st = backdrop(photo, (280, 158), focus_y=0.55, darken=0.45, top_shade=0.5).convert("RGBA")
