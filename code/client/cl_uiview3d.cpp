@@ -1174,6 +1174,29 @@ static void VitaUpdate_Draw(class UIFont *font, float screenW, float screenH)
 }
 #endif
 
+/* Who made this port and which version it is: bottom left of the main menu. */
+#define VITA_PORT_AUTHOR "HenryKun55"
+
+void CL_VitaCredits_Draw(class UIFont *font, float screenW, float screenH)
+{
+#ifdef __vita__
+    const char *lines[3];
+    float       y;
+
+    if (!font) return;
+    lines[0] = VitaMenu_Latin1(va(VT("OpenMoHAA for PS Vita, version %s"), VitaUpdate_CurrentVersion()));
+    lines[1] = VitaMenu_Latin1(va(VT("PS Vita port by %s, made with love"), VITA_PORT_AUTHOR));
+    lines[2] = VitaMenu_Latin1(VT("Medal of Honor (c) Electronic Arts. OpenMoHAA is free software (GPL)."));
+    y = screenH - 3 * 16.0f - 8.0f;
+    for (int i = 0; i < 3; i++, y += 16.0f) {
+        font->setColor(UColor(0.0f, 0.0f, 0.0f, 0.8f)); /* shadow, readable on any background */
+        font->Print(11.0f, y + 1.0f, lines[i], -1, NULL);
+        font->setColor(i == 0 ? UColor(1.0f, 0.85f, 0.45f, 0.95f) : UColor(1.0f, 1.0f, 1.0f, 0.8f));
+        font->Print(10.0f, y, lines[i], -1, NULL);
+    }
+#endif
+}
+
 void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
 {
 #ifdef __vita__
@@ -1211,6 +1234,14 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
     /* Title */
     menuFont->setColor(UWhite);
     menuFont->Print(boxX + 12.0f, boxY + 7.0f, VitaMenu_Latin1(VT(g_pmDebug ? "DEBUG" : "VITA SETTINGS")), -1, NULL);
+#ifdef __vita__
+    {
+        const char *about = VitaMenu_Latin1(va("v%s  -  %s", VitaUpdate_CurrentVersion(),
+                                               va(VT("PS Vita port by %s, made with love"), VITA_PORT_AUTHOR)));
+        menuFont->setColor(UColor(1.0f, 0.85f, 0.45f, 1.0f));
+        menuFont->Print(boxX + boxW - 12.0f - (float)menuFont->getWidth(about, -1), boxY + 7.0f, about, -1, NULL);
+    }
+#endif
 
     /* Tabs */
     y = boxY + 40.0f;

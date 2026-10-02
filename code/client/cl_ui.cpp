@@ -2403,17 +2403,25 @@ void UI_Update(void)
         extern void     CL_VitaPerfMenu_Draw(class UIFont * menuFont, float screenW, float screenH);
 #ifdef __vita__
         extern void CL_VitaUpdate_Frame(void);
+        extern void CL_VitaCredits_Draw(class UIFont * font, float screenW, float screenH);
         CL_VitaUpdate_Frame(); // new version check in the main menu
 #endif
-        if (CL_VitaPerfMenu_IsActive() && !(view3d && view3d->IsVisible())) {
-            static UIFont *s_menuFont;
-            if (!s_menuFont) {
+        static UIFont *s_menuFont;
+        if (!s_menuFont) {
 #ifdef __vita__
-                s_menuFont = new UIFont("vita-14"); // has the accented letters
+            s_menuFont = new UIFont("vita-14"); // has the accented letters
 #else
-                s_menuFont = new UIFont("verdana-14");
+            s_menuFont = new UIFont("verdana-14");
 #endif
-            }
+        }
+#ifdef __vita__
+        // version and credits, bottom left of the main menu
+        if (!CL_VitaPerfMenu_IsActive() && menuManager.CurrentMenu()
+            && !str::icmp(menuManager.CurrentMenu()->m_name, "main")) {
+            CL_VitaCredits_Draw(s_menuFont, uWinMan.getFrame().size.width, uWinMan.getFrame().size.height);
+        }
+#endif
+        if (CL_VitaPerfMenu_IsActive() && !(view3d && view3d->IsVisible())) {
             CL_VitaPerfMenu_Draw(s_menuFont, uWinMan.getFrame().size.width, uWinMan.getFrame().size.height);
         }
     }

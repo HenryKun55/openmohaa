@@ -1674,3 +1674,8 @@
 { "Stop! There's way too much machine gun fire over there!" "Alto! Tem fogo de metralhadora demais ali!" }
 { "Don't go over there, you'll be cut to pieces!" "Não vai por ali, vão te fazer em pedaços!" }
 { "No, not that way, it's too exposed! Stay under cover!" "Não, por ali não, está muito exposto! Fique no abrigo!" }
+
+// Version and credits (main menu, Vita settings)
+{ "OpenMoHAA for PS Vita, version %s" "OpenMoHAA para PS Vita, versão %s" }
+{ "PS Vita port by %s, made with love" "Port para PS Vita por %s, feito com amor" }
+{ "Medal of Honor (c) Electronic Arts. OpenMoHAA is free software (GPL)." "Medal of Honor (c) Electronic Arts. O OpenMoHAA é software livre (GPL)." }
