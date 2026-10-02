@@ -860,6 +860,8 @@ int VitaUpdate_TakeInstallResult(char *version, int versionSize, char *error, in
         snprintf(error, errorSize, "The installer found nothing to install.");
     } else if (!strcmp(step, "extract")) {
         snprintf(error, errorSize, "The installer could not unpack the new version.");
+    } else if (!strcmp(step, "helper")) {
+        snprintf(error, errorSize, "The installer could not prepare the new version.");
     } else if (!strcmp(step, "header")) {
         snprintf(error, errorSize, "The installer could not prepare the new version.");
     } else if (!strcmp(step, "language")) {

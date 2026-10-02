@@ -1,17 +1,26 @@
 /*
  * OpenMoHAA for PS Vita - updater.bin
  *
- * The game downloads a new release (checking its SHA-256) and then replaces itself with
- * this small program (sceAppMgrLoadExec), because an app cannot install over itself while
- * it runs. This unpacks the downloaded .vpk, writes the package header the Vita's
- * installer needs, installs it over the app (settings and saves in ux0:data are kept),
- * puts the new language pack in place and writes what happened to result.txt, which the
- * game shows, translated, the next time it starts. Every step reports the exact error.
+ * The Vita's installer refuses to install over a title that is running (0x80101114), and
+ * this program runs as the game's title when the game hands over to it. So it works in
+ * three modes, by the title it runs as and the files it finds in ux0:data/openmohaa/update:
+ *
+ *  - stage (OMHA00001, started by the game with sceAppMgrLoadExec, plan.txt present):
+ *    unpacks the downloaded .vpk and writes its package header, installs a helper title
+ *    (OMHA00002: this same program, shipped in app0:updater/helper), and opens it.
+ *  - helper (OMHA00002): with the game closed, installs the new game over it (settings and
+ *    saves in ux0:data are kept), puts the new language pack in place, writes result.txt
+ *    (shown, translated, by the game) and opens the game again.
+ *  - cleanup (OMHA00001, started by the game at boot when "cleanup" is present): removes
+ *    the helper title so no extra bubble stays on the LiveArea, then goes back to the game.
+ *
+ * Every step reports the exact error on screen, in result.txt and in update.log.
  *
  * This file is part of OpenMoHAA, GPL v2 or later. head_bin_template.h comes from
  * VitaShell (GPLv3); debugScreen*.c/h are the Vita SDK samples (PSPSDK BSD license).
  */
 #include <psp2/appmgr.h>
+#include <psp2/apputil.h>
 #include <psp2/ctrl.h>
 #include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
@@ -37,6 +46,10 @@
 #define DATA_DIR    "ux0:data/openmohaa"
 #define UPDATE_DIR  DATA_DIR "/update"
 #define PKG_DIR     UPDATE_DIR "/pkg"
+#define HELPER_DIR  UPDATE_DIR "/helper"
+#define CLEANUP_FLAG UPDATE_DIR "/cleanup"
+#define GAME_TITLE   "OMHA00001"
+#define HELPER_TITLE "OMHA00002"
 #define PLAN_FILE   UPDATE_DIR "/plan.txt"
 #define RESULT_FILE UPDATE_DIR "/result.txt"
 #define LOG_FILE    UPDATE_DIR "/update.log"
@@ -263,7 +276,7 @@ static int ExtractEntry(SceUID zfd, uint32_t dataOff, int method, uint32_t csize
     return 0;
 }
 
-static void ExtractVpk(const char *vpk)
+static void ExtractVpk(const char *vpk, const char *dir)
 {
     unsigned char tail[22 + 65535], hdr[46], local[30];
     char          name[512], path[600];
@@ -289,9 +302,9 @@ static void ExtractVpk(const char *vpk)
     cdCount = U16(tail + i + 10);
     cdOff   = U32(tail + i + 16);
 
-    RemoveTree(PKG_DIR);
-    if (MkdirAll(PKG_DIR) < 0) {
-        Fail("extract", 0, "Could not create " PKG_DIR ".");
+    RemoveTree(dir);
+    if (MkdirAll(dir) < 0) {
+        Fail("extract", 0, "Could not create %s.", dir);
     }
 
     pos = cdOff;
@@ -321,7 +334,7 @@ static void ExtractVpk(const char *vpk)
         if (strstr(name, "..") || name[0] == '/') {
             Fail("extract", 0, "The downloaded package has an unsafe file name: %s", name);
         }
-        snprintf(path, sizeof(path), PKG_DIR "/%s", name);
+        snprintf(path, sizeof(path), "%s/%s", dir, name);
         if (nameLen && name[nameLen - 1] == '/') {
             MkdirAll(path);
             continue;
@@ -398,7 +411,7 @@ static void SfoString(const unsigned char *sfo, int size, const char *key, char 
     }
 }
 
-static void MakeHeadBin(void)
+static void MakeHeadBin(const char *dir, const char *expectedTitle)
 {
     unsigned char *sfo = NULL, head[sizeof(g_headBinTemplate)], hmac[16];
     int            sfoSize = 0, res;
@@ -406,15 +419,19 @@ static void MakeHeadBin(void)
     uint32_t       len, off, out;
     SceUID         fd;
 
-    res = ReadWhole(PKG_DIR "/sce_sys/param.sfo", &sfo, &sfoSize);
+    {
+        char sfoPath[300];
+        snprintf(sfoPath, sizeof(sfoPath), "%s/sce_sys/param.sfo", dir);
+        res = ReadWhole(sfoPath, &sfo, &sfoSize);
+    }
     if (res < 0) {
-        Fail("header", res, "The new version has no sce_sys/param.sfo.");
+        Fail("header", res, "%s has no sce_sys/param.sfo.", dir);
     }
     SfoString(sfo, sfoSize, "TITLE_ID", titleId, sizeof(titleId));
     SfoString(sfo, sfoSize, "CONTENT_ID", contentId, sizeof(contentId));
     free(sfo);
-    if (strcmp(titleId, "OMHA00001")) {
-        Fail("header", 0, "The downloaded package is for another app (title id '%s').", titleId);
+    if (strcmp(titleId, expectedTitle)) {
+        Fail("header", 0, "%s is for another app (title id '%s', expected %s).", dir, titleId, expectedTitle);
     }
 
     memcpy(head, g_headBinTemplate, sizeof(head));
@@ -433,8 +450,13 @@ static void MakeHeadBin(void)
     PkgHmac(head, len, hmac);
     memcpy(&head[len], hmac, 16);
 
-    MkdirAll(PKG_DIR "/sce_sys/package");
-    fd = sceIoOpen(PKG_DIR "/sce_sys/package/head.bin", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    {
+        char headPath[300];
+        snprintf(headPath, sizeof(headPath), "%s/sce_sys/package", dir);
+        MkdirAll(headPath);
+        snprintf(headPath, sizeof(headPath), "%s/sce_sys/package/head.bin", dir);
+        fd = sceIoOpen(headPath, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    }
     if (fd < 0 || sceIoWrite(fd, head, sizeof(head)) != (int)sizeof(head)) {
         Fail("header", fd, "Could not write the package header (memory card full?).");
     }
@@ -456,39 +478,98 @@ static int LoadPaf(void)
     return sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF, sizeof(argp), argp, buf);
 }
 
-static void Promote(void)
+static void InstallerUp(void)
 {
-    int res, state = 0, result = 0;
-
-    res = LoadPaf();
+    int res = LoadPaf();
     if (res < 0) {
-        Fail("install", res, "The Vita refused to load its installer (ScePaf). Enable \"unsafe homebrew\" in "
+        Fail("install", res, "The Vita refused to load its installer (ScePaf). Enable Unsafe Homebrew in "
                              "Settings > HENkaku Settings and try again.");
     }
     res = sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
     if (res < 0) {
-        Fail("install", res, "The Vita refused to load its installer (PromoterUtil). Enable \"unsafe homebrew\" "
+        Fail("install", res, "The Vita refused to load its installer (PromoterUtil). Enable Unsafe Homebrew "
                              "in Settings > HENkaku Settings and try again.");
     }
     res = scePromoterUtilityInit();
     if (res < 0) {
         Fail("install", res, "The Vita's installer did not start.");
     }
-    res = scePromoterUtilityPromotePkgWithRif(PKG_DIR, 1);
+}
+
+static void InstallerDown(void)
+{
+    scePromoterUtilityExit();
+    sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
+}
+
+/* Installs the package unpacked in dir (the installer must be up). */
+static void Promote(const char *dir, const char *what)
+{
+    int res, state = 0, result = 0;
+
+    res = scePromoterUtilityPromotePkgWithRif(dir, 1);
     if (res >= 0) {
         /* sync=1 returns when done; the result code tells whether it worked */
         scePromoterUtilityGetState(&state);
         scePromoterUtilityGetResult(&result);
-        Log("promote: ret=0x%08X state=%d result=0x%08X", (unsigned)res, state, (unsigned)result);
+        Log("promote %s: ret=0x%08X state=%d result=0x%08X", what, (unsigned)res, state, (unsigned)result);
         if (result < 0) {
             res = result;
         }
     }
-    scePromoterUtilityExit();
-    sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL);
     if (res < 0) {
-        Fail("install", res, "The Vita's installer rejected the new version. If the memory card is almost full, "
-                             "free some space; otherwise report this code.");
+        Fail("install", res, "The Vita's installer rejected %s. If the memory card is almost full, free some "
+                             "space; otherwise report this code.", what);
+    }
+}
+
+/* Copies a directory tree (the helper title shipped in app0:updater/helper). */
+static void CopyTree(const char *from, const char *to)
+{
+    SceUID      dir = sceIoDopen(from);
+    SceIoDirent ent;
+    char        src[512], dst[512];
+    static unsigned char buf[64 * 1024];
+
+    if (dir < 0) {
+        Fail("helper", dir, "This version has no %s (reinstall the game's .vpk).", from);
+    }
+    MkdirAll(to);
+    memset(&ent, 0, sizeof(ent));
+    while (sceIoDread(dir, &ent) > 0) {
+        snprintf(src, sizeof(src), "%s/%s", from, ent.d_name);
+        snprintf(dst, sizeof(dst), "%s/%s", to, ent.d_name);
+        if (SCE_S_ISDIR(ent.d_stat.st_mode)) {
+            CopyTree(src, dst);
+        } else {
+            SceUID in = sceIoOpen(src, SCE_O_RDONLY, 0), out;
+            int    n;
+            if (in < 0) Fail("helper", in, "Could not read %s.", src);
+            out = sceIoOpen(dst, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+            if (out < 0) Fail("helper", out, "Could not write %s (memory card full?).", dst);
+            while ((n = sceIoRead(in, buf, sizeof(buf))) > 0) {
+                if (sceIoWrite(out, buf, n) != n) Fail("helper", 0, "Writing %s failed (memory card full?).", dst);
+            }
+            sceIoClose(in);
+            sceIoClose(out);
+        }
+        memset(&ent, 0, sizeof(ent));
+    }
+    sceIoDclose(dir);
+}
+
+/* Opens another title and ends this process (as VitaShell launches an app). */
+static void LaunchAndExit(const char *titleId) __attribute__((noreturn));
+static void LaunchAndExit(const char *titleId)
+{
+    char uri[64];
+    snprintf(uri, sizeof(uri), "psgm:play?titleid=%s", titleId);
+    Log("launching %s", titleId);
+    sceAppMgrLaunchAppByUri(0xFFFFF, uri);
+    sceKernelDelayThread(10000);
+    sceAppMgrLaunchAppByUri(0xFFFFF, uri);
+    sceKernelExitProcess(0);
+    for (;;) {
     }
 }
 
@@ -506,17 +587,16 @@ static void MoveLanguagePack(const char *src, const char *dst)
     Log("language pack: %s -> %s", src, dst);
 }
 
-int main(void)
+static int Exists(const char *path)
+{
+    SceIoStat st;
+    return sceIoGetstat(path, &st) >= 0;
+}
+
+static void ReadPlan(char *vpk, int vpkSize, char *langSrc, char *langDst, int langSize)
 {
     unsigned char *plan = NULL;
     int            planSize = 0;
-    char           vpk[256] = "", langSrc[256] = "", langDst[256] = "";
-
-    psvDebugScreenInit();
-    /* keep the Vita awake while installing */
-    scePowerSetArmClockFrequency(444);
-
-    Say("\e[33;1mOpenMoHAA updater\e[0m\n\n");
 
     if (ReadWhole(PLAN_FILE, &plan, &planSize) < 0) {
         Fail("plan", 0, "There is no update to install (" PLAN_FILE " is missing). Start the game and check "
@@ -526,28 +606,64 @@ int main(void)
         if (!strncmp(line, "version=", 8)) {
             snprintf(g_version, sizeof(g_version), "%s", line + 8);
         } else if (!strncmp(line, "vpk=", 4)) {
-            snprintf(vpk, sizeof(vpk), "%s", line + 4);
+            snprintf(vpk, vpkSize, "%s", line + 4);
         } else if (!strncmp(line, "lang=", 5)) {
             char *bar = strchr(line + 5, '|');
             if (bar) {
                 *bar = 0;
-                snprintf(langSrc, sizeof(langSrc), "%s", line + 5);
-                snprintf(langDst, sizeof(langDst), "%s", bar + 1);
+                snprintf(langSrc, langSize, "%s", line + 5);
+                snprintf(langDst, langSize, "%s", bar + 1);
             }
         }
     }
     free(plan);
-    Log("installing v%s from %s", g_version, vpk);
+}
+
+/* OMHA00001, from the game: unpack the new version, install the helper title, open it. */
+static void Stage(void)
+{
+    char vpk[256] = "", langSrc[256] = "", langDst[256] = "";
+
+    ReadPlan(vpk, sizeof(vpk), langSrc, langDst, sizeof(langSrc));
+    Log("staging v%s from %s", g_version, vpk);
 
     Say("Unpacking version %s...\n", g_version);
-    ExtractVpk(vpk);
+    ExtractVpk(vpk, PKG_DIR);
+    MakeHeadBin(PKG_DIR, GAME_TITLE);
 
-    Say("\nPreparing the package...\n");
-    MakeHeadBin();
+    Say("\nPreparing the installer...\n");
+    RemoveTree(HELPER_DIR);
+    CopyTree("app0:updater/helper", HELPER_DIR);
+    MakeHeadBin(HELPER_DIR, HELPER_TITLE);
 
-    Say("Installing. Do not turn off the Vita...\n");
+    InstallerUp();
+    scePromoterUtilityDeletePkg(HELPER_TITLE); /* one left by an earlier update, if any */
+    Promote(HELPER_DIR, "the installer");
+    InstallerDown();
+    RemoveTree(HELPER_DIR);
+
+    Say("Starting the installer...\n");
+    LaunchAndExit(HELPER_TITLE);
+}
+
+/* OMHA00002: with the game closed, install it, then open it again. */
+static void Helper(void)
+{
+    char vpk[256] = "", langSrc[256] = "", langDst[256] = "";
+    SceUID fd;
+
+    /* the game removes this title at its next start, whatever happens here */
+    fd = sceIoOpen(CLEANUP_FLAG, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
+    if (fd >= 0) sceIoClose(fd);
+
+    ReadPlan(vpk, sizeof(vpk), langSrc, langDst, sizeof(langSrc));
+    Log("installing v%s", g_version);
+
+    Say("Installing version %s. Do not turn off the Vita...\n", g_version);
     sceKernelPowerLock(0);
-    Promote();
+    InstallerUp();
+    Promote(PKG_DIR, "the new version");
+    InstallerDown();
     sceKernelPowerUnlock(0);
 
     if (langSrc[0]) {
@@ -562,6 +678,50 @@ int main(void)
     Log("installed v%s", g_version);
 
     Say("\n\e[32;1mOpenMoHAA %s is installed.\e[0m Your settings and saves are kept.\n", g_version);
-    WaitCrossAndExit();
+    Say("Starting the game...\n");
+    sceKernelDelayThread(1500 * 1000);
+    LaunchAndExit(GAME_TITLE);
+}
+
+/* OMHA00001, from the game's start: remove the helper title, then back to the game. */
+static void Cleanup(void)
+{
+    int res = -1;
+
+    sceIoRemove(CLEANUP_FLAG); /* first: never loop, even if the removal fails */
+    Say("Finishing the update...\n");
+    if (LoadPaf() >= 0 && sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_PROMOTER_UTIL) >= 0
+        && scePromoterUtilityInit() >= 0) {
+        /* the helper may still be closing: try for a few seconds */
+        for (int i = 0; i < 10; i++) {
+            res = scePromoterUtilityDeletePkg(HELPER_TITLE);
+            if (res >= 0) break;
+            sceKernelDelayThread(500 * 1000);
+        }
+        InstallerDown();
+    }
+    Log("cleanup: removing %s = 0x%08X", HELPER_TITLE, (unsigned)res);
+    sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
+    sceKernelExitProcess(0);
+}
+
+int main(void)
+{
+    char self[16] = "";
+
+    psvDebugScreenInit();
+    /* keep the Vita awake while installing */
+    scePowerSetArmClockFrequency(444);
+    sceAppMgrAppParamGetString(0, 12, self, sizeof(self)); /* 12: TITLE_ID */
+    Log("updater.bin running as %s", self);
+
+    Say("\e[33;1mOpenMoHAA updater\e[0m\n\n");
+    if (!strcmp(self, HELPER_TITLE)) {
+        Helper();
+    } else if (!Exists(PLAN_FILE) && Exists(CLEANUP_FLAG)) {
+        Cleanup();
+    } else {
+        Stage();
+    }
     return 0;
 }

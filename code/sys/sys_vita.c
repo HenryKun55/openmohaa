@@ -21,6 +21,7 @@
 #include <psp2/kernel/sysmem.h>
 #include <psp2/sysmodule.h>
 #include <psp2/io/stat.h>
+#include <psp2/io/fcntl.h>
 #include <psp2/touch.h>
 #include <psp2/power.h>
 #include <psp2/appmgr.h>
@@ -178,6 +179,16 @@ void Sys_VitaBootPicture_Release(void)
 
 void Sys_PlatformInit(void)
 {
+    /* First start after an update: updater.bin removes its helper title (OMHA00002), then
+     * starts the game again. The flag is removed by updater.bin before anything else; it is
+     * removed here too when updater.bin cannot start, so this never loops. */
+    {
+        SceIoStat st;
+        if (sceIoGetstat("ux0:data/openmohaa/update/cleanup", &st) >= 0) {
+            sceAppMgrLoadExec("app0:updater.bin", NULL, NULL);
+            sceIoRemove("ux0:data/openmohaa/update/cleanup");
+        }
+    }
     Sys_VitaBootPicture_Show();
 
     sceSysmoduleLoadModule(SCE_SYSMODULE_NET);
