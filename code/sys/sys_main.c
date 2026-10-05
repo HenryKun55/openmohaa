@@ -881,6 +881,16 @@ int main( int argc, char **argv )
 	}
 #endif
 
+#ifdef __vita__
+	{
+		/* the campaign chosen at boot (vita_bootui.c); com_target_game is read in Com_Init */
+		extern int Sys_VitaTargetGame( void );
+		const int game = Sys_VitaTargetGame();
+		if ( game > 0 ) {
+			Q_strcat( commandLine, sizeof( commandLine ), va( "+set com_target_game %d ", game ) );
+		}
+	}
+#endif
 	CON_Init( );
 	Com_Init( commandLine );
 	Sys_InitEx(); // Added in OPM

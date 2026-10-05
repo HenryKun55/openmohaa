@@ -223,9 +223,11 @@ static char *BootUI_ReadFile(const char *path)
 // ---------- screen ----------
 
 /* The band with up to two messages, a progress bar (progress < 0: none) and a hint. */
+static char s_lastKey[1024]; /* what is on screen (BootUI_Show, BootUI_ShowList) */
+
 static void BootUI_Show(const char *title, const char *detail, float progress, const char *hint)
 {
-    static char last[1024];
+    char *const last = s_lastKey;
     char        key[1024];
     int         h = 0, y;
 
@@ -233,7 +235,7 @@ static void BootUI_Show(const char *title, const char *detail, float progress, c
     snprintf(key, sizeof(key), "%s|%s|%d|%s", title ? title : "", detail ? detail : "",
              progress < 0.0f ? -1 : (int)((FB_W - 240) * (progress > 1.0f ? 1.0f : progress)), hint ? hint : "");
     if (!strcmp(key, last)) return;
-    snprintf(last, sizeof(last), "%s", key);
+    snprintf(last, sizeof(s_lastKey), "%s", key);
 
     /* the band's height: the texts, the bar and the hint, under each other */
     if (title) h = BootUI_Wrapped(h, title, 0, 0);
@@ -292,23 +294,22 @@ static unsigned int BootUI_WaitButton(unsigned int mask, int timeoutMs)
     return 0;
 }
 
-// ---------- the check ----------
+// ---------- set up ----------
 
-void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
+/* The saved config's language (the system's when never chosen) and one setting. */
+static void BootUI_Settings(const char *name, char *value, int valueSize, const char *def, char *lang, int langSize)
 {
-    char             *cfg;
-    char              enabled[8], lang[16];
-    vitaUpdateState_t st;
-
-    if (!framebuffer) return;
-    cfg = BootUI_ReadFile("ux0:data/openmohaa/main/configs/omconfig.cfg");
-    BootUI_ConfigValue(cfg, "vita_update_check", enabled, sizeof(enabled), "1");
-    BootUI_ConfigValue(cfg, "vita_language", lang, sizeof(lang), "");
+    char *cfg = BootUI_ReadFile("ux0:data/openmohaa/main/configs/omconfig.cfg");
+    BootUI_ConfigValue(cfg, name, value, valueSize, def);
+    BootUI_ConfigValue(cfg, "vita_language", lang, langSize, "");
     free(cfg);
-    if (atoi(enabled) == 0) return;
-    if (!lang[0]) snprintf(lang, sizeof(lang), "%s", Sys_DefaultTextLanguage());
-    if (!BootUI_LoadFont()) return;
+    if (!lang[0]) snprintf(lang, langSize, "%s", Sys_DefaultTextLanguage());
+}
 
+/* Font, texts and buffers for drawing on the boot picture; 0: nothing can be shown. */
+static int BootUI_Begin(uint32_t *framebuffer, const char *lang)
+{
+    if (!framebuffer || !BootUI_LoadFont()) return 0;
     s_screen = framebuffer;
     s_fb     = malloc(FB_H * FB_W * 4);
     s_band   = malloc(BAND_H * FB_W * 4);
@@ -316,7 +317,7 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
         free(s_fb);
         free(s_band);
         s_fb = s_band = NULL;
-        return;
+        return 0;
     }
     memcpy(s_band, s_screen + BAND_Y * FB_W, BAND_H * FB_W * 4);
     if (strcmp(lang, "en")) {
@@ -324,6 +325,34 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
         snprintf(path, sizeof(path), "app0:main/vita/lang/%s.txt", lang);
         s_lang = BootUI_ReadFile(path);
     }
+    s_lastKey[0] = 0;
+    return 1;
+}
+
+/* The picture as it was, and everything freed. */
+static void BootUI_End(void)
+{
+    sceDisplayWaitVblankStart();
+    memcpy(s_screen + BAND_Y * FB_W, s_band, BAND_H * FB_W * 4);
+    free(s_band);
+    free(s_fb);
+    s_band = NULL;
+    s_fb   = NULL;
+    free(s_lang);
+    s_lang = NULL;
+    free(s_bits);
+    s_bits = NULL;
+}
+
+// ---------- the check ----------
+
+void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
+{
+    char              enabled[8], lang[16];
+    vitaUpdateState_t st;
+
+    BootUI_Settings("vita_update_check", enabled, sizeof(enabled), "1", lang, sizeof(lang));
+    if (atoi(enabled) == 0 || !BootUI_Begin(framebuffer, lang)) return;
 
     BootUI_Show(BootUI_Tr("Looking for a new version..."), NULL, -1.0f, NULL);
     VitaUpdate_Check(lang);
@@ -363,15 +392,123 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
                     BootUI_Tr("Press any button to continue."));
         BootUI_WaitButton(~0u, 15000); /* nobody looking: the game goes on by itself */
     }
+    BootUI_End();
+}
 
+// ---------- the campaign ----------
+/*
+Allied Assault, Spearhead or Breakthrough: the expansions are their own games for the
+engine (com_target_game, which must be set before Com_Init: sys_main.c adds it to the
+command line). Offered only when an expansion is on the memory card, next to main:
+ux0:data/openmohaa/mainta (Spearhead) and maintt (Breakthrough). The last choice is
+remembered and taken by itself when no button is pressed for a while.
+*/
+#define GAME_CHOICE_FILE "ux0:data/openmohaa/vita_game.txt"
+#define GAME_CHOICE_WAIT_MS 8000
+
+static int s_targetGame;
+
+int Sys_VitaTargetGame(void)
+{
+    return s_targetGame;
+}
+
+static int BootUI_HasGame(int game)
+{
+    static const char *const pak[3] = {"", "ux0:data/openmohaa/mainta/pak1.pk3", "ux0:data/openmohaa/maintt/pak1.pk3"};
+    FILE                     *f;
+
+    if (game == 0) return 1;
+    f = fopen(pak[game], "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
+/* A title, a list with one line chosen, and a hint, in the band. */
+static void BootUI_ShowList(const char *title, const char *const *items, const int *shown, int n, int sel,
+                            const char *hint)
+{
+    char key[1024];
+    int  h, y, k, count = 0;
+
+    snprintf(key, sizeof(key), "list|%s|%d|%s", title, sel, hint);
+    if (!strcmp(key, s_lastKey)) return;
+    snprintf(s_lastKey, sizeof(s_lastKey), "%s", key);
+
+    for (k = 0; k < n; k++) count += shown[k];
+    h = s_lineH + 10 + count * s_lineH + 10 + s_lineH;
+    y = FB_H - 18 - h;
+    if (y - 18 < BAND_Y) y = BAND_Y + 18;
+
+    memcpy(s_fb + BAND_Y * FB_W, s_band, BAND_H * FB_W * 4);
+    for (int i = (y - 18) * FB_W; i < FB_H * FB_W; i++) {
+        const uint32_t p = s_fb[i];
+        s_fb[i] = 0xFF000000u | ((((p >> 16) & 0xFF) * 3 / 10) << 16) | ((((p >> 8) & 0xFF) * 3 / 10) << 8)
+                | ((p & 0xFF) * 3 / 10);
+    }
+    BootUI_Text((FB_W - BootUI_TextWidth(title)) / 2, y, title, 0xFFFFFF);
+    y += s_lineH + 10;
+    for (k = 0; k < n; k++) {
+        char line[128];
+        if (!shown[k]) continue;
+        snprintf(line, sizeof(line), k == sel ? "> %s <" : "%s", items[k]);
+        BootUI_Text((FB_W - BootUI_TextWidth(line)) / 2, y, line, k == sel ? 0x40C8F0 : 0xA0A0A0);
+        y += s_lineH;
+    }
+    BootUI_Text((FB_W - BootUI_TextWidth(hint)) / 2, y + 10, hint, 0xB0B0B0);
     sceDisplayWaitVblankStart();
-    memcpy(s_screen + BAND_Y * FB_W, s_band, BAND_H * FB_W * 4); /* the picture as it was */
-    free(s_band);
-    free(s_fb);
-    s_band = NULL;
-    s_fb   = NULL;
-    free(s_lang);
-    s_lang = NULL;
-    free(s_bits);
-    s_bits = NULL;
+    memcpy(s_screen + BAND_Y * FB_W, s_fb + BAND_Y * FB_W, BAND_H * FB_W * 4);
+}
+
+void Sys_VitaBootChooseGame(uint32_t *framebuffer)
+{
+    static const char *const names[3] = {"Allied Assault", "Spearhead", "Breakthrough"};
+    int                      shown[3], sel = 0, idle = 0, k;
+    char                     lang[16], unused[8];
+    unsigned int             prev;
+    FILE                    *f;
+
+    for (k = 0; k < 3; k++) shown[k] = BootUI_HasGame(k);
+    if (!shown[1] && !shown[2]) return; /* the base game only: nothing to choose */
+
+    f = fopen(GAME_CHOICE_FILE, "r");
+    if (f) {
+        if (fscanf(f, "%d", &sel) != 1 || sel < 0 || sel > 2 || !shown[sel]) sel = 0;
+        fclose(f);
+    }
+    s_targetGame = sel;
+
+    BootUI_Settings("vita_language", unused, sizeof(unused), "", lang, sizeof(lang));
+    if (!BootUI_Begin(framebuffer, lang)) return;
+
+    prev = BootUI_Buttons();
+    for (;;) {
+        unsigned int now, pressed;
+
+        BootUI_ShowList(BootUI_Tr("Choose the campaign"), names, shown, 3, sel,
+                        BootUI_Tr("Up/Down: choose   X: start"));
+        now     = BootUI_Buttons();
+        pressed = now & ~prev;
+        prev    = now;
+        if (pressed & SCE_CTRL_CROSS) break;
+        if (pressed & (SCE_CTRL_UP | SCE_CTRL_DOWN)) {
+            const int step = (pressed & SCE_CTRL_UP) ? 2 : 1; /* +2 = -1 modulo 3 */
+            do {
+                sel = (sel + step) % 3;
+            } while (!shown[sel]);
+            idle = 0;
+        }
+        if (now) idle = 0;
+        if ((idle += 16) >= GAME_CHOICE_WAIT_MS) break; /* nobody looking: the last choice */
+        sceKernelDelayThread(16 * 1000);
+    }
+
+    s_targetGame = sel;
+    f = fopen(GAME_CHOICE_FILE, "w");
+    if (f) {
+        fprintf(f, "%d\n", sel);
+        fclose(f);
+    }
+    BootUI_End();
 }

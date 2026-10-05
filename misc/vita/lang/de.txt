@@ -1680,3 +1680,7 @@
 { "OpenMoHAA for PS Vita, version %s" "OpenMoHAA für PS Vita, Version %s" }
 { "PS Vita port by %s, made with love" "PS-Vita-Portierung von %s, mit Liebe gemacht" }
 { "Medal of Honor (c) Electronic Arts. OpenMoHAA is free software (GPL)." "Medal of Honor (c) Electronic Arts. OpenMoHAA ist freie Software (GPL)." }
+
+// Campaign choice at boot (Allied Assault, Spearhead, Breakthrough: the names stay)
+{ "Choose the campaign" "Wähle die Kampagne" }
+{ "Up/Down: choose   X: start" "Hoch/Runter: wählen   X: starten" }

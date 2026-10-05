@@ -190,7 +190,9 @@ void Sys_PlatformInit(void)
      * System > Check for updates; code/sys/vita_bootui.c). */
     {
         extern void Sys_VitaBootUpdateCheck(unsigned int *framebuffer);
+        extern void Sys_VitaBootChooseGame(unsigned int *framebuffer);
         Sys_VitaBootUpdateCheck((unsigned int *)s_bootPicBase);
+        Sys_VitaBootChooseGame((unsigned int *)s_bootPicBase); /* Allied Assault or an expansion */
     }
 
     sceIoMkdir("ux0:data", 0777);
