@@ -489,14 +489,13 @@ static VitaPerfMenuItem g_dmGame[] = {
     { "Main Menu",        NULL, qfalse, 0, "disconnect" },
     { "Restart Level",    NULL, qfalse, 0, "restart" },
     { "Suicide (kill)",   NULL, qfalse, 0, "kill" },
-    { "Cheats ON",        NULL, qfalse, 0, "cheats 1" },
-    { "Cheats OFF",       NULL, qfalse, 0, "cheats 0" },
-    { "God Mode",         NULL, qfalse, 0, "god" },
-    { "Noclip",           NULL, qfalse, 0, "noclip" },
-    { "Notarget",         NULL, qfalse, 0, "notarget" },
-    { "Give All",         NULL, qfalse, 0, "give all" },
-    { "Give Ammo",        NULL, qfalse, 0, "give ammo" },
-    { "Give Health",      NULL, qfalse, 0, "give health" },
+    /* vita_cheat: allows the cheat first (CL_VitaCheat_f) */
+    { "God Mode",         NULL, qfalse, 0, "vita_cheat god" },
+    { "Noclip",           NULL, qfalse, 0, "vita_cheat noclip" },
+    { "Notarget",         NULL, qfalse, 0, "vita_cheat notarget" },
+    { "Give All",         NULL, qfalse, 0, "vita_cheat give all" },
+    { "Give Ammo",        NULL, qfalse, 0, "vita_cheat give ammo" },
+    { "Give Health",      NULL, qfalse, 0, "vita_cheat give health" },
 };
 
 /* Level loader. Same campaign list as the Switch dev menu (cl_scrn.cpp). */
@@ -510,6 +509,17 @@ static VitaPerfMenuItem g_dmLevels[] = {
     VFASE("m5l1a"), VFASE("m5l1b"), VFASE("m5l2a"), VFASE("m5l2b"), VFASE("m5l3"),
     VFASE("m6l1a"), VFASE("m6l1b"), VFASE("m6l1c"), VFASE("m6l2a"), VFASE("m6l2b"),
     VFASE("m6l3a"), VFASE("m6l3b"), VFASE("m6l3c"), VFASE("m6l3d"), VFASE("m6l3e"),
+};
+/* The expansions' campaigns (com_target_game 1 and 2): the list follows the game played. */
+static VitaPerfMenuItem g_dmLevelsTA[] = {
+    VFASE("t1l1"), VFASE("t1l2"), VFASE("t1l3"),
+    VFASE("t2l1"), VFASE("t2l2"), VFASE("t2l3"), VFASE("t2l4"),
+    VFASE("t3l1"), VFASE("t3l2"),
+};
+static VitaPerfMenuItem g_dmLevelsTT[] = {
+    VFASE("e1l1"), VFASE("e1l2"), VFASE("e1l3"), VFASE("e1l4"),
+    VFASE("e2l1"), VFASE("e2l2"), VFASE("e2l3"),
+    VFASE("e3l1"), VFASE("e3l2"), VFASE("e3l3"), VFASE("e3l4"),
 };
 
 /* GPU TEST: hide one kind of surface at a time (renderer vita_skip_mask bits) to see
@@ -732,6 +742,22 @@ static void VitaPerfMenu_Close(void)
 
 static void VitaPerfMenu_Open(qboolean debug)
 {
+    /* LEVELS: the campaign being played */
+    for (int i = 0; i < (int)(sizeof(g_dmCats) / sizeof(g_dmCats[0])); i++) {
+        if (g_dmCats[i].items == g_dmLevels || g_dmCats[i].items == g_dmLevelsTA || g_dmCats[i].items == g_dmLevelsTT) {
+            const int game = Cvar_VariableIntegerValue("com_target_game");
+            if (game == 1) {
+                g_dmCats[i].items     = g_dmLevelsTA;
+                g_dmCats[i].itemCount = (int)(sizeof(g_dmLevelsTA) / sizeof(g_dmLevelsTA[0]));
+            } else if (game == 2) {
+                g_dmCats[i].items     = g_dmLevelsTT;
+                g_dmCats[i].itemCount = (int)(sizeof(g_dmLevelsTT) / sizeof(g_dmLevelsTT[0]));
+            } else {
+                g_dmCats[i].items     = g_dmLevels;
+                g_dmCats[i].itemCount = (int)(sizeof(g_dmLevels) / sizeof(g_dmLevels[0]));
+            }
+        }
+    }
     VitaPerfMenu_SetScreen(debug);
     g_pmActive   = qtrue;
     g_pmOpenTime = Sys_Milliseconds();
@@ -1337,8 +1363,25 @@ static void CL_VitaSelectUp_f(void)
     Cbuf_ExecuteText(EXEC_NOW, "-scores\n");
 }
 
+/*
+vita_cheat <command>: a cheat from the debug menu, allowed first. The game refuses cheat
+commands unless "cheats" is on, which is latched (it would only count from the next level)
+and which the game turns off again before every cheat unless "thereisnomonkey" is set
+(fgame/entity.cpp): both are set here, the first one at once.
+*/
+static void CL_VitaCheat_f(void)
+{
+    if (Cmd_Argc() < 2) {
+        return;
+    }
+    Cvar_Set("thereisnomonkey", "1");
+    Cvar_Set2("cheats", "1", qtrue);
+    Cbuf_ExecuteText(EXEC_NOW, va("%s\n", Cmd_ArgsFrom(1)));
+}
+
 void CL_VitaPerfMenu_Init(void)
 {
+    Cmd_AddCommand("vita_cheat", CL_VitaCheat_f);
     Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
     Cmd_AddCommand("vitasettings", CL_VitaSettings_f);
 #ifdef __vita__
