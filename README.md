@@ -36,10 +36,17 @@ store that sells it; it is not on Steam) or the discs installed with the officia
 | any other `.pk3` | yes, if you have it | e.g. a language pak |
 | `sound` folder | recommended | copy the whole folder as it is: music, dialogue, ambient |
 | `video` folder | optional | intro videos |
-| `mainta`, `maintt` | no | expansions, not supported yet |
+| `mainta`, `maintt` | optional | the Spearhead and Breakthrough expansions: copy each whole folder next to `main` (see below) |
 | `configs`, `.cfg`, `.exe`, `.dll` | no | PC settings and programs |
 
-Each `.pk3` on the Vita must be the same size as on your PC. A menu with only white
+Each `.pk3` on the Vita must be the same size as on your PC.
+
+**Expansions:** to play Spearhead or Breakthrough, copy the game's `mainta` (Spearhead)
+or `maintt` (Breakthrough) folder, whole, to `ux0:data/openmohaa/`, next to `main`. The
+GOG War Chest has both, already patched; disc copies need the official patches
+(Spearhead 2.15, Breakthrough 2.40b). With an expansion on the memory card, the game
+asks for the campaign when it starts (D-pad and Cross; the last choice is taken by
+itself after a few seconds). A menu with only white
 outlines means a missing `libshacccg.suprx` or a pak that did not copy completely.
 
 Step-by-step guide (which files, GOG or discs, USB, updating):
@@ -98,7 +105,7 @@ game with the script) to `ux0:data/openmohaa/main/`. Want your language? See
 
 - **Save often** from the game's menu (Start -> Save Game), especially before
   leaving the game or putting the Vita to sleep.
-- Not available: multiplayer, and the Spearhead and Breakthrough expansions.
+- Not available: multiplayer.
 - Not tested yet: the PS button and coming back, sleep with the power button,
   closing and reopening the game, the whole campaign, Vita 2000 and PS TV.
   [Details](docs/PORTING-VITA.md#limits).

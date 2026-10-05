@@ -87,7 +87,7 @@ straight from the discs: on the CDs they are packed inside the installer.
 | any other `.pk3` | yes, if you have it | e.g. a language pak |
 | `sound` folder | recommended | copy the whole folder as it is: music, dialogue, ambient |
 | `video` folder | optional | intro videos |
-| `mainta`, `maintt` | no | expansions, not supported yet |
+| `mainta`, `maintt` | optional | the Spearhead and Breakthrough expansions: copy each whole folder next to `main` (see below) |
 | `configs`, `.cfg`, `.exe`, `.dll` | no | PC settings and programs |
 
 The result:
@@ -217,8 +217,6 @@ picture on the Vita (taking it froze the game for almost a second).
 
 - Multiplayer (no networking on the Vita build); its door in the main menu shows
   a notice.
-- The Spearhead and Breakthrough expansions: the engine picks them with a
-  command-line option, which a Vita app does not have.
 
 **Not tested yet**, so they may fail (please [report it](https://github.com/HenryKun55/openmohaa/issues/new/choose)
 if they do):
