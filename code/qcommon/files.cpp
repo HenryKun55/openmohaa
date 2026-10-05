@@ -2173,6 +2173,35 @@ CONVENIENCE FUNCTIONS FOR ENTIRE FILES
 ======================================================================================
 */
 
+#ifdef __vita__
+/*
+The game folder (main, mainta, maintt) of the pak a file comes from, or NULL when no pak
+has it: the renderer uses it to pick the translated menu picture made for that game
+(tr_image.c), as the expansions repaint some of Allied Assault's menu pictures.
+*/
+const char *FS_VitaFileGameDir( const char *filename ) {
+	searchpath_t	*search;
+	fileInPack_t	*pakFile;
+	long			hash;
+
+	if ( !fs_searchpaths || !filename ) {
+		return NULL;
+	}
+	for ( search = fs_searchpaths ; search ; search = search->next ) {
+		if ( !search->pack ) {
+			continue;
+		}
+		hash = FS_HashFileName( filename, search->pack->hashSize );
+		for ( pakFile = search->pack->hashTable[hash]; pakFile; pakFile = pakFile->next ) {
+			if ( !FS_FilenameCompare( pakFile->name, filename ) ) {
+				return search->pack->pakGamename;
+			}
+		}
+	}
+	return NULL;
+}
+#endif
+
 int	FS_FileIsInPAK(const char *filename, int *pChecksum ) {
 	searchpath_t	*search;
 	pack_t			*pak;

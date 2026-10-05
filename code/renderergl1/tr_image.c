@@ -2645,12 +2645,30 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 		// Menu pictures with words on them can have a translated copy in
 		// lang/<code>/ (built by misc/vita/make_menu_text.py) for the Text Language
 		// chosen in the Vita settings. Only the menu folder is looked at, so level
-		// loads do not pay for the extra lookups.
+		// loads do not pay for the extra lookups. The expansions repaint some of
+		// Allied Assault's menu pictures (blue instead of green): a picture that comes
+		// from an expansion's own paks takes its copy from lang/<code>/<mainta|maintt>/,
+		// or stays as it is, never Allied Assault's.
 		{
 			const char *lang = ri.Cvar_Get("vita_language", "", CVAR_ARCHIVE)->string;
 			if (lang[0] && Q_stricmp(lang, "en") && !Q_stricmpn(name, "textures/mohmenu/", 17)) {
-				char langName[MAX_QPATH];
-				Com_sprintf(langName, sizeof(langName), "lang/%s/%s", lang, name);
+				char        langName[MAX_QPATH];
+				const char *gameDir = FS_VitaFileGameDir(name);
+				if (!gameDir) {
+					/* the shader may name .tga for a .jpg (R_LoadImage tries both) */
+					char        other[MAX_QPATH];
+					const char *dot = strrchr(name, '.');
+					if (dot && (!Q_stricmp(dot, ".tga") || !Q_stricmp(dot, ".jpg"))) {
+						Q_strncpyz(other, name, sizeof(other));
+						Q_strncpyz(other + (dot - name), Q_stricmp(dot, ".tga") ? ".tga" : ".jpg", sizeof(other) - (dot - name));
+						gameDir = FS_VitaFileGameDir(other);
+					}
+				}
+				if (gameDir && Q_stricmp(gameDir, "main")) {
+					Com_sprintf(langName, sizeof(langName), "lang/%s/%s/%s", lang, gameDir, name);
+				} else {
+					Com_sprintf(langName, sizeof(langName), "lang/%s/%s", lang, name);
+				}
 				R_LoadImage(langName, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
 				if (!pic) {
 					numMipmaps = mipmap;
