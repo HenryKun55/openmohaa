@@ -1162,6 +1162,10 @@ void CL_FirstSnapshot( void ) {
 		Cbuf_AddText( cl_activeAction->string );
 		Cvar_Set( "activeAction", "" );
 	}
+#ifdef __vita__
+	// marks the start of play for the test tools (tools/vita-bench)
+	Com_Printf( "[VITA] in game: %s at %d ms\n", Cvar_VariableString( "mapname" ), Sys_Milliseconds() );
+#endif
 
 #ifdef USE_MUMBLE
 	if ((cl_useMumble->integer) && !mumble_islinked()) {
