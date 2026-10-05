@@ -20,6 +20,9 @@ Usage (needs Pillow and numpy):
     python3 misc/vita/make_menu_text.py /path/to/main            # every language
     python3 misc/vita/make_menu_text.py /path/to/main --lang pt   # lang_pt.pk3 only
 
+    python3 misc/vita/make_menu_text.py /path/to/main --expansion /path/to/mainta --expansion /path/to/maintt
+                                                                  # with Spearhead's and Breakthrough's signs
+
 then copy lang_<code>.pk3 to ux0:data/openmohaa/main/ on the Vita. --preview DIR also writes
 each picture next to its original, to check them.
 
@@ -141,6 +144,27 @@ PICTURES = {
 }
 
 
+# The expansions (Spearhead: mainta, Breakthrough: maintt) repaint the menu with signs of
+# their own: teal letters with a dark rim, on a see-through ground, the same in both. Their
+# copies go to lang/<code>/<mainta|maintt>/ (the game takes them for the expansion's own
+# pictures only, code/renderergl1/tr_image.c). Same format as PICTURES.
+EXPANSION_PICTURES = {
+    "new_game_sign.tga": ("teal small", {"seethrough": True, "unusable": "NEWGAM", "room": (4, 126)}, [("NEW GAME", [(16, 5, 128, 28)])]),
+    "briefing_room_sign.tga": ("teal small", {"seethrough": True, "unusable": "GN", "room": (4, 124)}, [("BRIEFING", [(22, 6, 111, 27)])]),
+    "credits_sign.tga": ("teal small", {"seethrough": True, "unusable": "GN", "room": (4, 124)}, [("CREDITS", [(28, 7, 105, 26)])]),
+    "options_sign.tga": ("teal small", {"seethrough": True, "unusable": "GN", "room": (4, 124)}, [("OPTIONS", [(27, 7, 106, 27)])]),
+    "multiplayer_sign.tga": ("teal small", {"seethrough": True, "unusable": "GN", "room": (2, 126)}, [("MULTIPLAYER", [(7, 6, 126, 27)])]),
+    "load_save_sign.tga": ("teal small", {"seethrough": True, "unusable": "GN", "room": (4, 124)}, [("LOAD/SAVE &|MEDAL CASE", [(19, 1, 116, 32)])]),
+    "desk_loadsave.tga": ("teal", {"room": (8, 160)}, [("LOAD/SAVE|GAMES", [(29, 0, 124, 42)])]),
+    "desk_personalrecords.tga": ("teal", {"room": (8, 160)}, [("PERSONAL|RECORDS", [(25, 0, 125, 41)])]),
+    "options_advanced.tga": ("teal", {"room": (8, 180)}, [("ADVANCED", [(25, 8, 142, 37)])]),
+    "options_audio.tga": ("teal", {"room": (8, 180)}, [("AUDIO", [(43, 7, 123, 39)])]),
+    "options_controls.tga": ("teal", {"room": (8, 180)}, [("CONTROLS", [(28, 7, 141, 38)])]),
+    "options_video.tga": ("teal", {"room": (8, 180)}, [("VIDEO", [(44, 8, 122, 38)])]),
+    "difficulty.tga": PICTURES["difficulty.tga"],
+}
+
+
 def load_translations(path):
     text = open(path, encoding="utf-8").read()
     return dict(re.findall(r'^\{ "([^"]*)" "([^"]*)" \}', text, re.M))
@@ -149,7 +173,8 @@ def load_translations(path):
 def read_paks(main_dir):
     """Every picture of the menus, the last pak that has it winning, like the game."""
     files = {}
-    for pak in sorted(glob.glob(os.path.join(main_dir, "*.pk3")), key=str.lower):
+    for pak in sorted(glob.glob(os.path.join(main_dir, "*.pk3")) + glob.glob(os.path.join(main_dir, "*.PK3")),
+                      key=str.lower):
         if os.path.basename(pak).lower().startswith("lang_"):
             continue
         with zipfile.ZipFile(pak) as z:
@@ -834,6 +859,16 @@ class Picture:
             # white letters drawn by the alpha channel: work on the alpha as a grey picture
             grey = rgba[..., 3:4]
             rgba = np.concatenate([grey, grey, grey, np.full_like(grey, 255)], axis=-1)
+        if opts.get("seethrough"):
+            # letters and their rim on a see-through ground: worked on as they look over
+            # black, and see-through again at the end (the alpha follows the brightest
+            # channel, at the rate the picture itself has: self.gain)
+            a = rgba[..., 3:4] / 255.0
+            over = rgba[..., :3] * a
+            peak = over.max(axis=-1)
+            part = (rgba[..., 3] > 20) & (rgba[..., 3] < 235) & (peak > 4)
+            self.gain = float(np.median(rgba[..., 3][part] / peak[part])) if part.any() else 2.0
+            rgba = np.concatenate([over, np.full_like(a, 255.0)], axis=-1)
         self.orig = rgba
         self.ink = (255 - luma(rgba)) if opts.get("dark") else luma(rgba)
         self.ground = rgba.copy()
@@ -911,6 +946,11 @@ class Picture:
             result = self.rgba.copy()
             result[..., 3] = np.clip(luma(out), 0, 255)
             out = result
+        if self.opts.get("seethrough"):
+            peak = out[..., :3].max(axis=-1)
+            alpha = np.clip(peak * self.gain, 0, 255)
+            colour = np.where(alpha[..., None] > 0, out[..., :3] * 255.0 / np.maximum(alpha[..., None], 1), 0)
+            out = np.concatenate([np.clip(colour, 0, 255), alpha[..., None]], axis=-1)
         img = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGBA")
         return (img if self.mode == "RGBA" else img.convert("RGB")), done, notes
 
@@ -921,6 +961,9 @@ def main():
     parser.add_argument("--lang", action="append", help="language code (default: every misc/vita/lang/*.txt)")
     parser.add_argument("-o", "--output-dir", default=".", help="where to write lang_<code>.pk3")
     parser.add_argument("--preview", help="also write each translated picture next to its original here")
+    parser.add_argument("--expansion", action="append", default=[], metavar="DIR",
+                        help="an expansion's folder (mainta: Spearhead, maintt: Breakthrough), to translate its own "
+                             "menu pictures too; can be given twice")
     args = parser.parse_args()
 
     codes = args.lang or sorted(os.path.splitext(os.path.basename(p))[0]
@@ -936,6 +979,21 @@ def main():
             img = Image.open(io.BytesIO(z.read(found[1])))
             img.load()
         pictures.append(Picture(MENU + name, img, family, opts, texts))
+    # (path in the pack, picture): an expansion's go under its folder's name
+    packed = [(pic.name, pic) for pic in pictures]
+    for exp_dir in args.expansion:
+        game = os.path.basename(os.path.normpath(exp_dir)).lower()
+        exp_files = read_paks(exp_dir)
+        for name, (family, opts, texts) in EXPANSION_PICTURES.items():
+            found = exp_files.get((MENU + name).lower())
+            if not found:
+                continue
+            with zipfile.ZipFile(found[0]) as z:
+                img = Image.open(io.BytesIO(z.read(found[1])))
+                img.load()
+            pic = Picture(MENU + name, img, family, opts, texts)
+            pictures.append(pic)
+            packed.append((f"{game}/{MENU}{name}", pic))
 
     # the letters of each family; a picture uses its own ones first when it has them
     pools = {}
@@ -949,15 +1007,15 @@ def main():
         path = os.path.join(args.output_dir, f"lang_{code}.pk3")
         written = 0
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as out:
-            for pic in pictures:
+            for packed_name, pic in packed:
                 image, done, notes = pic.translate(table, pools)
                 for note in notes:
-                    print(f"  {code}: {pic.name}: {note}")
+                    print(f"  {code}: {packed_name}: {note}")
                 if not done:
                     continue
                 buf = io.BytesIO()
                 image.save(buf, format="TGA")
-                out.writestr(f"lang/{code}/{pic.name}", buf.getvalue())
+                out.writestr(f"lang/{code}/{packed_name}", buf.getvalue())
                 written += 1
                 if args.preview:
                     os.makedirs(args.preview, exist_ok=True)
@@ -966,7 +1024,7 @@ def main():
                     both = Image.new("RGBA", (w * 2 + 4, h), (255, 0, 255, 255))
                     both.alpha_composite(orig, (0, 0))
                     both.alpha_composite(image.convert("RGBA"), (w + 4, 0))
-                    both.save(os.path.join(args.preview, f"{code}_{pic.name[len(MENU):].replace('/', '_')}.png"))
+                    both.save(os.path.join(args.preview, f"{code}_{packed_name.replace(MENU, '').replace('/', '_')}.png"))
         print(f"wrote {path} ({written} pictures)")
         if not written:
             os.remove(path)
