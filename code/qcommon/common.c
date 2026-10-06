@@ -1977,6 +1977,12 @@ void Com_Init( char *commandLine ) {
 	Cbuf_AddText( "exec vita_autoexec.cfg\n" );
 #endif
 	Cbuf_AddText( "exec autoexec.cfg\n" );
+#ifdef __vita__
+	// The expansions' autoexec.cfg (Spearhead's and Breakthrough's own) makes the EA movie,
+	// the title and the legal screens unskippable, over vita_autoexec.cfg's choice: any
+	// button skips them, in every campaign.
+	Cbuf_AddText( "set ui_skip_eamovie 1\nset ui_skip_titlescreen 1\nset ui_skip_legalscreen 1\n" );
+#endif
 	Cbuf_Execute( 0 );
 	Com_StartupVariable( NULL );
 	Cvar_Set( "config", configname );
