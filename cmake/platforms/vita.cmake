@@ -217,7 +217,7 @@ set(VITA_TITLEID "OMHA00001" CACHE STRING "Vita title id (9 chars)")
 set(VITA_VERSION "01.00" CACHE STRING "Vita app version")
 # The port's release (the GitHub tags are v<this>-vita). The update check installs a
 # release only when its version is higher: raise it for every release.
-set(VITA_PORT_VERSION "0.3" CACHE STRING "Vita port release (GitHub tag v<this>-vita)")
+set(VITA_PORT_VERSION "0.4" CACHE STRING "Vita port release (GitHub tag v<this>-vita)")
 set_source_files_properties(${SOURCE_DIR}/sys/vita_update.c PROPERTIES
     COMPILE_DEFINITIONS VITA_PORT_VERSION="${VITA_PORT_VERSION}")
 set(VITA_APP_NAME "OpenMoHAA" CACHE STRING "LiveArea app name")
