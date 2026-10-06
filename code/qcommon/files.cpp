@@ -855,9 +855,18 @@ qboolean FS_FileInPathExists(const char *testpath)
 FS_FileExists_HomeConfig
 ================
 */
+#ifdef __vita__
+/* One configuration for the three campaigns on the Vita: controls, Vita settings and the
+ * Text Language are kept in main/configs whichever campaign runs (on the PC each game has
+ * its own, as each has its own shortcut; here the campaign is changed from the settings). */
+#define FS_CONFIG_DIR com_basegame->string
+#else
+#define FS_CONFIG_DIR fs_gamedir
+#endif
+
 qboolean FS_FileExists_HomeConfig(const char *file)
 {
-	return FS_FileInPathExists(FS_BuildOSPath(fs_homeconfigpath->string, fs_gamedir, file));
+	return FS_FileInPathExists(FS_BuildOSPath(fs_homeconfigpath->string, FS_CONFIG_DIR, file));
 }
 
 /*
@@ -1166,7 +1175,7 @@ FS_FOpenFileWrite_HomeConfig
 */
 fileHandle_t FS_FOpenFileWrite_HomeConfig( const char *filename ) {
 	return FS_OSPath_FOpenFileWrite(
-		FS_BuildOSPath(fs_homeconfigpath->string, fs_gamedir, filename), filename);
+		FS_BuildOSPath(fs_homeconfigpath->string, FS_CONFIG_DIR, filename), filename);
 }
 
 /*
