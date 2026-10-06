@@ -856,10 +856,29 @@ FS_FileExists_HomeConfig
 ================
 */
 #ifdef __vita__
-/* One configuration for the three campaigns on the Vita: controls, Vita settings and the
- * Text Language are kept in main/configs whichever campaign runs (on the PC each game has
- * its own, as each has its own shortcut; here the campaign is changed from the settings). */
-#define FS_CONFIG_DIR com_basegame->string
+/* On the Vita the three campaigns share one configuration by default: controls, Vita
+ * settings and the Text Language are kept in main/configs whichever campaign runs (on the
+ * PC each game has its own, as each has its own shortcut). Vita settings > System >
+ * Settings per campaign (ux0:data/openmohaa/vita_config.txt = 1, read once at start-up,
+ * as it decides which configuration is read) keeps one in each campaign's folder, the
+ * first one copied from Allied Assault's. */
+qboolean FS_VitaConfigPerCampaign( void ) {
+	static int perCampaign = -1;
+	if ( perCampaign < 0 ) {
+		FILE *f = fopen( "ux0:data/openmohaa/vita_config.txt", "r" );
+		perCampaign = 0;
+		if ( f ) {
+			perCampaign = fgetc( f ) == '1';
+			fclose( f );
+		}
+	}
+	return perCampaign ? qtrue : qfalse;
+}
+
+static const char *FS_VitaConfigDir( void ) {
+	return FS_VitaConfigPerCampaign() ? fs_gamedir : com_basegame->string;
+}
+#define FS_CONFIG_DIR FS_VitaConfigDir()
 #else
 #define FS_CONFIG_DIR fs_gamedir
 #endif

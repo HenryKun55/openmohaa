@@ -1924,6 +1924,31 @@ void Com_Init( char *commandLine ) {
 			//FS_WriteFile(va("configs/%s", configname), "", 0);
 		}
 
+#ifdef __vita__
+		/* one configuration for every campaign (files.cpp, FS_VitaConfigDir): main's, even
+		 * when the expansion has one of its own (kept while Settings per campaign was on),
+		 * which "exec" would find first */
+		if ( !FS_VitaConfigPerCampaign() ) {
+			char *text = NULL;
+			FILE *f    = fopen( va( "ux0:data/openmohaa/main/configs/%s", configname ), "rb" );
+			if ( f ) {
+				long size;
+				fseek( f, 0, SEEK_END );
+				size = ftell( f );
+				fseek( f, 0, SEEK_SET );
+				text = (char *)Z_Malloc( size + 2 );
+				size = (long)fread( text, 1, size, f );
+				text[size]     = '\n';
+				text[size + 1] = 0;
+				fclose( f );
+				Com_Printf( "execing main/configs/%s\n", configname );
+				Cbuf_AddText( text );
+				Z_Free( text );
+			} else {
+				Cbuf_AddText( va( "exec configs/%s\n", configname ) );
+			}
+		} else
+#endif
 		Cbuf_AddText( va( "exec configs/%s\n", configname ) );
 	} else if ( Com_ConfigExists( "unnamedsoldier.cfg" ) ) {
 		Com_Printf( "The config file '%s' doesn't exist, using unnamedsoldier.cfg as a template\n", configname );

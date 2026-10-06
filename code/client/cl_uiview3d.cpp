@@ -271,6 +271,7 @@ static const VitaMenuText g_vmTexts[] = {
 
     /* SETTINGS: system */
     { "Change campaign", "Starts the game again to choose Allied Assault, Spearhead or Breakthrough. Progress not saved is lost." },
+    { "Settings per campaign", "Off: controls and settings are the same in every campaign. On: each campaign keeps its own. From the next start." },
     { "Check for updates", "When the game starts, look for a new version on GitHub." },
     { "Check now", "Look for a new version on GitHub now." },
     { "Restore defaults", "Back to the port's recommended settings." },
@@ -454,9 +455,11 @@ static VitaPerfMenuItem g_smControls[] = {
 #define VPM_ACTION_UPDATE   "@update"
 #define VPM_ACTION_CAMPAIGN "@campaign"
 
-/* "Change campaign" first: left out when no expansion is on the memory card (VitaPerfMenu_Open) */
+/* The campaign items first: left out when no expansion is on the memory card (VitaPerfMenu_Open) */
+#define VPM_CAMPAIGN_ITEMS 2
 static VitaPerfMenuItem g_smSystem[] = {
     { "Change campaign",   NULL, qfalse, 0, VPM_ACTION_CAMPAIGN },
+    { "Settings per campaign", "vita_config_per_campaign", qfalse, 0 },
     { "Check for updates", "vita_update_check", qfalse, 0 },
     { "Check now",         NULL, qfalse, 0, VPM_ACTION_UPDATE },
     { "Restore defaults", NULL, qfalse, 0, VPM_ACTION_DEFAULTS },
@@ -720,6 +723,16 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
      * but nothing changed. (Cheat cvars still revert on the next map load.) The cvar is
      * archived so the choice persists across launches. */
     Cvar_Set2(it->cvarName, buf, qtrue);
+#ifdef __vita__
+    if (!strcmp(it->cvarName, "vita_config_per_campaign")) {
+        /* kept outside the configurations, as it decides which one is read (files.cpp) */
+        FILE *f = fopen("ux0:data/openmohaa/vita_config.txt", "w");
+        if (f) {
+            fprintf(f, "%d\n", next);
+            fclose(f);
+        }
+    }
+#endif
     cvar_t *cv = Cvar_FindVar(it->cvarName);
     if (it->restart || (cv && (cv->flags & CVAR_LATCH))) {
         g_pmNeedRestart = qtrue;
@@ -781,12 +794,12 @@ static void VitaPerfMenu_ChangeCampaign(void)
 static void VitaPerfMenu_Open(qboolean debug)
 {
 #ifdef __vita__
-    /* SYSTEM: "Change campaign" only with an expansion to change to */
+    /* SYSTEM: the campaign items only with an expansion on the memory card */
     for (int i = 0; i < (int)(sizeof(g_smCats) / sizeof(g_smCats[0])); i++) {
-        if (g_smCats[i].items == g_smSystem || g_smCats[i].items == g_smSystem + 1) {
+        if (g_smCats[i].items == g_smSystem || g_smCats[i].items == g_smSystem + VPM_CAMPAIGN_ITEMS) {
             const qboolean has = VitaPerfMenu_HasExpansion();
-            g_smCats[i].items     = has ? g_smSystem : g_smSystem + 1;
-            g_smCats[i].itemCount = (int)(sizeof(g_smSystem) / sizeof(g_smSystem[0])) - (has ? 0 : 1);
+            g_smCats[i].items     = has ? g_smSystem : g_smSystem + VPM_CAMPAIGN_ITEMS;
+            g_smCats[i].itemCount = (int)(sizeof(g_smSystem) / sizeof(g_smSystem[0])) - (has ? 0 : VPM_CAMPAIGN_ITEMS);
         }
     }
 #endif
@@ -1434,6 +1447,17 @@ void CL_VitaPerfMenu_Init(void)
     Cmd_AddCommand("vita_cheat", CL_VitaCheat_f);
 #ifdef __vita__
     Cmd_AddCommand("vita_campaign", VitaPerfMenu_ChangeCampaign); /* = System > Change campaign */
+    {
+        /* System > Settings per campaign: its value lives in vita_config.txt (files.cpp) */
+        FILE *f     = fopen("ux0:data/openmohaa/vita_config.txt", "r");
+        int   value = 0;
+        if (f) {
+            value = fgetc(f) == '1';
+            fclose(f);
+        }
+        Cvar_Get("vita_config_per_campaign", "0", 0);
+        Cvar_Set("vita_config_per_campaign", value ? "1" : "0");
+    }
 #endif
     Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
     Cmd_AddCommand("vitasettings", CL_VitaSettings_f);

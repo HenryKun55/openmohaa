@@ -1688,3 +1688,5 @@
 { "Up/Down: choose   X: start" "Haut/Bas: choisir   X: commencer" }
 { "Change campaign" "Changer de campagne" }
 { "Starts the game again to choose Allied Assault, Spearhead or Breakthrough. Progress not saved is lost." "Redémarre le jeu pour choisir Allied Assault, Spearhead ou Breakthrough. La progression non sauvegardée est perdue." }
+{ "Settings per campaign" "Réglages par campagne" }
+{ "Off: controls and settings are the same in every campaign. On: each campaign keeps its own. From the next start." "Non: commandes et réglages identiques dans toutes les campagnes. Oui: chaque campagne garde les siens. Au prochain démarrage." }
