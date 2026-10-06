@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../server/server.h"
 #ifdef __vita__
 #include <psp2/apputil.h>
+#include <psp2/appmgr.h>
 #include <psp2/system_param.h>
 #include "../sys/vita_update.h"
 extern "C" void Com_WriteConfiguration(void);
@@ -269,6 +270,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "Crosshair (aim)", "Show the crosshair while aiming." },
 
     /* SETTINGS: system */
+    { "Change campaign", "Starts the game again to choose Allied Assault, Spearhead or Breakthrough. Progress not saved is lost." },
     { "Check for updates", "When the game starts, look for a new version on GitHub." },
     { "Check now", "Look for a new version on GitHub now." },
     { "Restore defaults", "Back to the port's recommended settings." },
@@ -450,8 +452,11 @@ static VitaPerfMenuItem g_smControls[] = {
 #define VPM_ACTION_CLOSE    "@close"
 
 #define VPM_ACTION_UPDATE   "@update"
+#define VPM_ACTION_CAMPAIGN "@campaign"
 
+/* "Change campaign" first: left out when no expansion is on the memory card (VitaPerfMenu_Open) */
 static VitaPerfMenuItem g_smSystem[] = {
+    { "Change campaign",   NULL, qfalse, 0, VPM_ACTION_CAMPAIGN },
     { "Check for updates", "vita_update_check", qfalse, 0 },
     { "Check now",         NULL, qfalse, 0, VPM_ACTION_UPDATE },
     { "Restore defaults", NULL, qfalse, 0, VPM_ACTION_DEFAULTS },
@@ -740,8 +745,51 @@ static void VitaPerfMenu_Close(void)
     }
 }
 
+#ifdef __vita__
+#define VITA_CHOOSE_FLAG "ux0:data/openmohaa/vita_choose" /* read by vita_bootui.c */
+
+static qboolean VitaPerfMenu_HasExpansion(void)
+{
+    static const char *const paks[] = {"ux0:data/openmohaa/mainta/pak1.pk3", "ux0:data/openmohaa/maintt/pak1.pk3"};
+    for (int i = 0; i < 2; i++) {
+        FILE *f = fopen(paks[i], "rb");
+        if (f) {
+            fclose(f);
+            return qtrue;
+        }
+    }
+    return qfalse;
+}
+
+/* The engine reads the campaign once, at start-up (com_target_game): the game starts again,
+ * straight to the campaign choice on the boot picture, which waits for the player then. */
+static void VitaPerfMenu_ChangeCampaign(void)
+{
+    FILE *f;
+
+    Com_WriteConfiguration();
+    f = fopen(VITA_CHOOSE_FLAG, "w");
+    if (f) {
+        fclose(f);
+    }
+    Com_Printf("PERF-MENU: change campaign, starting again\n");
+    sceAppMgrLoadExec("app0:eboot.bin", NULL, NULL);
+    remove(VITA_CHOOSE_FLAG); /* only reached when the Vita refused */
+}
+#endif
+
 static void VitaPerfMenu_Open(qboolean debug)
 {
+#ifdef __vita__
+    /* SYSTEM: "Change campaign" only with an expansion to change to */
+    for (int i = 0; i < (int)(sizeof(g_smCats) / sizeof(g_smCats[0])); i++) {
+        if (g_smCats[i].items == g_smSystem || g_smCats[i].items == g_smSystem + 1) {
+            const qboolean has = VitaPerfMenu_HasExpansion();
+            g_smCats[i].items     = has ? g_smSystem : g_smSystem + 1;
+            g_smCats[i].itemCount = (int)(sizeof(g_smSystem) / sizeof(g_smSystem[0])) - (has ? 0 : 1);
+        }
+    }
+#endif
     /* LEVELS: the campaign being played */
     for (int i = 0; i < (int)(sizeof(g_dmCats) / sizeof(g_dmCats[0])); i++) {
         if (g_dmCats[i].items == g_dmLevels || g_dmCats[i].items == g_dmLevelsTA || g_dmCats[i].items == g_dmLevelsTT) {
@@ -838,6 +886,8 @@ static void VitaPerfMenu_Action(const char *action)
         VitaPerfMenu_Close();
         VitaUpdate_Check(Cvar_VariableString("vita_language"));
         VitaUpdate_Open(qtrue);
+    } else if (!strcmp(action, VPM_ACTION_CAMPAIGN)) {
+        VitaPerfMenu_ChangeCampaign();
 #endif
     }
 }
@@ -1382,6 +1432,9 @@ static void CL_VitaCheat_f(void)
 void CL_VitaPerfMenu_Init(void)
 {
     Cmd_AddCommand("vita_cheat", CL_VitaCheat_f);
+#ifdef __vita__
+    Cmd_AddCommand("vita_campaign", VitaPerfMenu_ChangeCampaign); /* = System > Change campaign */
+#endif
     Cmd_AddCommand("perfmenu", CL_VitaPerfMenu_Toggle_f);
     Cmd_AddCommand("vitasettings", CL_VitaSettings_f);
 #ifdef __vita__

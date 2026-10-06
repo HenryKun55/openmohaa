@@ -1686,3 +1686,5 @@
 // Campaign choice at boot (Allied Assault, Spearhead, Breakthrough: the names stay)
 { "Choose the campaign" "Wähle die Kampagne" }
 { "Up/Down: choose   X: start" "Hoch/Runter: wählen   X: starten" }
+{ "Change campaign" "Kampagne wechseln" }
+{ "Starts the game again to choose Allied Assault, Spearhead or Breakthrough. Progress not saved is lost." "Startet das Spiel neu, um Allied Assault, Spearhead oder Breakthrough zu wählen. Nicht gespeicherter Fortschritt geht verloren." }

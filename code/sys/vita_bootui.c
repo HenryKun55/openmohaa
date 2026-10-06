@@ -296,6 +296,18 @@ static unsigned int BootUI_WaitButton(unsigned int mask, int timeoutMs)
 
 // ---------- set up ----------
 
+/* Set by Vita settings > System > Change campaign (cl_uiview3d.cpp) before the game starts
+ * again: the campaign choice waits for the player, and the update check is skipped. */
+#define CHOOSE_FLAG "ux0:data/openmohaa/vita_choose"
+
+static int BootUI_Exists(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
 /* The saved config's language (the system's when never chosen) and one setting. */
 static void BootUI_Settings(const char *name, char *value, int valueSize, const char *def, char *lang, int langSize)
 {
@@ -352,7 +364,10 @@ void Sys_VitaBootUpdateCheck(uint32_t *framebuffer)
     vitaUpdateState_t st;
 
     BootUI_Settings("vita_update_check", enabled, sizeof(enabled), "1", lang, sizeof(lang));
-    if (atoi(enabled) == 0 || !BootUI_Begin(framebuffer, lang)) return;
+    if (atoi(enabled) == 0 || BootUI_Exists(CHOOSE_FLAG) /* only changing campaign */
+        || !BootUI_Begin(framebuffer, lang)) {
+        return;
+    }
 
     BootUI_Show(BootUI_Tr("Looking for a new version..."), NULL, -1.0f, NULL);
     VitaUpdate_Check(lang);
@@ -464,11 +479,15 @@ static void BootUI_ShowList(const char *title, const char *const *items, const i
 void Sys_VitaBootChooseGame(uint32_t *framebuffer)
 {
     static const char *const names[3] = {"Allied Assault", "Spearhead", "Breakthrough"};
-    int                      shown[3], sel = 0, idle = 0, k;
+    int                      shown[3], sel = 0, idle = 0, k, wait = 1;
     char                     lang[16], unused[8];
     unsigned int             prev;
     FILE                    *f;
 
+    if (BootUI_Exists(CHOOSE_FLAG)) {
+        remove(CHOOSE_FLAG);
+        wait = 0; /* asked for from the game: no choice taken by itself */
+    }
     for (k = 0; k < 3; k++) shown[k] = BootUI_HasGame(k);
     if (!shown[1] && !shown[2]) return; /* the base game only: nothing to choose */
 
@@ -500,7 +519,7 @@ void Sys_VitaBootChooseGame(uint32_t *framebuffer)
             idle = 0;
         }
         if (now) idle = 0;
-        if ((idle += 16) >= GAME_CHOICE_WAIT_MS) break; /* nobody looking: the last choice */
+        if (wait && (idle += 16) >= GAME_CHOICE_WAIT_MS) break; /* nobody looking: the last choice */
         sceKernelDelayThread(16 * 1000);
     }
 
