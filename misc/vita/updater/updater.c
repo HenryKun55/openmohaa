@@ -251,6 +251,13 @@ static int ExtractEntry(SceUID zfd, uint32_t dataOff, int method, uint32_t csize
             zs.next_out  = out;
             zs.avail_out = sizeof(out);
             zr           = inflate(&zs, Z_NO_FLUSH);
+            if (zr == Z_BUF_ERROR && zs.avail_in == 0) {
+                /* no progress possible without more input: the output filled up exactly at
+                 * the end of this read (v0.3 took it for a damaged package and refused the
+                 * v0.4 update, on splash.png, which deflate barely compresses) */
+                zr = Z_OK;
+                break;
+            }
             if (zr != Z_OK && zr != Z_STREAM_END) {
                 res = -3;
                 break;

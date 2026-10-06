@@ -353,11 +353,14 @@ function(package_vita_vpk)
                     # CA certificates for the update check's HTTPS (curl.se/ca, MPL 2.0)
                     --add ${UPDATER_DIR}/cacert.pem=cacert.pem
                     ${VPK_FILE}
+        # entries v0.3's in-game updater could not unpack are stored uncompressed
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/misc/vita/vpk_compat.py ${VPK_FILE}
         DEPENDS ${EBOOT_FILE}
                 ${CMAKE_BINARY_DIR}/game_suprx
                 ${CMAKE_BINARY_DIR}/cgame_suprx
                 vita_updater
                 ${UPDATER_DIR}/cacert.pem
+                ${CMAKE_SOURCE_DIR}/misc/vita/vpk_compat.py
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_autoexec.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/vita_defaults.cfg
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-14.RitualFont
