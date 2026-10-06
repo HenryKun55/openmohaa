@@ -502,6 +502,7 @@ void Sys_VitaBootChooseGame(uint32_t *framebuffer)
     if (!BootUI_Begin(framebuffer, lang)) return;
 
     prev = BootUI_Buttons();
+    k    = sel;
     for (;;) {
         unsigned int now, pressed;
 
@@ -523,6 +524,15 @@ void Sys_VitaBootChooseGame(uint32_t *framebuffer)
         sceKernelDelayThread(16 * 1000);
     }
 
+    {
+        /* for the log (boot.log is not open yet): ux0:data/openmohaa/vita_game_log.txt */
+        FILE *log = fopen("ux0:data/openmohaa/vita_game_log.txt", "w");
+        if (log) {
+            fprintf(log, "installed %d%d%d, remembered %d, chosen %d by %s%s\n", shown[0], shown[1], shown[2], k, sel,
+                    idle >= GAME_CHOICE_WAIT_MS ? "time" : "button", wait ? "" : " (asked from the game)");
+            fclose(log);
+        }
+    }
     s_targetGame = sel;
     f = fopen(GAME_CHOICE_FILE, "w");
     if (f) {

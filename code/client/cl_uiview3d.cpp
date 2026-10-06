@@ -270,8 +270,8 @@ static const VitaMenuText g_vmTexts[] = {
     { "Crosshair (aim)", "Show the crosshair while aiming." },
 
     /* SETTINGS: system */
-    { "Change campaign", "Starts the game again to choose Allied Assault, Spearhead or Breakthrough. Progress not saved is lost." },
-    { "Settings per campaign", "Off: controls and settings are the same in every campaign. On: each campaign keeps its own. From the next start." },
+    { "Change campaign", "Starts the game again to choose another campaign." },
+    { "Settings per campaign", "Off: one set of settings for every campaign. On: one for each." },
     { "Check for updates", "When the game starts, look for a new version on GitHub." },
     { "Check now", "Look for a new version on GitHub now." },
     { "Restore defaults", "Back to the port's recommended settings." },
@@ -408,6 +408,99 @@ static const char *VitaMenu_Latin1(const char *s)
     out[n] = 0;
     return out;
 }
+
+/*
+Help: the longer explanation of an item, shown over the menu with Triangle (the line under
+the list only has room for a short description). Paragraphs, each translated on its own
+(misc/vita/lang/<code>.txt), English being the key.
+*/
+#define VPM_HELP_PARAS 5
+typedef struct {
+    const char *label;
+    const char *paras[VPM_HELP_PARAS];
+} VitaMenuHelp;
+
+static const VitaMenuHelp g_vmHelp[] = {
+    { "Change campaign", {
+        "Allied Assault, Spearhead and Breakthrough are separate games for the engine, chosen when it starts, like the three shortcuts of the PC version.",
+        "This starts the game again straight to the campaign choice, without going back to the LiveArea. Choose with the D-pad and Cross.",
+        "Your settings are saved first. A level in progress is not: save the game before, from the pause menu.",
+    } },
+    { "Settings per campaign", {
+        "Decides whether Allied Assault, Spearhead and Breakthrough share their settings or each keeps its own.",
+        "Off (recommended): one set for the three campaigns: the buttons, the Vita settings (graphics, HUD, sensitivity) and the Text Language. A change made in one campaign is there in the others.",
+        "On: each campaign keeps its own, as on the PC. The first time a campaign starts, it takes a copy of the current settings; after that they are separate. For example, to have other buttons in one campaign.",
+        "It counts from the next start of the game or the next Change campaign. Nothing is deleted: when it is turned off again, the shared settings come back, and each campaign's own are kept for the next time it is on.",
+    } },
+};
+
+static const VitaMenuHelp *VitaMenu_FindHelp(const char *label)
+{
+    for (size_t i = 0; i < sizeof(g_vmHelp) / sizeof(g_vmHelp[0]); i++) {
+        if (!strcmp(g_vmHelp[i].label, label)) {
+            return &g_vmHelp[i];
+        }
+    }
+    return NULL;
+}
+
+static qboolean g_pmHelp; /* the help of the selected item is shown */
+
+/* Words of a UTF-8 text in lines no wider than maxW for the font; returns the next y. */
+static float VitaMenu_PrintWrapped(UIFont *font, float x, float y, const char *text, float maxW)
+{
+    char line[256];
+    int  n = 0, lastSpace = -1;
+
+    for (const char *p = text;; p++) {
+        if (*p && *p != ' ' && n < (int)sizeof(line) - 1) {
+            line[n++] = *p;
+            continue;
+        }
+        /* a word ends: does it still fit? */
+        line[n] = 0;
+        if (lastSpace >= 0 && font->getWidth(VitaMenu_Latin1(line), -1) > maxW) {
+            line[lastSpace] = 0;
+            font->Print(x, y, VitaMenu_Latin1(line), -1, NULL);
+            y += 18.0f;
+            memmove(line, line + lastSpace + 1, n - lastSpace);
+            n -= lastSpace + 1;
+        }
+        if (!*p) {
+            break;
+        }
+        lastSpace = n;
+        if (n < (int)sizeof(line) - 1) line[n++] = ' ';
+    }
+    line[n] = 0;
+    if (n) {
+        font->Print(x, y, VitaMenu_Latin1(line), -1, NULL);
+        y += 18.0f;
+    }
+    return y;
+}
+
+static void VitaMenu_DrawHelp(UIFont *font, const VitaMenuHelp *help, float boxX, float boxY, float boxW, float boxH)
+{
+    const vec4_t bg   = {0.03f, 0.04f, 0.03f, 0.97f};
+    const vec4_t band = {0.30f, 0.26f, 0.12f, 0.95f};
+    float        y;
+
+    re.SetColor(bg);
+    re.DrawBox(boxX, boxY, boxW, boxH);
+    re.SetColor(band);
+    re.DrawBox(boxX, boxY, boxW, 30.0f);
+    font->setColor(UWhite);
+    font->Print(boxX + 12.0f, boxY + 7.0f, VitaMenu_Latin1(VT(help->label)), -1, NULL);
+    y = boxY + 42.0f;
+    for (int i = 0; i < VPM_HELP_PARAS && help->paras[i]; i++) {
+        y = VitaMenu_PrintWrapped(font, boxX + 14.0f, y, VT(help->paras[i]), boxW - 28.0f) + 8.0f;
+    }
+    font->setColor(UYellow);
+    font->Print(boxX + 12.0f, boxY + boxH - 24.0f, VitaMenu_Latin1(VT("Triangle / O: back")), -1, NULL);
+    re.SetColor(NULL);
+}
+
 
 /* ---------- SETTINGS (player-facing) ---------- */
 #define VPM_DEFAULTS "exec vita_defaults.cfg"
@@ -750,6 +843,7 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
 static void VitaPerfMenu_Close(void)
 {
     g_pmActive = qfalse;
+    g_pmHelp   = qfalse;
     Com_Printf("PERF-MENU: CLOSED\n");
     if (g_pmNeedRestart) {
         g_pmNeedRestart = qfalse;
@@ -800,6 +894,8 @@ static void VitaPerfMenu_Open(qboolean debug)
             const qboolean has = VitaPerfMenu_HasExpansion();
             g_smCats[i].items     = has ? g_smSystem : g_smSystem + VPM_CAMPAIGN_ITEMS;
             g_smCats[i].itemCount = (int)(sizeof(g_smSystem) / sizeof(g_smSystem[0])) - (has ? 0 : VPM_CAMPAIGN_ITEMS);
+            Com_Printf("PERF-MENU: system tab, %d items (%s)\n", g_smCats[i].itemCount,
+                       has ? "with the campaign items" : "no expansion: no campaign items");
         }
     }
 #endif
@@ -835,9 +931,26 @@ void CL_VitaPerfMenu_Toggle_f(void)
 }
 
 /* "vitasettings" / "vitadebug": open a given screen (menus, LiveArea launch param). */
+/* vitasettings [tab [item [help]]]: also opens a tab, an item and its help (test runs) */
 static void CL_VitaSettings_f(void)
 {
     VitaPerfMenu_Open(qfalse);
+    if (Cmd_Argc() > 1) {
+        for (int i = 0; i < g_pmCatCount; i++) {
+            if (!Q_stricmp(g_pmCats[i].label, Cmd_Argv(1))) {
+                g_pmCatIdx  = i;
+                g_pmItemIdx = 0;
+                g_pmScroll  = 0;
+            }
+        }
+        if (Cmd_Argc() > 2) {
+            const int item = atoi(Cmd_Argv(2));
+            if (item >= 0 && item < g_pmCats[g_pmCatIdx].itemCount) g_pmItemIdx = item;
+            VitaPerfMenu_ClampScroll();
+        }
+        g_pmHelp = Cmd_Argc() > 3 && !Q_stricmp(Cmd_Argv(3), "help")
+                && VitaMenu_FindHelp(g_pmCats[g_pmCatIdx].items[g_pmItemIdx].label);
+    }
 }
 
 static void CL_VitaDebug_f(void)
@@ -982,6 +1095,7 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
     static int      k_right    = -1;
     static int      k_lshoulder = -1;
     static int      k_rshoulder = -1;
+    static int      k_triangle  = -1;
     if (!s_resolved) {
         s_resolved  = qtrue;
         k_select    = Key_StringToKeynum("PAD0_BACK");
@@ -994,6 +1108,19 @@ qboolean CL_VitaPerfMenu_HandleKey(int key, qboolean down)
         k_right     = Key_StringToKeynum("PAD0_DPAD_RIGHT");
         k_lshoulder = Key_StringToKeynum("PAD0_LEFTSHOULDER");
         k_rshoulder = Key_StringToKeynum("PAD0_RIGHTSHOULDER");
+        k_triangle  = Key_StringToKeynum("PAD0_Y");
+    }
+
+    if (g_pmHelp) {
+        /* the help: Triangle, Circle or Cross back to the menu */
+        if (key == k_triangle || key == k_circle || key == k_cross || key == K_ESCAPE) {
+            g_pmHelp = qfalse;
+        }
+        return qtrue;
+    }
+    if (key == k_triangle) {
+        g_pmHelp = VitaMenu_FindHelp(g_pmCats[g_pmCatIdx].items[g_pmItemIdx].label) != NULL;
+        return qtrue;
     }
 
     if (key == k_select || key == k_circle || key == k_start || key == K_ESCAPE) {
@@ -1384,6 +1511,20 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
         menuFont->setColor(UWhite);
         menuFont->Print(boxX + 12.0f, boxY + boxH - 88.0f, VitaMenu_Latin1(l1), -1, NULL);
         menuFont->Print(boxX + 12.0f, boxY + boxH - 70.0f, VitaMenu_Latin1(l2), -1, NULL);
+        if (VitaMenu_FindHelp(cat->items[g_pmItemIdx].label)) {
+            const char *more = VitaMenu_Latin1(VT("Triangle: more information"));
+            menuFont->setColor(UYellow);
+            menuFont->Print(boxX + boxW - 12.0f - (float)menuFont->getWidth(more, -1), boxY + boxH - 46.0f, more, -1,
+                            NULL);
+        }
+    }
+    if (g_pmHelp) {
+        const VitaMenuHelp *help = VitaMenu_FindHelp(cat->items[g_pmItemIdx].label);
+        if (help) {
+            VitaMenu_DrawHelp(menuFont, help, boxX, boxY, boxW, boxH);
+            return;
+        }
+        g_pmHelp = qfalse;
     }
 
     /* Footer: restart note and controls */

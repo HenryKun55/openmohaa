@@ -1687,6 +1687,16 @@
 { "Choose the campaign" "Scegli la campagna" }
 { "Up/Down: choose   X: start" "Su/Giù: scegli   X: inizia" }
 { "Change campaign" "Cambia campagna" }
-{ "Starts the game again to choose Allied Assault, Spearhead or Breakthrough. Progress not saved is lost." "Riavvia il gioco per scegliere Allied Assault, Spearhead o Breakthrough. I progressi non salvati vanno persi." }
 { "Settings per campaign" "Impostazioni per campagna" }
-{ "Off: controls and settings are the same in every campaign. On: each campaign keeps its own. From the next start." "No: comandi e impostazioni uguali in tutte le campagne. Sì: ogni campagna tiene le sue. Dal prossimo avvio." }
+// Vita settings: campaign items and their help (Triangle)
+{ "Off: one set of settings for every campaign. On: one for each." "No: le stesse impostazioni in tutte le campagne. Sì: una per ciascuna." }
+{ "Starts the game again to choose another campaign." "Riavvia il gioco per scegliere un'altra campagna." }
+{ "Triangle: more information" "Triangolo: maggiori informazioni" }
+{ "Triangle / O: back" "Triangolo / O: indietro" }
+{ "Allied Assault, Spearhead and Breakthrough are separate games for the engine, chosen when it starts, like the three shortcuts of the PC version." "Allied Assault, Spearhead e Breakthrough sono giochi separati per il motore, scelti all'avvio, come le tre scorciatoie della versione PC." }
+{ "This starts the game again straight to the campaign choice, without going back to the LiveArea. Choose with the D-pad and Cross." "Questo riavvia il gioco direttamente sulla scelta della campagna, senza tornare alla LiveArea. Scegli con la croce direzionale e X." }
+{ "Your settings are saved first. A level in progress is not: save the game before, from the pause menu." "Le tue impostazioni vengono salvate prima. Una missione in corso no: salva la partita prima, dal menu di pausa." }
+{ "Decides whether Allied Assault, Spearhead and Breakthrough share their settings or each keeps its own." "Decide se Allied Assault, Spearhead e Breakthrough condividono le impostazioni o se ognuno tiene le proprie." }
+{ "Off (recommended): one set for the three campaigns: the buttons, the Vita settings (graphics, HUD, sensitivity) and the Text Language. A change made in one campaign is there in the others." "No (consigliato): un insieme per le tre campagne: i tasti, le impostazioni della Vita (grafica, HUD, sensibilità) e la lingua del testo. Una modifica fatta in una campagna vale anche nelle altre." }
+{ "On: each campaign keeps its own, as on the PC. The first time a campaign starts, it takes a copy of the current settings; after that they are separate. For example, to have other buttons in one campaign." "Sì: ogni campagna tiene le proprie, come su PC. La prima volta che una campagna si avvia, copia le impostazioni attuali; poi restano separate. Per esempio, per avere altri tasti in una campagna." }
+{ "It counts from the next start of the game or the next Change campaign. Nothing is deleted: when it is turned off again, the shared settings come back, and each campaign's own are kept for the next time it is on." "Vale dal prossimo avvio del gioco o dal prossimo cambio di campagna. Non si cancella nulla: disattivandolo di nuovo tornano le impostazioni condivise, e quelle di ogni campagna restano per la prossima volta." }
