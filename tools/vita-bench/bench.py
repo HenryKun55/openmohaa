@@ -52,6 +52,7 @@ DATA = os.path.join(UX0, "data/openmohaa")
 MAIN = os.path.join(DATA, "main")
 BOOT_LOG = os.path.join(MAIN, "boot.log")
 TEST_CFG = os.path.join(MAIN, "vita_test.cfg")
+EARLY_CFG = os.path.join(MAIN, "vita_test_early.cfg")  # read before the video starts
 GAME_CHOICE = os.path.join(DATA, "vita_game.txt")
 TITLE = "OMHA00001"
 
@@ -152,7 +153,7 @@ def summarize(samples):
     return out
 
 
-def run_scenario(name, sc, profile, sets, outdir):
+def run_scenario(name, sc, profile, sets, outdir, early=None):
     print(f"== {name}: {sc['map']} (game {sc['game']}), profile {profile}", flush=True)
     result = {"scenario": name, "map": sc["map"], "game": sc["game"], "profile": profile, "sets": sets,
               "windows": {}, "status": "ok"}
@@ -166,6 +167,10 @@ def run_scenario(name, sc, profile, sets, outdir):
                 os.remove(BOOT_LOG)
             with open(GAME_CHOICE, "w") as f:
                 f.write(f"{sc['game']}\n")
+            if early:
+                with open(EARLY_CFG, "w") as f:
+                    for k, v in early.items():
+                        f.write(f'set {k} "{v}"\n')
             with open(TEST_CFG, "w") as f:
                 f.write("set thereisnomonkey 1\nset cheats 1\n")
                 for k, v in sets.items():
@@ -201,6 +206,8 @@ def run_scenario(name, sc, profile, sets, outdir):
                                 samples.append((now - t0, kind, vals))
                 if os.path.exists(TEST_CFG) and t0 is not None:
                     os.remove(TEST_CFG)  # read at start-up only
+                if os.path.exists(EARLY_CFG) and t0 is not None:
+                    os.remove(EARLY_CFG)
                 if retry:
                     break
                 if proc.poll() is not None:
@@ -232,6 +239,8 @@ def run_scenario(name, sc, profile, sets, outdir):
         kill_vita3k()
         if os.path.exists(TEST_CFG):
             os.remove(TEST_CFG)
+        if os.path.exists(EARLY_CFG):
+            os.remove(EARLY_CFG)
         if saved_choice is None:
             if os.path.exists(GAME_CHOICE):
                 os.remove(GAME_CHOICE)
@@ -268,6 +277,8 @@ def main():
     ap.add_argument("--profile", choices=PROFILES, default="vita")
     ap.add_argument("--set", action="append", default=[], metavar="CVAR=VALUE",
                     help="temporary cvar for the run (e.g. sv_vita_thread_test=2, r_vita_staticmerge=0)")
+    ap.add_argument("--early", action="append", default=[], metavar="CVAR=VALUE",
+                    help="cvar set before the video starts, never saved (e.g. r_vita_resolution_test=1)")
     ap.add_argument("--out", help="results folder")
     args = ap.parse_args()
 
@@ -283,7 +294,7 @@ def main():
     results = []
     try:
         for n in names:
-            results.append(run_scenario(n, scenarios[n], args.profile, sets, outdir))
+            results.append(run_scenario(n, scenarios[n], args.profile, sets, outdir, dict(e.split("=", 1) for e in args.early)))
     except KeyboardInterrupt:
         print("interrupted", flush=True)
     table = report(results)

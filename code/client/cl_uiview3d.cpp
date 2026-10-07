@@ -133,6 +133,11 @@ static const VitaPerfChoice g_pcFilter[] = {
     { "Bilinear",  "gl_linear_mipmap_nearest", "seta r_texturemode gl_linear_mipmap_nearest" },
     { "Trilinear", "gl_linear_mipmap_linear",  "seta r_texturemode gl_linear_mipmap_linear" },
 };
+/* r_vita_resolution: read when vitaGL starts (sdl_glimp.c), so it applies at the next start */
+static const VitaPerfChoice g_pcResolution[] = {
+    { "960x544", "0", "seta r_vita_resolution 0" },
+    { "720x408", "1", "seta r_vita_resolution 1" },
+};
 static const VitaPerfChoice g_pcShadows[] = {
     { "Off",     "0", "seta cg_shadows 0" },
     { "Blob",    "1", "seta cg_shadows 1" },
@@ -249,6 +254,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "Effect Detail", "Amount of smoke, debris and particles." },
     { "Terrain Detail", "Detail of outdoor terrain." },
     { "Texture Filter", "Trilinear blends texture detail levels more smoothly." },
+    { "Render Resolution", "720x408 eases the GPU in heavy scenes; the image is softer. Applied when the game starts again." },
     { "Shadows", "Precise: shadows cast by the lights. Blob: a simple shadow. Off is fastest." },
     { "Dynamic Lights", "Light from muzzle flashes, explosions and fires." },
     { "Lens Flares", "Glare from the sun and bright lights." },
@@ -516,6 +522,7 @@ static VitaPerfMenuItem g_smGraphics[] = {
     { "Effect Detail",    "cg_effectdetail", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcEffects) },
     { "Terrain Detail",   "ter_error",       qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcTerrain) },
     { "Texture Filter",   "r_texturemode",   qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcFilter) },
+    { "Render Resolution","r_vita_resolution",qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcResolution) },
     { "Shadows",          "cg_shadows",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcShadows) },
     { "Dynamic Lights",   "r_dynamiclight",  qfalse, 0 },
     { "Lens Flares",      "r_flares",        qfalse, 0 },
@@ -689,7 +696,10 @@ static qboolean g_pmNeedRestart = qfalse; /* a restart-only setting changed: vid
 static int      g_pmCatIdx   = 0;
 static int      g_pmItemIdx  = 0;
 static int      g_pmScroll   = 0;       /* first visible item (LEVELS is long) */
-#define VPM_VISIBLE 12                  /* items shown at once */
+/* items shown at once: 12 at 960x544, fewer when the screen is shorter (720x408),
+ * set by the draw from the room between the tabs and the description */
+static int g_pmVisible = 12;
+#define VPM_VISIBLE g_pmVisible
 
 static void VitaPerfMenu_SetScreen(qboolean debug)
 {
@@ -1486,6 +1496,10 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
 
     /* Items, windowed [g_pmScroll, +VPM_VISIBLE) so long lists (LEVELS) scroll. */
     VitaPerfMenuCategory *cat = &g_pmCats[g_pmCatIdx];
+    g_pmVisible = (int)((boxY + boxH - 92.0f - y) / lineH);
+    if (g_pmVisible > 12) g_pmVisible = 12;
+    if (g_pmVisible < 4) g_pmVisible = 4;
+    if (g_pmItemIdx >= g_pmScroll + g_pmVisible) g_pmScroll = g_pmItemIdx - g_pmVisible + 1;
     int last = g_pmScroll + VPM_VISIBLE;
     if (last > cat->itemCount) last = cat->itemCount;
     for (int i = g_pmScroll; i < last; i++) {

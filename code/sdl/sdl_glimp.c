@@ -506,6 +506,11 @@ static void GLimp_ClearProcAddresses( void ) {
 GLimp_SetMode
 ===============
 */
+#ifdef __vita__
+static int s_vitaWidth = 960, s_vitaHeight = 544;
+/* the size vitaGL renders at (r_vita_resolution), for the boot splash */
+void Vita_RenderSize(int *w, int *h) { *w = s_vitaWidth; *h = s_vitaHeight; }
+#endif
 static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qboolean fixedFunction)
 {
 #ifdef __vita__
@@ -564,7 +569,25 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 	 * the first R_IssuePendingRenderCommands of the frame, the point
 	 * where the queued 3D scene actually submits). Bumping to 32 MB
 	 * gives ~30 frames of headroom so vitaGL never blocks mid-frame. */
-	vglInitExtended( 4 * 1024 * 1024, 960, 544, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
+	/* r_vita_resolution 1: render at 720x408, which the Vita's display scales to the
+	 * whole screen; the GPU fills 44% fewer pixels (water, smoke and fog are what make
+	 * the D-Day beach GPU bound). Read once here: vitaGL starts with it. */
+	{
+		static qboolean vglStarted = qfalse;
+		if ( !vglStarted ) {
+			/* not latched: a change applies at the next start of the game (vitaGL cannot
+			 * start twice, so a vid_restart keeps the size it started with) */
+			const cvar_t *res  = ri.Cvar_Get( "r_vita_resolution", "0", CVAR_ARCHIVE );
+			/* test runs (vita_test_early.cfg) set this one, which is never saved */
+			const cvar_t *test = ri.Cvar_Get( "r_vita_resolution_test", "-1", CVAR_TEMP );
+			const int     mode = test->integer >= 0 ? test->integer : res->integer;
+			s_vitaWidth  = mode == 1 ? 720 : 960;
+			s_vitaHeight = mode == 1 ? 408 : 544;
+			ri.Printf( PRINT_ALL, "[VITA] render resolution %dx%d\n", s_vitaWidth, s_vitaHeight );
+			vglInitExtended( 4 * 1024 * 1024, s_vitaWidth, s_vitaHeight, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
+			vglStarted = qtrue;
+		}
+	}
 
 	/* Bridge the LiveArea startup.png onto our first GL frame so the
 	 * zoom-in animation flows straight into a static splash that stays
@@ -576,9 +599,9 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 
 	{ extern void Sys_VitaDumpMemSnapshot(const char *); Sys_VitaDumpMemSnapshot("T3 post-vglInit"); }
 
-	glConfig.vidWidth         = 960;
-	glConfig.vidHeight        = 544;
-	glConfig.windowAspect     = 960.0f / 544.0f;
+	glConfig.vidWidth         = s_vitaWidth;
+	glConfig.vidHeight        = s_vitaHeight;
+	glConfig.windowAspect     = (float)s_vitaWidth / s_vitaHeight;
 	glConfig.colorBits        = 32;
 	glConfig.depthBits        = 24;
 	glConfig.stencilBits      = 8;

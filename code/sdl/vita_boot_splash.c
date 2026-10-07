@@ -144,7 +144,12 @@ static void splash_draw_quad(void)
 {
     if (!s_splash_tex) return;
 
-    glViewport(0, 0, 960, 544);
+    {
+        extern void Vita_RenderSize(int *w, int *h);
+        int w, h;
+        Vita_RenderSize(&w, &h);
+        glViewport(0, 0, w, h);
+    }
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0.0, 1.0, 1.0, 0.0, -1.0, 1.0);

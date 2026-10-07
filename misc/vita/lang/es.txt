@@ -797,6 +797,8 @@
 { "Terrain Detail" "Detalle del terreno" }
 { "Detail of outdoor terrain." "Detalle del terreno en zonas abiertas." }
 { "Trilinear blends texture detail levels more smoothly." "Trilineal suaviza la transición entre niveles de detalle de las texturas." }
+{ "Render Resolution" "Resolución de renderizado" }
+{ "720x408 eases the GPU in heavy scenes; the image is softer. Applied when the game starts again." "720x408 alivia la GPU en las escenas pesadas; la imagen queda más suave. Se aplica al volver a abrir el juego." }
 { "Precise: shadows cast by the lights. Blob: a simple shadow. Off is fastest." "Precisa: sombras proyectadas por las luces. Simple: una sombra básica. Sin sombras es lo más rápido." }
 { "Dynamic Lights" "Luces dinámicas" }
 { "Light from muzzle flashes, explosions and fires." "Luz de disparos, explosiones y fuego." }

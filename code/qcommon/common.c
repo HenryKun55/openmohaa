@@ -1986,6 +1986,10 @@ void Com_Init( char *commandLine ) {
 	if ( FS_ReadFile( "vita_test.cfg", NULL ) > 0 ) {
 		Cvar_Get( "vita_test_skipintro", "1", CVAR_TEMP );
 	}
+	// ...and vita_test_early.cfg sets what is read before the video starts (resolution)
+	if ( FS_ReadFile( "vita_test_early.cfg", NULL ) > 0 ) {
+		Cbuf_AddText( "exec vita_test_early.cfg\n" );
+	}
 #endif
 	Cbuf_Execute( 0 );
 	Com_StartupVariable( NULL );
