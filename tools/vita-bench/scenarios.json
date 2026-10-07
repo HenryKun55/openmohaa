@@ -2,7 +2,7 @@
   "_comment": "game: 0 Allied Assault, 1 Spearhead, 2 Breakthrough. windows: seconds after the player enters the level ([VITA] in game). commands run once in the level (activeAction).",
   "boat": {
     "game": 0, "map": "m3l1a", "commands": "god; notarget",
-    "windows": [{"name": "start", "from": 12, "to": 32}, {"name": "beach", "from": 90, "to": 112}]
+    "windows": [{"name": "start", "from": 12, "to": 32}, {"name": "beach", "from": 85, "to": 100}]
   },
   "m1l1": {
     "game": 0, "map": "m1l1", "commands": "god; notarget",
