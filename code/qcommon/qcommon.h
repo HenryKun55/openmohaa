@@ -1300,7 +1300,8 @@ void SV_Frame( int msec );
 #ifdef __vita__
 void SV_VitaJoinGame( void );	// waits for the game frames on the server thread (sv_main.c)
 void Com_WriteConfiguration( void );
-qboolean FS_VitaConfigPerCampaign( void );	// Vita settings > System > Settings per campaign (files.cpp)
+qboolean FS_VitaConfigPerCampaign( void );
+qboolean Sys_VitaNetUp( void );	// the Vita's network for sockets, started once (sys_vita.c)	// Vita settings > System > Settings per campaign (files.cpp)
 #endif
 void SV_PacketEvent( netadr_t from, msg_t *msg );
 int SV_FrameMsec(void);

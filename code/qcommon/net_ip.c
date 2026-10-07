@@ -75,12 +75,14 @@ static qboolean	winsockInitialized = qfalse;
 #	include <netdb.h>
 #	include <netinet/in.h>
 #	include <arpa/inet.h>
-#	include <net/if.h>
-#	include <sys/ioctl.h>
+#	ifndef __vita__
+#		include <net/if.h>
+#		include <sys/ioctl.h>
+#	endif
 #	include <sys/types.h>
 #	include <sys/time.h>
 #	include <unistd.h>
-#	if !defined(__sun) && !defined(__sgi) && !defined(__SWITCH__)
+#	if !defined(__sun) && !defined(__sgi) && !defined(__SWITCH__) && !defined(__vita__)
 #		include <ifaddrs.h>
 #	endif
 
@@ -92,7 +94,18 @@ typedef int SOCKET;
 #	define INVALID_SOCKET		-1
 #	define SOCKET_ERROR			-1
 #	define closesocket			close
+#	ifdef __vita__
+/* The vitasdk's sockets (newlib over sceNet) have no ioctl: FIONBIO is the SO_NONBLOCK
+ * socket option there. */
+#		define FIONBIO 0x5421
+static int vita_ioctlsocket( int s, int request, int *arg ) {
+	(void)request;
+	return setsockopt( s, SOL_SOCKET, SO_NONBLOCK, arg, sizeof( *arg ) );
+}
+#		define ioctlsocket			vita_ioctlsocket
+#	else
 #	define ioctlsocket			ioctl
+#	endif
 typedef int	ioctlarg_t;
 #	define socketError			errno
 
@@ -124,6 +137,26 @@ static SOCKET	ip_socket = INVALID_SOCKET;
 static SOCKET	ip6_socket = INVALID_SOCKET;
 static SOCKET	socks_socket = INVALID_SOCKET;
 static SOCKET	multicast6_socket = INVALID_SOCKET;
+
+#ifdef __vita__
+/* The vitasdk has struct sockaddr_in6 but none of the IPv6 multicast bits: the Vita uses
+ * IPv4 only (net_enabled), these just let net_ip.c compile. */
+struct ipv6_mreq {
+	struct in6_addr ipv6mr_multiaddr;
+	unsigned int    ipv6mr_interface;
+};
+static unsigned int if_nametoindex(const char *ifname) { (void)ifname; return 0; }
+#	ifndef IPV6_JOIN_GROUP
+#		define IPV6_JOIN_GROUP    12
+#		define IPV6_LEAVE_GROUP   13
+#		define IPV6_MULTICAST_IF  9
+#	endif
+static const struct in6_addr in6addr_any;
+#	ifndef IN6_IS_ADDR_MULTICAST
+#		define IN6_IS_ADDR_MULTICAST(a)   (((const unsigned char *)(a))[0] == 0xff)
+#		define IN6_IS_ADDR_UNSPECIFIED(a) (memcmp((a), &in6addr_any, sizeof(struct in6_addr)) == 0)
+#	endif
+#endif
 
 #ifdef __SWITCH__
 /* libnx's BSD socket layer ships struct sockaddr_in6 / in6_addr but not the
@@ -1441,6 +1474,10 @@ static qboolean NET_GetCvars( void ) {
 #ifdef DEDICATED
 	// I want server owners to explicitly turn on ipv6 support.
 	net_enabled = Cvar_Get( "net_enabled", "1", CVAR_LATCH | CVAR_ARCHIVE );
+#elif defined( __vita__ )
+	/* Off until multiplayer is opened (the single player campaigns run on the loopback
+	 * and need no sockets); then 1 (IPv4 only), never saved. */
+	net_enabled = Cvar_Get( "net_enabled", "0", CVAR_LATCH );
 #else
 	/* End users have it enabled so they can connect to ipv6-only hosts, but ipv4 will be
 	 * used if available due to ping */
@@ -1576,6 +1613,15 @@ void NET_Config( qboolean enableNetworking ) {
 
 	if( start )
 	{
+#ifdef __vita__
+		/* sockets need the Vita's network up first (sys_vita.c) */
+		if (net_enabled->integer && !Sys_VitaNetUp())
+		{
+			Com_Printf( "NET_Config: the Vita's network is not available (Wi-Fi off?)\n" );
+			networkingEnabled = qfalse;
+			return;
+		}
+#endif
 		if (net_enabled->integer)
 		{
 			NET_OpenIP();

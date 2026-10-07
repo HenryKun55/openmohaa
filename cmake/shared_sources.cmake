@@ -36,9 +36,11 @@ set(COMMON_SOURCES
 )
 
 if(VITA)
+    # Real UDP sockets: the vitasdk's newlib has BSD sockets over sceNet (the updater's
+    # curl uses them), so the Vita keeps the full net_ip.c like the Switch.
     list(APPEND COMMON_SOURCES
         ${SOURCE_DIR}/gamespy/gamespy_vita_stub.c
-        ${SOURCE_DIR}/qcommon/net_vita.c
+        ${SOURCE_DIR}/qcommon/net_ip.c
     )
 elseif(SWITCH)
     # Switch has real BSD sockets via libnx, so it keeps the full net_ip.c

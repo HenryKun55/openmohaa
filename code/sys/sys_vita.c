@@ -323,3 +323,4 @@ void Sys_PlatformExit(void)
  * signature drift with qcommon.h. */
 
 #endif /* __vita__ */
+
