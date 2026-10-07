@@ -1341,9 +1341,11 @@ extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
                 *(pfile_in_zip_read_info->stream.next_out+i) =
                         *(pfile_in_zip_read_info->stream.next_in+i);
 
+#ifndef __vita__
             pfile_in_zip_read_info->crc32 = crc32(pfile_in_zip_read_info->crc32,
                                 pfile_in_zip_read_info->stream.next_out,
                                 uDoCopy);
+#endif
             pfile_in_zip_read_info->rest_read_uncompressed-=uDoCopy;
             pfile_in_zip_read_info->stream.avail_in -= uDoCopy;
             pfile_in_zip_read_info->stream.avail_out -= uDoCopy;
@@ -1384,9 +1386,11 @@ extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
             uTotalOutAfter = pfile_in_zip_read_info->stream.total_out;
             uOutThis = uTotalOutAfter-uTotalOutBefore;
 
+#ifndef __vita__
             pfile_in_zip_read_info->crc32 =
                 crc32(pfile_in_zip_read_info->crc32,bufBefore,
                         (uInt)(uOutThis));
+#endif
 
             pfile_in_zip_read_info->rest_read_uncompressed -=
                 uOutThis;
@@ -1529,8 +1533,14 @@ extern int ZEXPORT unzCloseCurrentFile (file)
         return UNZ_PARAMERROR;
 
 
+    /* The Vita does not checksum what it inflates (3.6% of a level load): zlib already
+     * fails on a damaged deflate stream, and nothing acted on UNZ_CRCERROR. */
+#ifndef __vita__
     if ((pfile_in_zip_read_info->rest_read_uncompressed == 0) &&
         (!pfile_in_zip_read_info->raw))
+#else
+    if (0)
+#endif
     {
         if (pfile_in_zip_read_info->crc32 != pfile_in_zip_read_info->crc32_wait)
             err=UNZ_CRCERROR;
