@@ -66,6 +66,15 @@ public:
     sourceinfo_t cachedInfo[16];
     size_t       cachedInfoIndex;
 
+    // Line index of m_SourceBuffer (positions of its newlines), built at the first
+    // GetSourceAt: the compiler asks the line and column of every opcode it emits.
+    const char   *m_LineIndexFor;
+    size_t        m_LineIndexLen;
+    size_t        m_LineIndexEnd;  // first NUL: the scan below stops there
+    unsigned int *m_NewLines;
+    size_t        m_NumNewLines;
+    void          FreeLineIndex(void);
+
 public:
     AbstractScript();
 

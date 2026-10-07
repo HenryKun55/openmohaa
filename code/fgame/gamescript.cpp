@@ -43,8 +43,58 @@ const_str AbstractScript::ConstFilename(void)
     return m_Filename;
 }
 
+void AbstractScript::FreeLineIndex(void)
+{
+    if (m_NewLines) {
+        gi.Free(m_NewLines);
+    }
+    m_NewLines     = NULL;
+    m_NumNewLines  = 0;
+    m_LineIndexFor = NULL;
+    m_LineIndexLen = 0;
+    m_LineIndexEnd = 0;
+}
+
 bool AbstractScript::GetSourceAt(size_t sourcePos, str *sourceLine, int& column, int& line)
 {
+    // Line and column only (the compiler, once per opcode): from the newline index, the
+    // same numbers as the scan below.
+    if (!sourceLine && m_SourceBuffer && sourcePos < m_SourceLength) {
+        if (m_LineIndexFor != m_SourceBuffer || m_LineIndexLen != m_SourceLength) {
+            size_t i, n = 0;
+
+            FreeLineIndex();
+            for (i = 0; i < m_SourceLength && m_SourceBuffer[i]; i++) {
+                n += m_SourceBuffer[i] == '\n';
+            }
+            m_LineIndexEnd = i;
+            m_NewLines     = (unsigned int *)gi.Malloc((n ? n : 1) * sizeof(unsigned int));
+            for (i = 0, n = 0; i < m_LineIndexEnd; i++) {
+                if (m_SourceBuffer[i] == '\n') {
+                    m_NewLines[n++] = (unsigned int)i;
+                }
+            }
+            m_NumNewLines  = n;
+            m_LineIndexFor = m_SourceBuffer;
+            m_LineIndexLen = m_SourceLength;
+        }
+        if (sourcePos <= m_LineIndexEnd) {
+            // newlines before sourcePos
+            size_t lo = 0, hi = m_NumNewLines;
+            while (lo < hi) {
+                const size_t mid = (lo + hi) / 2;
+                if (m_NewLines[mid] < sourcePos) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+            }
+            line   = 1 + (int)lo;
+            column = lo ? (int)(sourcePos - (m_NewLines[lo - 1] + 1)) : (int)sourcePos;
+            return true;
+        }
+    }
+
     size_t        posLine;
     size_t        i;
     size_t        start;
@@ -208,6 +258,11 @@ AbstractScript::AbstractScript()
     m_SourceBuffer  = NULL;
     m_SourceLength  = 0;
     cachedInfoIndex = 0;
+    m_LineIndexFor  = NULL;
+    m_LineIndexLen  = 0;
+    m_LineIndexEnd  = 0;
+    m_NewLines      = NULL;
+    m_NumNewLines   = 0;
 }
 
 StateScript::StateScript()
@@ -638,6 +693,7 @@ void GameScript::Archive(Archiver& arc)
 	{
 		fileHandle_t filehandle = NULL;
 
+		FreeLineIndex();
 		m_SourceLength = gi.FS_ReadFile( Filename().c_str(), ( void ** )&m_SourceBuffer, true );
 
 		if( m_SourceLength > 0 )
@@ -723,6 +779,7 @@ void GameScript::Close(void)
         gi.Free(m_SourceBuffer);
         m_SourceBuffer = NULL;
     }
+    FreeLineIndex();
 
     m_ProgLength   = 0;
     m_SourceLength = 0;
@@ -734,6 +791,7 @@ void GameScript::Load(const void *sourceBuffer, size_t sourceLength)
     size_t nodeLength;
     char  *m_PreprocessedBuffer;
 
+    FreeLineIndex();
     m_SourceBuffer = (char *)gi.Malloc(sourceLength + 2);
     m_SourceLength = sourceLength;
 
