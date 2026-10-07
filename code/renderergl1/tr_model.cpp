@@ -712,6 +712,101 @@ void RB_DrawSkeletor(trRefEntity_t *ent)
 
 surfaceType_t skelSurface = SF_TIKI_SKEL;
 
+#ifdef __vita__
+/*
+=============
+Animation LOD (r_vita_animlod)
+
+Computing a character's skeleton (R_GetFrame: every channel of every blended animation)
+is a large part of the front end with a few dozen soldiers in view. One small on screen
+does not need it every frame: below VITA_ANIMLOD_FAR of projected size the bones are
+recomputed every second frame, below VITA_ANIMLOD_VERYFAR every third, and copied from
+a small per-entity cache in between. The viewmodel, portals and near characters always
+compute theirs.
+=============
+*/
+#define VITA_ANIMLOD_SLOTS     64
+#define VITA_ANIMLOD_MAXCHAN   160
+#define VITA_ANIMLOD_FAR       0.12f
+#define VITA_ANIMLOD_VERYFAR   0.03f
+
+typedef struct {
+    int              entityNumber;  /* -1 = free */
+    const dtiki_t   *tiki;
+    int              frame;         /* tr.frameCount when computed */
+    int              numTags;
+    skelBoneCache_t *bones;
+} vitaAnimLodSlot_t;
+
+static vitaAnimLodSlot_t s_animLod[VITA_ANIMLOD_SLOTS];
+static skelBoneCache_t  *s_animLodBones;
+static int               s_animLodNext;
+static cvar_t           *r_vita_animlod;
+
+static int R_VitaAnimLod_Interval(const trRefEntity_t *ent)
+{
+    float lod;
+
+    if (!r_vita_animlod) {
+        r_vita_animlod = ri.Cvar_Get("r_vita_animlod", "1", CVAR_ARCHIVE);
+    }
+    if (!r_vita_animlod->integer || tr.viewParms.isPortal || ent->e.entityNumber == ENTITYNUM_NONE
+        || (ent->e.renderfx & (RF_FIRST_PERSON | RF_DEPTHHACK))) {
+        return 1;
+    }
+    lod = ent->lodpercentage[0];
+    if (lod < VITA_ANIMLOD_VERYFAR) return 3;
+    if (lod < VITA_ANIMLOD_FAR) return 2;
+    return 1;
+}
+
+static vitaAnimLodSlot_t *R_VitaAnimLod_Find(int entityNumber)
+{
+    for (int i = 0; i < VITA_ANIMLOD_SLOTS; i++) {
+        if (s_animLod[i].bones && s_animLod[i].entityNumber == entityNumber) return &s_animLod[i];
+    }
+    return NULL;
+}
+
+static qboolean R_VitaAnimLod_Reuse(trRefEntity_t *ent, dtiki_t *tiki, int numTags, skelBoneCache_t *out)
+{
+    const int          interval = R_VitaAnimLod_Interval(ent);
+    vitaAnimLodSlot_t *slot;
+
+    if (interval <= 1 || !(slot = R_VitaAnimLod_Find(ent->e.entityNumber))) return qfalse;
+    if (slot->tiki != tiki || slot->numTags != numTags) return qfalse;
+    /* frame differences also cover the frame counter wrapping or a level change */
+    if ((unsigned int)(tr.frameCount - slot->frame) >= (unsigned int)interval) return qfalse;
+    Com_Memcpy(out, slot->bones, numTags * sizeof(skelBoneCache_t));
+    return qtrue;
+}
+
+static void R_VitaAnimLod_Store(trRefEntity_t *ent, dtiki_t *tiki, int numTags, const skelBoneCache_t *bones)
+{
+    vitaAnimLodSlot_t *slot;
+
+    if (R_VitaAnimLod_Interval(ent) <= 1 || numTags > VITA_ANIMLOD_MAXCHAN) return;
+    if (!s_animLodBones) {
+        s_animLodBones = (skelBoneCache_t *)ri.Malloc(VITA_ANIMLOD_SLOTS * VITA_ANIMLOD_MAXCHAN * sizeof(skelBoneCache_t));
+        if (!s_animLodBones) return;
+        for (int i = 0; i < VITA_ANIMLOD_SLOTS; i++) {
+            s_animLod[i].entityNumber = -1;
+            s_animLod[i].bones        = s_animLodBones + i * VITA_ANIMLOD_MAXCHAN;
+        }
+    }
+    slot = R_VitaAnimLod_Find(ent->e.entityNumber);
+    if (!slot) {
+        slot          = &s_animLod[s_animLodNext];
+        s_animLodNext = (s_animLodNext + 1) % VITA_ANIMLOD_SLOTS;
+    }
+    slot->entityNumber = ent->e.entityNumber;
+    slot->tiki         = tiki;
+    slot->frame        = tr.frameCount;
+    slot->numTags      = numTags;
+    Com_Memcpy(slot->bones, bones, numTags * sizeof(skelBoneCache_t));
+}
+#endif
+
 /*
 ==============
 R_AddSkelSurfaces
@@ -816,6 +911,15 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
         }
     }
 
+#ifdef __vita__
+    /* Animation LOD: a character small on screen reuses the skeleton it got one or two
+     * frames ago instead of computing all its bones again. */
+    if (R_VitaAnimLod_Reuse(ent, tiki, num_tags, outbones)) {
+        ent->e.bonestart = backEndData->numSkelBones;
+        backEndData->numSkelBones += num_tags;
+        goto vita_bones_done;
+    }
+#endif
     newFrame = (skelAnimFrame_t *)ri.Hunk_AllocateTempMemory(
         sizeof(skelAnimFrame_t) + ri.TIKI_GetNumChannels(tiki) * sizeof(SkelMat4)
     );
@@ -846,8 +950,14 @@ void R_AddSkelSurfaces(trRefEntity_t *ent)
 
     ri.Hunk_FreeTempMemory(newFrame);
 
+#ifdef __vita__
+    R_VitaAnimLod_Store(ent, tiki, num_tags, &backEndData->skelBones[backEndData->numSkelBones]);
+#endif
     ent->e.bonestart = backEndData->numSkelBones;
     backEndData->numSkelBones += num_tags;
+#ifdef __vita__
+vita_bones_done:
+#endif
 
     ent->e.hasMorph = qfalse;
 
