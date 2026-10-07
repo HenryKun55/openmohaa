@@ -169,6 +169,42 @@ void RE_UnregisterServerModel(qhandle_t hModel)
 }
 
 /*
+** Model name hash: R_RegisterModelInternal looked every name up by a Q_stricmp over all
+** the loaded models (7% of a level load on the Vita). Every place that names a model
+** calls R_ModelHash_Add; a hit is confirmed against the slot's current name, so slots
+** freed or reused under another name only leave stale links behind.
+*/
+#define MODEL_HASH_SIZE 1024
+static int modelHashHead[MODEL_HASH_SIZE];   // slot + 1, 0 = end
+static int modelHashNext[MAX_MOD_KNOWN];
+
+static unsigned int R_ModelHash(const char *name)
+{
+    unsigned int h = 0;
+    for (; *name; name++) {
+        h = h * 31 + (unsigned char)tolower((unsigned char)*name);
+    }
+    return h & (MODEL_HASH_SIZE - 1);
+}
+
+void R_ModelHash_Add(model_t *mod)
+{
+    const unsigned int h = R_ModelHash(mod->name);
+    modelHashNext[mod->index] = modelHashHead[h];
+    modelHashHead[h]          = mod->index + 1;
+}
+
+static int R_ModelHash_Find(const char *name)
+{
+    for (int i = modelHashHead[R_ModelHash(name)]; i; i = modelHashNext[i - 1]) {
+        if (i - 1 >= 1 && i - 1 < tr.numModels && !Q_stricmp(tr.models[i - 1].name, name)) {
+            return i - 1;
+        }
+    }
+    return 0;
+}
+
+/*
 ** R_RegisterModelInternal
 */
 static qhandle_t R_RegisterModelInternal(const char *name, qboolean bBeginTiki, qboolean use)
@@ -190,14 +226,13 @@ static qhandle_t R_RegisterModelInternal(const char *name, qboolean bBeginTiki, 
     //
     // search the currently loaded models
     //
-    for (hModel = 1; hModel < tr.numModels; hModel++) {
+    hModel = R_ModelHash_Find(name);
+    if (hModel) {
         mod = &tr.models[hModel];
-        if (!Q_stricmp(mod->name, name)) {
-            if (mod->type == MOD_BAD) {
-                return 0;
-            }
-            return hModel;
+        if (mod->type == MOD_BAD) {
+            return 0;
         }
+        return hModel;
     }
 
     // allocate a new model_t
@@ -209,6 +244,7 @@ static qhandle_t R_RegisterModelInternal(const char *name, qboolean bBeginTiki, 
 
     // only set the name after the model has been successfully loaded
     Q_strncpyz(mod->name, name, sizeof(mod->name));
+    R_ModelHash_Add(mod);
 
     // make sure the render thread is stopped
     R_IssuePendingRenderCommands();
@@ -318,6 +354,7 @@ void R_ModelInit(void)
 
     // leave a space for NULL model
     tr.numModels = 0;
+    Com_Memset(modelHashHead, 0, sizeof(modelHashHead));
 
     mod = R_AllocModel();
     Q_strncpyz(mod->name, "** BAD MODEL **", sizeof(mod->name));

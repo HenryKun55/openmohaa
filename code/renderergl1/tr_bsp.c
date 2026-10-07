@@ -1753,6 +1753,7 @@ static	void R_LoadSubmodels(gamelump_t* l) {
         model->type = MOD_BRUSH;
         model->d.bmodel = out;
         Com_sprintf( model->name, sizeof( model->name ), "*%d", i );
+        R_ModelHash_Add( model );
 
         for (j=0 ; j<3 ; j++) {
             out->bounds[0][j] = LittleFloat (in->mins[j]);

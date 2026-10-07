@@ -1891,6 +1891,7 @@ void        R_ClearWorld(void);
 qboolean	R_GetEntityToken( char *buffer, int size );
 
 model_t		*R_AllocModel( void );
+void		R_ModelHash_Add( model_t *mod );
 
 void    	R_Init( void );
 
