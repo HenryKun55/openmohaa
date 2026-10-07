@@ -1700,6 +1700,10 @@
 { "On: each campaign keeps its own, as on the PC. The first time a campaign starts, it takes a copy of the current settings; after that they are separate. For example, to have other buttons in one campaign." "Sim: cada campanha guarda as suas, como no PC. Na primeira vez que uma campanha abre, ela copia as configurações atuais; depois disso ficam separadas. Por exemplo, para ter outros botões numa campanha." }
 { "It counts from the next start of the game or the next Change campaign. Nothing is deleted: when it is turned off again, the shared settings come back, and each campaign's own are kept for the next time it is on." "Vale a partir da próxima abertura do jogo ou da próxima troca de campanha. Nada é apagado: ao desligar de novo, as configurações compartilhadas voltam, e as de cada campanha ficam guardadas para quando ligar outra vez." }
 
+// Multiplayer notice (no Wi-Fi)
+{ "Multiplayer needs Wi-Fi." "O multiplayer precisa de Wi-Fi." }
+{ "Turn Wi-Fi on in the Vita's settings, then open Multiplayer again." "Ligue o Wi-Fi nas configurações do Vita e abra o Multiplayer de novo." }
+
 // Spearhead and Breakthrough: game text, objectives, messages and subtitles (the expansions' own)
 { "room and the V2" "a sala e o V2" }
 { " Deaths" " Mortes" }

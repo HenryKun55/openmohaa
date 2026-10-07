@@ -1200,10 +1200,18 @@ static void VitaPerfMenu_Wrap(const char *text, int maxChars, char *line1, char 
 /* Draw the menu overlay: in game from View3D::Draw2D, elsewhere from UI_Update. */
 static void VitaNotice_Draw(class UIFont *menuFont, float screenW, float screenH)
 {
+#ifdef __vita__
+    /* the Vita has multiplayer: the notice only says why it could not open (cl_ui.cpp) */
+    static const char *const s_text[] = {
+        "Multiplayer needs Wi-Fi.",
+        "Turn Wi-Fi on in the Vita's settings, then open Multiplayer again.",
+    };
+#else
     static const char *const s_text[] = {
         "Multiplayer is not available on this version.",
         "The Spearhead and Breakthrough expansions are not available yet either: this version plays the Allied Assault campaign.",
     };
+#endif
     const vec4_t       bg   = {0.02f, 0.03f, 0.02f, 0.92f};
     const vec4_t       band = {0.30f, 0.26f, 0.12f, 0.95f};
     const float        boxW = screenW < 540.0f ? screenW - 20.0f : 520.0f;

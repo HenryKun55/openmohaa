@@ -2638,8 +2638,23 @@ void UI_PushMenu(const char *name)
     Menu    *menu  = menuManager.CurrentMenu();
     qboolean bDiff = qfalse;
 
-#if defined(__vita__) || defined(__SWITCH__)
-    // No multiplayer on the console ports: the main menu's multiplayer door shows a
+#if defined(__vita__)
+    // Multiplayer: the sockets are off while the campaigns run (net_ip.c); opening the
+    // multiplayer menus brings the Vita's network up and turns them on, or says Wi-Fi is
+    // needed.
+    if (!str::icmp(name, "multiplayer") || !str::icmp(name, "dm_main")) {
+        if (!Sys_VitaNetUp()) {
+            extern void CL_VitaNotice_Multiplayer(void);
+            CL_VitaNotice_Multiplayer();
+            return;
+        }
+        if (!Cvar_VariableIntegerValue("net_enabled")) {
+            Cvar_Set("net_enabled", "1");
+            Cbuf_ExecuteText(EXEC_NOW, "net_restart\n");
+        }
+    }
+#elif defined(__SWITCH__)
+    // No multiplayer on the Switch port: the main menu's multiplayer door shows a
     // notice instead of the server browser.
     if (!str::icmp(name, "multiplayer") || !str::icmp(name, "dm_main")) {
         extern void CL_VitaNotice_Multiplayer(void);
