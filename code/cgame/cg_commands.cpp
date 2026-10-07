@@ -5518,6 +5518,19 @@ void CG_RemoveClientEntity(int number, dtiki_t *tiki, centity_t *cent)
 //=================
 // CG_Command_ProcessFile
 //=================
+// Q_strncpyz without the zero padding of strncpy: the token buffer below is 1 KB and a
+// file like ubersound.scr has tens of thousands of tokens (7% of a level load on the Vita).
+static void CG_CopyToken(char *dest, const char *src, size_t destsize)
+{
+    size_t len = strlen(src);
+
+    if (len >= destsize) {
+        len = destsize - 1;
+    }
+    memcpy(dest, src, len);
+    dest[len] = 0;
+}
+
 qboolean CG_Command_ProcessFile(const char *filename, qboolean quiet, dtiki_t *curTiki)
 {
     char       *buffer;
@@ -5546,7 +5559,7 @@ qboolean CG_Command_ProcessFile(const char *filename, qboolean quiet, dtiki_t *c
         Event *ev;
 
         // grab each line as we go
-        Q_strncpyz(com_token, COM_ParseExt(&buffer, qtrue), sizeof(com_token));
+        CG_CopyToken(com_token, COM_ParseExt(&buffer, qtrue), sizeof(com_token));
         if (!com_token[0]) {
             break;
         }
@@ -5554,7 +5567,7 @@ qboolean CG_Command_ProcessFile(const char *filename, qboolean quiet, dtiki_t *c
         if (!Q_stricmp(com_token, "end") || !Q_stricmp(com_token, "server")) {
             // skip the line
             while (1) {
-                Q_strncpyz(com_token, COM_ParseExt(&buffer, qfalse), sizeof(com_token));
+                CG_CopyToken(com_token, COM_ParseExt(&buffer, qfalse), sizeof(com_token));
                 if (!com_token[0]) {
                     break;
                 }
@@ -5567,7 +5580,7 @@ qboolean CG_Command_ProcessFile(const char *filename, qboolean quiet, dtiki_t *c
 
         // get the rest of the line
         while (1) {
-            Q_strncpyz(com_token, COM_ParseExt(&buffer, qfalse), sizeof(com_token));
+            CG_CopyToken(com_token, COM_ParseExt(&buffer, qfalse), sizeof(com_token));
             if (!com_token[0]) {
                 break;
             }
