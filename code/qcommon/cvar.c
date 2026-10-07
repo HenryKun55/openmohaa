@@ -32,7 +32,7 @@ int			cvar_modifiedFlags;
 cvar_t		cvar_indexes[MAX_CVARS];
 int			cvar_numIndexes;
 
-#define FILE_HASH_SIZE		256
+#define FILE_HASH_SIZE		2048	// was 256: thousands of cvars made every lookup walk a long Q_stricmp chain
 static	cvar_t	*hashTable[FILE_HASH_SIZE];
 
 qboolean cvar_global_force = qfalse;
