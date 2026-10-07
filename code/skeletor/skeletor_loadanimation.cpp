@@ -661,6 +661,12 @@ skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnim(const char *path, void *
         int    frameCnt = MSG_ReadShort(&msgForAnim);
         vec4_t channelData;
 
+        if (plain && frameCnt > 0 && msgForAnim.readcount + frameCnt * 20 <= msgForAnim.cursize) {
+            // plain bytes: skip the frames (2 shorts + a vec4 each) without reading them
+            msgForAnim.readcount += frameCnt * 20;
+            msgForAnim.bit += frameCnt * 20 * 8;
+            continue;
+        }
         for (j = 0; j < frameCnt; j++) {
             MSG_ReadShort(&msgForAnim);
             MSG_ReadShort(&msgForAnim);

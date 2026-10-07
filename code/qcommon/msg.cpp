@@ -896,6 +896,13 @@ float MSG_ReadAngle16( msg_t *msg ) {
 void MSG_ReadData( msg_t *msg, void *data, int len ) {
 	int		i;
 
+	// plain bytes (OOB): one copy, the same bytes and counters as the loop below
+	if ( msg->oob && len > 0 && msg->readcount + len <= msg->cursize ) {
+		Com_Memcpy( data, &msg->data[msg->readcount], len );
+		msg->readcount += len;
+		msg->bit += len << 3;
+		return;
+	}
 	for (i=0 ; i<len ; i++) {
 		((byte *)data)[i] = MSG_ReadByte (msg);
 	}
