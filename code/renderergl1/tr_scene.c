@@ -234,7 +234,6 @@ RE_AddRefEntityToScene
 =====================
 */
 void RE_AddRefEntityToScene( const refEntity_t *ent, int parentEntityNumber) {
-	R_SmpSerialPoint(5);
 	if ( !tr.registered ) {
 		return;
 	}
@@ -315,7 +314,6 @@ RE_AddDynamicLightToScene
 void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, float g, float b, int type ) {
 	dlight_t	*dl;
 
-	R_SmpSerialPoint(5);
 
 	if ( !tr.registered ) {
 		return;
@@ -452,8 +450,6 @@ to handle mirrors,
 @@@@@@@@@@@@@@@@@@@@@
 */
 void RE_RenderScene( const refdef_t *fd ) {
-	R_SmpSerialPoint(3);
-	R_SmpSerialWindow(qfalse);
 	viewParms_t		parms;
 	int				startTime;
 

@@ -1473,12 +1473,10 @@ void R_GenerateDrawSurfs( void ) {
 		R_AddSwipeSurfaces();
 	}
 
-	R_SmpSerialPoint(12);
 	R_AddPolygonSurfaces();
 
     R_AddTerrainMarkSurfaces();
 
-	R_SmpSerialPoint(13);
 	{
 		VP_BEGIN( vpEnts );
 		R_AddEntitySurfaces();
@@ -1797,7 +1795,6 @@ void R_RenderView (viewParms_t *parms) {
 	R_DrawDebugStrings();
 
 	R_GenerateDrawSurfs();
-	R_SmpSerialPoint(14);
 
 	{
 		VP_BEGIN( vpSort );

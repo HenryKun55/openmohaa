@@ -2035,7 +2035,6 @@ RE_ForceUpdatePose
 */
 void RE_ForceUpdatePose(refEntity_t *model)
 {
-    R_SmpSerialPoint(6);
     if (model->entityNumber != ENTITYNUM_NONE) {
         tr.skel_index[model->entityNumber] = tr.frame_skel_index;
     }
@@ -2056,7 +2055,6 @@ RE_TIKI_Orientation
 */
 orientation_t RE_TIKI_Orientation(refEntity_t *model, int tagnum)
 {
-    R_SmpSerialPoint(6);
     R_UpdatePoseInternal(model);
     return ri.TIKI_OrientationInternal(model->tiki, model->entityNumber, tagnum, model->scale);
 }
@@ -2068,7 +2066,6 @@ RE_TIKI_IsOnGround
 */
 qboolean RE_TIKI_IsOnGround(refEntity_t *model, int tagnum, float threshold)
 {
-    R_SmpSerialPoint(6);
     R_UpdatePoseInternal(model);
     return ri.TIKI_IsOnGroundInternal(model->tiki, model->entityNumber, tagnum, threshold);
 }

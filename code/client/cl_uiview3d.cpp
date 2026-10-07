@@ -138,36 +138,16 @@ static const VitaPerfChoice g_pcResolution[] = {
     { "960x544", "0", "seta r_vita_resolution 0" },
     { "720x408", "1", "seta r_vita_resolution 1" },
 };
-static const VitaPerfChoice g_pcShadows[] = {
-    { "Off",     "0", "seta cg_shadows 0" },
-    { "Blob",    "1", "seta cg_shadows 1" },
-    { "Precise", "2", "seta cg_shadows 2" },
-};
-/* r_vita_smp_serial: where the main thread waits for the render thread (diagnostic). */
 /* sv_vita_thread: 0 game logic on the main thread, 2 on core 2 in parallel with the
  * client frame (1, on core 2 but waited for, was the first step: not offered). */
 static const VitaPerfChoice g_pcSvThread[] = {
     { "Off", "0", "seta sv_vita_thread 0" },
     { "On",  "2", "seta sv_vita_thread 2" },
 };
-static const VitaPerfChoice g_pcSmpSerial[] = {
-    { "Off",      "0", "set r_vita_smp_serial 0" },  /* full overlap (normal) */
-    { "Full",     "1", "set r_vita_smp_serial 1" },  /* no overlap at all */
-    { "Game",     "2", "set r_vita_smp_serial 2" },  /* overlaps only server/game/sound/input */
-    { "Scene",    "3", "set r_vita_smp_serial 3" },  /* + cgame scene building */
-    /* 4+: wait at the first call of a kind inside the cgame window */
-    { "cg:Trace", "4", "set r_vita_smp_serial 4" },
-    { "cg:Add",   "5", "set r_vita_smp_serial 5" },
-    { "cg:Pose",  "6", "set r_vita_smp_serial 6" },
-    { "cg:Light", "7", "set r_vita_smp_serial 7" },
-    { "cg:Marks", "8", "set r_vita_smp_serial 8" },
-    /* 9+: wait inside R_RenderView, in frame order */
-    { "rv:World", "9",  "set r_vita_smp_serial 9" },
-    { "rv:Terr",  "10", "set r_vita_smp_serial 10" },
-    { "rv:Static","11", "set r_vita_smp_serial 11" },
-    { "rv:Polys", "12", "set r_vita_smp_serial 12" },
-    { "rv:Ents",  "13", "set r_vita_smp_serial 13" },
-    { "rv:Sort",  "14", "set r_vita_smp_serial 14" },
+static const VitaPerfChoice g_pcShadows[] = {
+    { "Off",     "0", "seta cg_shadows 0" },
+    { "Blob",    "1", "seta cg_shadows 1" },
+    { "Precise", "2", "seta cg_shadows 2" },
 };
 /* g_subtitle (cgame): which speech gets a subtitle. */
 static const VitaPerfChoice g_pcSubtitles[] = {
@@ -289,7 +269,6 @@ static const VitaMenuText g_vmTexts[] = {
     { "GPU skinning", "Animates characters on the GPU. Off is slower." },
     { "World VBO", "Keeps the map geometry on the GPU." },
     { "Force multitexture", "Draws walls and their lighting in one pass." },
-    { "Render thr. serial", "Diagnostic: limits the render thread's overlap with the game." },
     { "Engine 2D Pass", "Diagnostic: turns all 2D drawing off." },
     { "Server thread", "Experimental: game logic on the third CPU core, in parallel with the rest of the frame." },
 
@@ -573,7 +552,6 @@ static VitaPerfMenuItem g_dmRender[] = {
     { "GPU skinning",        "r_vita_gpu_skinning", qfalse, 0, NULL, qtrue },
     { "World VBO",           "r_vita_vbo_world",    qfalse, 0, NULL, qtrue },
     { "Force multitexture",  "r_vita_force_mtex",   qfalse, 0 },
-    { "Render thr. serial",  "r_vita_smp_serial",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSmpSerial) },
     { "Server thread",       "sv_vita_thread",      qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcSvThread) },
     { "Engine 2D Pass",      "vita_skip_draw2d",    qtrue,  0 }, /* ON = normal, OFF = stripped */
 };

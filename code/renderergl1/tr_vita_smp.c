@@ -28,7 +28,6 @@
 #include <psp2/kernel/processmgr.h>
 
 cvar_t *r_vita_smp;
-cvar_t *r_vita_smp_serial;	// diagnostic: wait for each frame right after handing it off
 
 static SceUID		s_thread = -1;
 static SceUID		s_semWork = -1;
@@ -151,33 +150,6 @@ void R_SyncRenderThread(void)
 	R_SyncRenderThread_Wait(r_smpSyncCaller ? r_smpSyncCaller : __builtin_return_address(0));
 }
 
-// r_vita_smp_serial 2/3 (diagnostic): let the render thread overlap only part of
-// the main thread's frame, to find which part races with it.
-// Levels 4+ only fire inside the cgame window (RE_BeginFrame .. first RE_RenderScene).
-static qboolean s_serialWindow;
-
-void R_SmpSerialPoint(int level)
-{
-	if (s_thread < 0 || r_vita_smp_serial->integer != level) {
-		return;
-	}
-	if (level >= 4 && level <= 8 && (!s_serialWindow || sceKernelGetThreadId() == s_thread)) {
-		return;
-	}
-	R_SyncRenderThread_Wait(NULL);
-}
-
-void R_SmpSerialWindow(qboolean open)
-{
-	s_serialWindow = open;
-}
-
-extern void (*cm_vitaLockHook)(void);
-static void R_SmpCmLockHook(void)
-{
-	R_SmpSerialPoint(4);
-}
-
 void R_SmpHandoff(const void *cmds)
 {
 	R_SyncRenderThread_Wait(NULL);
@@ -203,18 +175,11 @@ void R_SmpHandoff(const void *cmds)
 	s_smpFrame    = tr.smpFrame;
 	s_outstanding = 1;
 	sceKernelSignalSema(s_semWork, 1);
-
-	if (r_vita_smp_serial->integer == 1) {
-		// Same buffers and thread, no overlap: tells a race from a buffering bug.
-		R_SyncRenderThread_Wait(NULL);
-	}
 }
 
 void R_SmpInit(void)
 {
 	r_vita_smp = ri.Cvar_Get("r_vita_rthread", "1", CVAR_ARCHIVE | CVAR_LATCH);
-	r_vita_smp_serial = ri.Cvar_Get("r_vita_smp_serial", "0", 0);
-	cm_vitaLockHook = R_SmpCmLockHook;
 	if (!r_vita_smp->integer || s_thread >= 0) {
 		return;
 	}
@@ -263,8 +228,6 @@ void R_SmpShutdown(void)
 qboolean R_SmpActive(void) { return qfalse; }
 void R_SyncRenderThread(void) {}
 void R_SmpHandoff(const void *cmds) { (void)cmds; }
-void R_SmpSerialPoint(int level) { (void)level; }
-void R_SmpSerialWindow(qboolean open) { (void)open; }
 void R_SmpInit(void) {}
 void R_SmpShutdown(void) {}
 

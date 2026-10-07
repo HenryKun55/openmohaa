@@ -1279,18 +1279,12 @@ void CM_VitaInitLock( void ) {
 	}
 }
 
-void (*cm_vitaLockHook)( void );	// renderer SMP diagnostic (r_vita_smp_serial 4)
 
 static volatile int cm_vitaLockDepth;
 static int cm_vitaHoldDepth[2];
 static unsigned int cm_vitaHoldStart[2];
 
 void CM_VitaLock( void ) {
-	// Only when nobody holds the lock: waiting for the render thread while holding
-	// it (nested call) would deadlock if the render thread is tracing.
-	if ( cm_vitaLockHook && !cm_vitaLockDepth ) {
-		cm_vitaLockHook();
-	}
 	if ( cm_vitaLockReady && !vp_on ) {
 		sceKernelLockLwMutex( &cm_vitaLock, 1, NULL );
 	} else if ( cm_vitaLockReady ) {

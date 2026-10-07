@@ -1445,7 +1445,6 @@ static void R_InsertLightIntoList(spherel_t *pLight, float fIntensity, gatheredL
 
 int R_GatherLightSources(const vec3_t vPos, vec3_t *pvLightPos, vec3_t *pvLightIntensity, int iMaxLights)
 {
-    R_SmpSerialPoint(7);
     int              i, j;
     int              iLightCount;
     vec3_t           vEnd;
