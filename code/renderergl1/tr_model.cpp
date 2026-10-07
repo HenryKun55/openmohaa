@@ -171,12 +171,14 @@ void RE_UnregisterServerModel(qhandle_t hModel)
 /*
 ** Model name hash: R_RegisterModelInternal looked every name up by a Q_stricmp over all
 ** the loaded models (7% of a level load on the Vita). Every place that names a model
-** calls R_ModelHash_Add; a hit is confirmed against the slot's current name, so slots
-** freed or reused under another name only leave stale links behind.
+** calls R_ModelHash_Add; a hit is confirmed against the slot's current name. A slot is
+** in at most one chain: adding it again (a freed slot reused, a reload naming the same
+** slot) unlinks it first, or its next link would cut the old chain or loop back on it.
 */
 #define MODEL_HASH_SIZE 1024
 static int modelHashHead[MODEL_HASH_SIZE];   // slot + 1, 0 = end
 static int modelHashNext[MAX_MOD_KNOWN];
+static int modelHashBucket[MAX_MOD_KNOWN];   // bucket + 1, 0 = not linked
 
 static unsigned int R_ModelHash(const char *name)
 {
@@ -190,8 +192,20 @@ static unsigned int R_ModelHash(const char *name)
 void R_ModelHash_Add(model_t *mod)
 {
     const unsigned int h = R_ModelHash(mod->name);
-    modelHashNext[mod->index] = modelHashHead[h];
-    modelHashHead[h]          = mod->index + 1;
+    const int          slot = mod->index;
+
+    if (modelHashBucket[slot]) {
+        int *link = &modelHashHead[modelHashBucket[slot] - 1];
+        while (*link && *link != slot + 1) {
+            link = &modelHashNext[*link - 1];
+        }
+        if (*link) {
+            *link = modelHashNext[slot];
+        }
+    }
+    modelHashNext[slot]   = modelHashHead[h];
+    modelHashHead[h]      = slot + 1;
+    modelHashBucket[slot] = h + 1;
 }
 
 static int R_ModelHash_Find(const char *name)
@@ -355,6 +369,7 @@ void R_ModelInit(void)
     // leave a space for NULL model
     tr.numModels = 0;
     Com_Memset(modelHashHead, 0, sizeof(modelHashHead));
+    Com_Memset(modelHashBucket, 0, sizeof(modelHashBucket));
 
     mod = R_AllocModel();
     Q_strncpyz(mod->name, "** BAD MODEL **", sizeof(mod->name));
