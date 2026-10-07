@@ -520,7 +520,7 @@ void CG_CastSimpleFeetShadow(
 
     // add the mark
 #ifdef __vita__
-    unsigned int shMarkT = sceKernelGetProcessTimeLow();
+    unsigned int shMarkT = cgp_level >= 2 ? sceKernelGetProcessTimeLow() : 0;
 #endif
     CG_ImpactMark(
         cgs.media.shadowMarkShader,
@@ -541,7 +541,9 @@ void CG_CastSimpleFeetShadow(
         0.5
     );
 #ifdef __vita__
-    cgp_acc[CGP_SH_MARK] += sceKernelGetProcessTimeLow() - shMarkT;
+    if (cgp_level >= 2) {
+        cgp_acc[CGP_SH_MARK] += sceKernelGetProcessTimeLow() - shMarkT;
+    }
 #endif
 }
 

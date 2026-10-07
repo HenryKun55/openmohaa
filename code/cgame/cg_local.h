@@ -44,19 +44,28 @@ enum {
     CGP_MA_CMDS, CGP_MA_COUNT, CGP_SHADOW_HIT, CGP_SHADOW_MISS, CGP_SH_TRACE, CGP_SH_FEET, CGP_SH_MARK, CGP_SH_CALLS, CGP_COUNT
 };
 extern unsigned int cgp_acc[CGP_COUNT];
+// r_vita_perflog, read once a frame: 1 times the frame's sections, 2 also every entity's
+// steps (CGP_LAP, thousands of clock reads a frame). 0: no clock read at all.
+extern int cgp_level;
 #define CGP(slot, stmt) \
     do { \
-        unsigned int _cgpT = sceKernelGetProcessTimeLow(); \
-        stmt; \
-        cgp_acc[slot] += sceKernelGetProcessTimeLow() - _cgpT; \
+        if (cgp_level) { \
+            unsigned int _cgpT = sceKernelGetProcessTimeLow(); \
+            stmt; \
+            cgp_acc[slot] += sceKernelGetProcessTimeLow() - _cgpT; \
+        } else { \
+            stmt; \
+        } \
     } while (0)
 // Laps: time since the previous lap goes to slot.
-#define CGP_LAP_START(var) unsigned int var = sceKernelGetProcessTimeLow()
+#define CGP_LAP_START(var) unsigned int var = cgp_level >= 2 ? sceKernelGetProcessTimeLow() : 0
 #define CGP_LAP(var, slot) \
     do { \
-        unsigned int _cgpN = sceKernelGetProcessTimeLow(); \
-        cgp_acc[slot] += _cgpN - var; \
-        var = _cgpN; \
+        if (cgp_level >= 2) { \
+            unsigned int _cgpN = sceKernelGetProcessTimeLow(); \
+            cgp_acc[slot] += _cgpN - var; \
+            var = _cgpN; \
+        } \
     } while (0)
 #else
 #define CGP(slot, stmt) stmt

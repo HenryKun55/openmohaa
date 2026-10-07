@@ -831,12 +831,23 @@ static const char *cgp_names[CGP_COUNT] = {
     "impacts", "beams", "draw", "| ma:setup", "attach", "shadow", "steps", "view", "addref", "emitters", "cmds", "n", "shadowcache hit", "miss", "| sh:trace", "feet", "mark", "calls"
 };
 unsigned int cgp_acc[CGP_COUNT];
+int          cgp_level;
 static int   cgp_frames;
 
 static void CG_VitaProfFrame(void)
 {
-    char line[768];
-    int  i, n;
+    static cvar_t *perflog;
+    char           line[768];
+    int            i, n;
+
+    if (!perflog) {
+        perflog = cgi.Cvar_Get("r_vita_perflog", "0", 0);
+    }
+    cgp_level = perflog->integer;
+    if (!cgp_level) {
+        cgp_frames = 0;
+        return;
+    }
 
     if (++cgp_frames < 60) {
         return;
