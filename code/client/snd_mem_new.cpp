@@ -348,12 +348,18 @@ qboolean DownSampleWav(wavinfo_t *info, byte *wav, int wavlength, int newkhz, by
 
     error = 0;
     width = info->width;
+    if (newkhz > 0 && (int)info->rate % newkhz == 0) {
+        // Whole ratio k (44.1 -> 22.05 kHz): the loops below keep the samples k, 2k, 3k...
+        const int k = (int)info->rate / newkhz;
+        newdatasize = info->samples > 0 ? ((info->samples - 1) / k) * width : 0;
+    } else {
     for (i = 0; i < info->samples; i++) {
         error += newkhz;
         while (error > info->rate) {
             error -= info->rate;
             newdatasize += width;
         }
+    }
     }
 
     oldsamples    = info->samples;
@@ -395,6 +401,13 @@ qboolean DownSampleWav(wavinfo_t *info, byte *wav, int wavlength, int newkhz, by
     SetLittleLong((int)(info->samples * info->width));
 
     error = 0;
+    if (newkhz > 0 && oldrate % newkhz == 0) {
+        const int k = oldrate / newkhz;
+        for (i = k; i < oldsamples; i += k) {
+            memcpy(data_p, datap + i * width, width);
+            data_p += width;
+        }
+    } else {
     for (i = 0; i < oldsamples; i++) {
         error += newkhz;
         while (error > oldrate) {
@@ -407,6 +420,7 @@ qboolean DownSampleWav(wavinfo_t *info, byte *wav, int wavlength, int newkhz, by
         }
 
         datap += width;
+    }
     }
 
     assert(iff_end - data_p == 0);
