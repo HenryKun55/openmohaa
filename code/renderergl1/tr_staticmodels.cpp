@@ -223,6 +223,9 @@ void R_InitStaticModels(void)
     tr.refdef.staticModels       = tr.world->staticModels;
     tr.refdef.numStaticModelData = tr.world->numStaticModelData;
     tr.refdef.staticModelData    = tr.world->staticModelData;
+#ifdef __vita__
+    R_VitaStaticVBO_Build();
+#endif
 }
 
 /*
@@ -353,6 +356,11 @@ void R_AddStaticModelSurfaces(void)
         if (iRadiusCull != CULL_OUT
             && (iRadiusCull != CULL_CLIP || R_CullStaticModel(SM->tiki, tiki_scale, tiki_localorigin) != CULL_OUT)) {
             dtikisurface_t *dsurf;
+#ifdef __vita__
+            int vboEntry = R_VitaStaticVBO_FirstEntry(i);
+#else
+            int vboEntry = -1;
+#endif
 
             if (tr.viewParms.isPortal) {
                 SM->lodpercentage[1] = R_CalcLod(tiki_worldorigin, SM->cull_radius / SM->scale);
@@ -397,6 +405,7 @@ void R_AddStaticModelSurfaces(void)
                     s_surface->surface       = surface;
                     s_surface->meshNum       = mesh;
                     s_surface->lodpercentage = SM->lodpercentage[0];
+                    s_surface->vitaVboEntry  = vboEntry >= 0 ? vboEntry + (int)(dsurf - tiki->surfaces) : -1;
 
                     shader = tr.shaders[dsurf->hShader[0]];
 

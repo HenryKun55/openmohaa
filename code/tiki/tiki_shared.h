@@ -357,6 +357,7 @@ typedef struct staticSurface_s {
     skelSurfaceGame_t *surface;
     int                meshNum;
     float              lodpercentage;	// the model's LOD when this frame queued it
+    int                vitaVboEntry;	// Vita: its entry in the static model VBO, -1 = none
 } staticSurface_t;
 
 typedef struct {

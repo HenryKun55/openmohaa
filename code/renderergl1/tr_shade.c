@@ -185,6 +185,11 @@ static void R_DrawElements( int numIndexes, const glIndex_t *indexes ) {
 	 * call us once per stage with the same (numIndexes, indexes)
 	 * tuple; each call binds + draws + unbinds so concurrent
 	 * non-VBO draws (HUD, entities) keep working. */
+	if (tess.useVitaWorldVBO && tess.vitaVboChunk > 0) {
+		/* static models: index ranges of their VBO chunk */
+		R_VitaStaticVBO_DrawRanges(tess.vitaVboRangeFirst, tess.vitaVboRangeCount_, tess.vitaVboRangeCount);
+		return;
+	}
 	if (tess.useVitaWorldVBO) {
 		R_VitaWorldVBO_BindAndDrawRanges(tess.vitaVboRangeFirst, tess.vitaVboRangeCount_,
 		                                 tess.vitaVboRangeCount);
@@ -425,6 +430,7 @@ void RB_BeginSurface( shader_t *shader ) {
 	tess.vitaWorldVboFirstIndex  = 0;
 	tess.vitaWorldVboNumIndexes  = 0;
 	tess.vitaVboRangeCount       = 0;
+	tess.vitaVboChunk            = 0;
 #endif
 }
 
@@ -2035,6 +2041,11 @@ void RB_EndSurface( void ) {
 		vp_rt[VPR_VERTS] += tess.numVertexes;
 	}
 	RB_EndSurface_Real();
+	/* The batch is drawn: a VBO flag left set would send the next draw that fills tess
+	 * without RB_BeginSurface (sky, sprites, effects) through the VBO path. */
+	tess.useVitaWorldVBO   = qfalse;
+	tess.vitaVboChunk      = 0;
+	tess.vitaVboRangeCount = 0;
 	vp_rt[VPR_DRAW + ( type >= 0 && type <= VPR_NSURF ? type : VPR_NSURF )] += VP_Now() - vpT;
 }
 

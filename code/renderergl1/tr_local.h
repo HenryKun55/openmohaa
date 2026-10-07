@@ -1561,6 +1561,26 @@ void R_VitaWorldVBO_BindAndDraw(int firstIndex, int numIndexes);
 void R_VitaWorldVBO_BindAndDrawRanges(const int *first, const int *count, int numRanges);
 qboolean R_VitaWorldVBO_IsVboSurface(const surfaceType_t *surface);
 
+/* Static models in VBOs (tr_vita_vbo.c): every instance's surfaces, in world space with
+ * their baked colours, uploaded at level load; RB_StaticMesh draws them from there. */
+#define VITA_STATIC_LODS 4
+typedef struct vitaStaticVboEntry_s {
+    int chunk;        /* tess.vitaVboChunk value (1..), 0 = not in a VBO */
+    int vertOffset;   /* the surface's first vertex in its chunk */
+    /* index lists at a few levels of detail (vertices kept, decreasing): the draw takes
+     * the smallest that keeps at least the vertices RB_StaticMesh's LOD asks for */
+    int lodCount;
+    int lodVerts[VITA_STATIC_LODS];
+    int lodIndexOffset[VITA_STATIC_LODS];
+    int lodNumIndexes[VITA_STATIC_LODS];
+} vitaStaticVboEntry_t;
+void R_VitaStaticVBO_Build(void);
+void R_VitaStaticVBO_Free(void);
+int  R_VitaStaticVBO_FirstEntry(int staticModel);
+const vitaStaticVboEntry_t *R_VitaStaticVBO_Entry(int entry);
+qboolean R_VitaStaticVBO_ShaderEligible(const shader_t *sh);
+void R_VitaStaticVBO_DrawRanges(const int *first, const int *count, int numRanges);
+
 /* Phase 2: when 1, TIKI skeleton skinning runs in a vertex shader
  * (matrix palette) instead of the CPU loop in RB_SkelMesh. Default
  * 0; Phase 2a only compiles the program at init and stops. */
@@ -2040,6 +2060,8 @@ typedef struct shaderCommands_s
     int      vitaVboRangeCount;
     int      vitaVboRangeFirst[VITA_VBO_MAX_RANGES];
     int      vitaVboRangeCount_[VITA_VBO_MAX_RANGES];
+    /* which VBO the batch draws from: 0 = the world's, 1.. = a static model chunk */
+    int      vitaVboChunk;
 #endif
 } shaderCommands_t;
 

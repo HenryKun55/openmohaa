@@ -733,7 +733,8 @@ RB_RenderDrawSurfList
  * hardware). Flush the VBO batch first so it goes through the normal path. */
 static void RB_VitaFlushVboBatchIfNeeded(const surfaceType_t *surface)
 {
-	if (tess.useVitaWorldVBO && !R_VitaWorldVBO_IsVboSurface(surface)) {
+	if (tess.useVitaWorldVBO
+		&& (tess.vitaVboChunk ? *surface != SF_TIKI_STATIC : !R_VitaWorldVBO_IsVboSurface(surface))) {
 		shader_t *shader = tess.shader;
 		RB_EndSurface();
 		RB_BeginSurface(shader);

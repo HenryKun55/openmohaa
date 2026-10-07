@@ -289,7 +289,7 @@ void RB_SurfaceTriangles( srfTriangles_t *srf ) {
             /* Same shader, already a VBO batch: append this surface as another index
              * range (merged with the previous one when adjacent in the IBO) instead of
              * flushing one draw per surface. */
-            if (tess.useVitaWorldVBO) {
+            if (tess.useVitaWorldVBO && tess.vitaVboChunk == 0) {
                 const int n = tess.vitaVboRangeCount;
                 if (n > 0 && tess.vitaVboRangeFirst[n - 1] + tess.vitaVboRangeCount_[n - 1] == vboSurf->indexOffset) {
                     tess.vitaVboRangeCount_[n - 1] += vboSurf->numIndexes;
@@ -307,7 +307,7 @@ void RB_SurfaceTriangles( srfTriangles_t *srf ) {
                 }
             }
 
-            if (tess.numIndexes > 0 || tess.numVertexes > 0) {
+            if (tess.numIndexes > 0 || tess.numVertexes > 0 || tess.useVitaWorldVBO) {
                 /* tess already has client-array data from a prior
                  * surface in this batch (or the range list is full) —
                  * flush it, then restart the surface as VBO-only. */

@@ -1832,6 +1832,66 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
         render_count = surf->numVerts;
     }
 
+#ifdef __vita__
+    /* Static model VBO (tr_vita_vbo.c): the surface's vertices, colours included, are
+     * already on the GPU in world space, with index lists at a few levels of detail;
+     * only an index range is queued: the smallest level keeping at least render_count
+     * vertices (as much detail as the CPU path, or more). */
+    {
+        const vitaStaticVboEntry_t *e =
+            staticSurf->vitaVboEntry >= 0 ? R_VitaStaticVBO_Entry(staticSurf->vitaVboEntry) : NULL;
+        if (e && g_vitaStaticWorld && !backEnd.viewParms.isPortal && !backEnd.viewParms.isPortalSky && backEnd.data->staticModelData
+            && !backEnd.currentStaticModel->useSpecialLighting
+            && r_drawspherelights->integer && !tess.fogNum) {
+            int l = 0, first, n;
+
+            while (l + 1 < e->lodCount && e->lodVerts[l + 1] >= render_count) {
+                l++;
+            }
+            first = e->lodIndexOffset[l];
+            n     = e->lodNumIndexes[l];
+            staticModelNumIndexes[backEnd.currentStaticModel - backEnd.refdef.staticModels] += n;
+            if (n <= 0) {
+                return;
+            }
+            if (tess.useVitaWorldVBO && tess.vitaVboChunk == e->chunk) {
+                const int r = tess.vitaVboRangeCount;
+                if (r > 0 && tess.vitaVboRangeFirst[r - 1] + tess.vitaVboRangeCount_[r - 1] == first) {
+                    tess.vitaVboRangeCount_[r - 1] += n;
+                    tess.numIndexes += n;
+                    return;
+                }
+                if (r < VITA_VBO_MAX_RANGES) {
+                    tess.vitaVboRangeFirst[r]  = first;
+                    tess.vitaVboRangeCount_[r] = n;
+                    tess.vitaVboRangeCount     = r + 1;
+                    tess.numIndexes += n;
+                    return;
+                }
+            }
+            if (tess.numIndexes > 0 || tess.numVertexes > 0 || tess.useVitaWorldVBO) {
+                shader_t *shader = tess.shader;
+                RB_EndSurface();
+                RB_BeginSurface(shader);
+            }
+            tess.useVitaWorldVBO       = qtrue;
+            tess.vitaVboChunk          = e->chunk;
+            tess.vitaVboRangeFirst[0]  = first;
+            tess.vitaVboRangeCount_[0] = n;
+            tess.vitaVboRangeCount     = 1;
+            tess.numIndexes            = n;   /* the stage iterator draws only when non-zero */
+            tess.numVertexes           = 0;   /* no per-vertex stage work */
+            tess.vertexColorValid      = qtrue;
+            return;
+        }
+        if (tess.useVitaWorldVBO) {
+            /* a VBO batch in tess: draw it before queuing client-array vertices */
+            shader_t *shader = tess.shader;
+            RB_EndSurface();
+            RB_BeginSurface(shader);
+        }
+    }
+#endif
     indexes = surf->numTriangles * 3;
     RB_CHECKOVERFLOW(render_count, surf->numTriangles);
 

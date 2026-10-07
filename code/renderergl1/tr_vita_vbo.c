@@ -422,6 +422,359 @@ between stages — those calls also resolve against the bound VBO
 because we leave it bound throughout.
 ====================
 */
+/*
+====================
+Static model VBO
+
+Static models never move, and their lighting is baked per vertex (staticModelData), so
+the vertices RB_StaticMesh rebuilt on the CPU every frame (transform into the world,
+texture coordinates, colours) are the same every frame. They are built once here, in
+the world VBO's drawVert_t layout, into chunks of at most 65535 vertices (u16 indices),
+one entry per (static model, surface). RB_StaticMesh draws an entry from its chunk when
+the merged static world is on (world-space vertices) and no dynamic light touches the
+model. The level of detail collapses triangles: each entry has index lists for
+VITA_STATIC_LODS vertex counts (100%, 50%, 25%, 12.5%), built with RB_StaticMesh's
+collapse, and the draw takes the smallest one with at least the vertices the LOD asks
+for (as much detail or more). Anything else takes the CPU path as before. (Indexes
+built per frame in memory with the vertices in a VBO drew garbage with this vitaGL.)
+====================
+*/
+#define VITA_STATIC_MAX_CHUNKS 32
+#define VITA_STATIC_CHUNK_VERTS 16384
+static unsigned int          staticVboId[VITA_STATIC_MAX_CHUNKS];
+static unsigned int          staticIboId[VITA_STATIC_MAX_CHUNKS];
+static const float           staticLodFraction[VITA_STATIC_LODS] = { 1.0f, 0.5f, 0.25f, 0.125f };
+static int                   staticNumChunks;
+static vitaStaticVboEntry_t *staticEntries;
+static int                   staticNumEntries;
+static int                  *staticFirstEntry;   /* per static model, -1 = none */
+static int                   staticNumModels;
+static cvar_t               *r_vita_vbo_static;
+
+qboolean R_VitaStaticVBO_ShaderEligible(const shader_t *sh)
+{
+    const shaderStage_t *st;
+
+    if (!sh || sh->isSky || sh->isPortalSky || sh->numDeforms || sh->numUnfoggedPasses != 1) return qfalse;
+    st = sh->unfoggedStages[0];
+    if (!st || !st->active) return qfalse;
+    if (st->bundle[0].tcGen != TCGEN_TEXTURE || st->bundle[0].numTexMods
+        || st->bundle[0].numImageAnimations > 1 || st->bundle[1].image[0]) {
+        return qfalse;
+    }
+    switch (st->rgbGen) {
+    case CGEN_STATIC:
+    case CGEN_EXACT_VERTEX:
+    case CGEN_VERTEX:
+        /* the stored colours, as ComputeColors copies them when identityLight is 1 */
+        if (tr.identityLight != 1.0f) return qfalse;
+        switch (st->alphaGen) {
+        case AGEN_IDENTITY:
+        case AGEN_SKIP:
+        case AGEN_VERTEX:
+            return qtrue;
+        default:
+            return qfalse;
+        }
+    default:
+        return qfalse;
+    }
+}
+
+void R_VitaStaticVBO_Free(void)
+{
+    int i;
+
+    for (i = 0; i < staticNumChunks; i++) {
+        if (staticVboId[i]) glDeleteBuffers(1, &staticVboId[i]);
+        if (staticIboId[i]) glDeleteBuffers(1, &staticIboId[i]);
+        staticVboId[i] = staticIboId[i] = 0;
+    }
+    staticNumChunks = 0;
+    if (staticEntries) ri.Free(staticEntries);
+    if (staticFirstEntry) ri.Free(staticFirstEntry);
+    staticEntries    = NULL;
+    staticFirstEntry = NULL;
+    staticNumEntries = 0;
+    staticNumModels  = 0;
+}
+
+/* Draws tess's static batch: the index ranges queued by RB_StaticMesh, from its chunk.
+ * Same attribute layout as the world VBO; the colour is always the stored one (the
+ * eligible rgbGens all use it). */
+void R_VitaStaticVBO_DrawRanges(const int *first, const int *count, int numRanges)
+{
+    const int chunk = tess.vitaVboChunk;
+    int       r;
+
+    if (chunk < 1 || chunk > staticNumChunks) return;
+    glBindBuffer(GL_ARRAY_BUFFER, staticVboId[chunk - 1]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, staticIboId[chunk - 1]);
+    glVertexPointer(3, GL_FLOAT, 44, (const void *)(uintptr_t)0);
+    glNormalPointer(GL_FLOAT, 44, (const void *)(uintptr_t)28);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 44, (const void *)(uintptr_t)40);
+    glClientActiveTexture(GL_TEXTURE1);
+    glTexCoordPointer(2, GL_FLOAT, 44, (const void *)(uintptr_t)20);
+    glClientActiveTexture(GL_TEXTURE0);
+    glTexCoordPointer(2, GL_FLOAT, 44, (const void *)(uintptr_t)12);
+    for (r = 0; r < numRanges; r++) {
+        glDrawElements(GL_TRIANGLES, count[r], GL_UNSIGNED_SHORT, (const void *)(uintptr_t)(first[r] * sizeof(unsigned short)));
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    /* the pointers back to tess's arrays: a later draw that sets only some of them (the
+     * sky...) must not read the VBO offsets above as addresses */
+    glVertexPointer(3, GL_FLOAT, 16, tess.xyz);
+    glNormalPointer(GL_FLOAT, 16, tess.normal);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 0, tess.svars.colors);
+    glClientActiveTexture(GL_TEXTURE1);
+    glTexCoordPointer(2, GL_FLOAT, 0, tess.svars.texcoords[1]);
+    glClientActiveTexture(GL_TEXTURE0);
+    glTexCoordPointer(2, GL_FLOAT, 0, tess.svars.texcoords[0]);
+}
+
+/* RB_StaticMesh's level-of-detail collapse: the triangles kept with renderCount
+ * vertices, rebased on base, into out (NULL: count only). */
+static int R_VitaStaticVBO_Collapse(const skelSurfaceGame_t *surf, int renderCount, int base, unsigned short *out)
+{
+    static short collapse[4096];
+    const int    indexes = surf->numTriangles * 3;
+    int          i, j;
+
+    if (surf->numVerts > 4096) return -1;
+    for (i = 0; i < renderCount; i++) collapse[i] = i;
+    for (i = renderCount; i < surf->numVerts; i++) collapse[i] = collapse[surf->pCollapse[i]];
+    for (j = 0; j < indexes; j += 3) {
+        const skelIndex_t *t = &surf->pTriangles[j];
+        if (collapse[t[0]] == collapse[t[1]] || collapse[t[1]] == collapse[t[2]] || collapse[t[2]] == collapse[t[0]]) {
+            break;
+        }
+        if (out) {
+            out[j]     = (unsigned short)(base + collapse[t[0]]);
+            out[j + 1] = (unsigned short)(base + collapse[t[1]]);
+            out[j + 2] = (unsigned short)(base + collapse[t[2]]);
+        }
+    }
+    return j;
+}
+
+int R_VitaStaticVBO_FirstEntry(int staticModel)
+{
+    if (!staticFirstEntry || staticModel < 0 || staticModel >= staticNumModels) return -1;
+    if (!r_vita_vbo_static || !r_vita_vbo_static->integer) return -1;
+    return staticFirstEntry[staticModel];
+}
+
+const vitaStaticVboEntry_t *R_VitaStaticVBO_Entry(int entry)
+{
+    if (entry < 0 || entry >= staticNumEntries || !staticEntries[entry].chunk) return NULL;
+    return &staticEntries[entry];
+}
+
+/* Walks every static model's surfaces in R_AddStaticModelSurfaces' order. */
+typedef void (*staticSurfFn_t)(int model, int entry, const cStaticModelUnpacked_t *SM, skelSurfaceGame_t *surf,
+                               const shader_t *sh, int ofsStaticData, void *ctx);
+static void R_VitaStaticVBO_Walk(staticSurfFn_t fn, void *ctx)
+{
+    int i, mesh, j, entry = 0;
+
+    for (i = 0; i < tr.world->numStaticModels; i++) {
+        const cStaticModelUnpacked_t *SM   = &tr.world->staticModels[i];
+        dtiki_t                      *tiki = SM->tiki;
+        dtikisurface_t               *dsurf;
+        int                           ofsStaticData = 0;
+
+        staticFirstEntry[i] = tiki ? entry : -1;
+        if (!tiki) continue;
+        dsurf = tiki->surfaces;
+        for (mesh = 0; mesh < tiki->numMeshes; mesh++) {
+            skelHeaderGame_t  *skelmodel = ri.TIKI_GetSkel(tiki->mesh[mesh]);
+            skelSurfaceGame_t *surf;
+
+            if (!skelmodel) continue;
+            surf = skelmodel->pSurfaces;
+            for (j = 0; j < skelmodel->numSurfaces; j++, ofsStaticData += surf->numVerts, surf = surf->pNext, dsurf++) {
+                fn(i, entry++, SM, surf, tr.shaders[dsurf->hShader[0]], ofsStaticData, ctx);
+            }
+        }
+    }
+}
+
+typedef struct {
+    int chunkVerts, chunkIndexes;     /* the chunk being filled */
+    int chunk;                        /* 1.. */
+    int totalVerts, totalIndexes, eligible, excluded;
+    int chunkNumVerts[VITA_STATIC_MAX_CHUNKS + 1];
+    int chunkNumIndexes[VITA_STATIC_MAX_CHUNKS + 1];
+    drawVert_t     *verts[VITA_STATIC_MAX_CHUNKS + 1];
+    unsigned short *indexes[VITA_STATIC_MAX_CHUNKS + 1];
+} staticBuild_t;
+
+static qboolean R_VitaStaticVBO_SurfOk(const cStaticModelUnpacked_t *SM, skelSurfaceGame_t *surf, const shader_t *sh,
+                                       int ofsStaticData)
+{
+    if (!surf->pStaticXyz || surf->numVerts <= 0 || surf->numTriangles <= 0 || surf->numVerts > 65535) return qfalse;
+    if (!R_VitaStaticVBO_ShaderEligible(sh)) return qfalse;
+    if (!tr.world->staticModelData
+        || SM->firstVertexData + (ofsStaticData + surf->numVerts) * (int)sizeof(color4ub_t)
+               > tr.world->numStaticModelData * (int)sizeof(color4ub_t)) {
+        return qfalse;
+    }
+    return qtrue;
+}
+
+static void R_VitaStaticVBO_Count(int model, int entry, const cStaticModelUnpacked_t *SM, skelSurfaceGame_t *surf,
+                                  const shader_t *sh, int ofsStaticData, void *ctxV)
+{
+    staticBuild_t *b = (staticBuild_t *)ctxV;
+
+    staticEntries[entry].chunk = 0;
+    if (!R_VitaStaticVBO_SurfOk(SM, surf, sh, ofsStaticData)) {
+        b->excluded++;
+        return;
+    }
+    vitaStaticVboEntry_t *e = &staticEntries[entry];
+    int                   l, n, total = 0;
+
+    if (surf->numVerts > 4096 || (surf->pCollapse == NULL && surf->numVerts > 3)) {
+        b->excluded++;
+        return;
+    }
+    /* the levels: vertex counts and their index counts (fewer levels for small surfaces) */
+    e->lodCount = 0;
+    for (l = 0; l < VITA_STATIC_LODS; l++) {
+        int verts = (int)(surf->numVerts * staticLodFraction[l] + 0.999f);
+        if (l > 0 && (verts < 3 || verts >= e->lodVerts[e->lodCount - 1])) break;
+        n = R_VitaStaticVBO_Collapse(surf, verts, 0, NULL);
+        if (n < 0) {
+            b->excluded++;
+            return;
+        }
+        e->lodVerts[e->lodCount]      = verts;
+        e->lodNumIndexes[e->lodCount] = n;
+        e->lodCount++;
+        total += n;
+    }
+    /* chunks of at most VITA_STATIC_CHUNK_VERTS: vitaGL's buffer allocation failed
+     * silently (the draws read garbage) for one of ~65000 vertices (2.8 MB) */
+    if (!b->chunk || b->chunkVerts + surf->numVerts > VITA_STATIC_CHUNK_VERTS) {
+        if (b->chunk == VITA_STATIC_MAX_CHUNKS) {
+            b->excluded++;
+            return;
+        }
+        b->chunk++;
+        b->chunkVerts = b->chunkIndexes = 0;
+    }
+    e->chunk      = b->chunk;
+    e->vertOffset = b->chunkVerts;
+    for (l = 0; l < e->lodCount; l++) {
+        e->lodIndexOffset[l] = b->chunkIndexes;
+        b->chunkIndexes += e->lodNumIndexes[l];
+    }
+    b->chunkVerts += surf->numVerts;
+    b->chunkNumVerts[b->chunk]   = b->chunkVerts;
+    b->chunkNumIndexes[b->chunk] = b->chunkIndexes;
+    b->totalVerts += surf->numVerts;
+    b->totalIndexes += total;
+    b->eligible++;
+}
+
+static void R_VitaStaticVBO_Fill(int model, int entry, const cStaticModelUnpacked_t *SM, skelSurfaceGame_t *surf,
+                                 const shader_t *sh, int ofsStaticData, void *ctxV)
+{
+    staticBuild_t   *b = (staticBuild_t *)ctxV;
+    const int        c = staticEntries[entry].chunk;
+    const float      scale = SM->tiki->load_scale * SM->scale;
+    const color4ub_t *col;
+    drawVert_t      *dv;
+    int              v, i, k;
+
+    if (!c) return;
+    col = (const color4ub_t *)&tr.world->staticModelData[SM->firstVertexData + ofsStaticData * sizeof(color4ub_t)];
+    dv  = b->verts[c] + staticEntries[entry].vertOffset;
+    for (v = 0; v < surf->numVerts; v++, dv++) {
+        const float *p = surf->pStaticXyz[v], *n = surf->pStaticNormal[v];
+        for (i = 0; i < 3; i++) {
+            /* as RB_StaticMesh's merged path (R_RotateForStaticModel) */
+            dv->xyz[i]    = SM->origin[i] + scale * (SM->axis[0][i] * p[0] + SM->axis[1][i] * p[1] + SM->axis[2][i] * p[2]);
+            dv->normal[i] = SM->axis[0][i] * n[0] + SM->axis[1][i] * n[1] + SM->axis[2][i] * n[2];
+        }
+        dv->st[0]       = surf->pStaticTexCoords[v][0][0];
+        dv->st[1]       = surf->pStaticTexCoords[v][0][1];
+        dv->lightmap[0] = surf->pStaticTexCoords[v][1][0];
+        dv->lightmap[1] = surf->pStaticTexCoords[v][1][1];
+        for (k = 0; k < 4; k++) dv->color[k] = col[v][k];
+    }
+    for (i = 0; i < staticEntries[entry].lodCount; i++) {
+        R_VitaStaticVBO_Collapse(surf, staticEntries[entry].lodVerts[i], staticEntries[entry].vertOffset,
+                                 b->indexes[c] + staticEntries[entry].lodIndexOffset[i]);
+    }
+}
+
+void R_VitaStaticVBO_Build(void)
+{
+    staticBuild_t b;
+    int           c;
+
+    R_VitaStaticVBO_Free();
+    if (!r_vita_vbo_static) {
+        /* off: ~6 MB of buffers from vitaGL's pool corrupted other textures (the sky
+         * came out in flat colours) in Vita3K; to retry with the buffers in CDRAM */
+        r_vita_vbo_static = ri.Cvar_Get("r_vita_vbo_static", "0", CVAR_ARCHIVE | CVAR_LATCH);
+    }
+    if (!r_vita_vbo_static->integer || !tr.world || tr.world->numStaticModels <= 0) return;
+
+    Com_Memset(&b, 0, sizeof(b));
+    staticNumModels  = tr.world->numStaticModels;
+    staticFirstEntry = (int *)ri.Malloc(sizeof(int) * staticNumModels);
+    /* count the entries first (every surface of every model) */
+    {
+        int i, mesh, n = 0;
+        for (i = 0; i < staticNumModels; i++) {
+            dtiki_t *tiki = tr.world->staticModels[i].tiki;
+            if (!tiki) continue;
+            for (mesh = 0; mesh < tiki->numMeshes; mesh++) {
+                skelHeaderGame_t *skelmodel = ri.TIKI_GetSkel(tiki->mesh[mesh]);
+                if (skelmodel) n += skelmodel->numSurfaces;
+            }
+        }
+        staticNumEntries = n;
+    }
+    if (!staticNumEntries) {
+        R_VitaStaticVBO_Free();
+        return;
+    }
+    staticEntries = (vitaStaticVboEntry_t *)ri.Malloc(sizeof(vitaStaticVboEntry_t) * staticNumEntries);
+    R_VitaStaticVBO_Walk(R_VitaStaticVBO_Count, &b);
+
+    for (c = 1; c <= b.chunk; c++) {
+        b.verts[c]   = (drawVert_t *)ri.Hunk_AllocateTempMemory(sizeof(drawVert_t) * b.chunkNumVerts[c]);
+        b.indexes[c] = (unsigned short *)ri.Hunk_AllocateTempMemory(sizeof(unsigned short) * (b.chunkNumIndexes[c] + 1));
+    }
+    R_VitaStaticVBO_Walk(R_VitaStaticVBO_Fill, &b);
+    for (c = 1; c <= b.chunk; c++) {
+        glGenBuffers(1, &staticVboId[c - 1]);
+        glBindBuffer(GL_ARRAY_BUFFER, staticVboId[c - 1]);
+        glBufferData(GL_ARRAY_BUFFER, (long)(sizeof(drawVert_t) * b.chunkNumVerts[c]), b.verts[c], GL_STATIC_DRAW);
+        glGenBuffers(1, &staticIboId[c - 1]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, staticIboId[c - 1]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (long)(sizeof(unsigned short) * (b.chunkNumIndexes[c] + 1)), b.indexes[c],
+                     GL_STATIC_DRAW);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    staticNumChunks = b.chunk;
+    /* temp memory is a stack: free in reverse order */
+    for (c = b.chunk; c >= 1; c--) {
+        ri.Hunk_FreeTempMemory(b.indexes[c]);
+        ri.Hunk_FreeTempMemory(b.verts[c]);
+    }
+
+    ri.Printf(PRINT_ALL, "[VITA-VBO] static models: %d surfaces in %d chunk(s), %d excluded, %d verts (%lu KB), %d indexes in %d LODs (%lu KB)\n",
+        b.eligible, b.chunk, b.excluded, b.totalVerts, (unsigned long)(sizeof(drawVert_t) * b.totalVerts) / 1024,
+        b.totalIndexes, VITA_STATIC_LODS, (unsigned long)(sizeof(unsigned short) * b.totalIndexes) / 1024);
+}
+
 qboolean R_VitaWorldVBO_IsVboSurface(const surfaceType_t *surface)
 {
     // Must match RB_SurfaceTriangles: a dlit surface takes the client-array path.
