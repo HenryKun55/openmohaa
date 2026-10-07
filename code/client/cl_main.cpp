@@ -2704,6 +2704,18 @@ void CL_Frame ( int msec ) {
 	}
 #endif
 
+#ifdef __vita__
+	// Test runs (vita_test.cfg present, see common.c): skip the intro movies and screens
+	// as if a button were pressed, so the test starts without anyone at the Vita.
+	{
+		static cvar_t *skip;
+		if (!skip) skip = Cvar_Get("vita_test_skipintro", "0", CVAR_TEMP);
+		if (skip->integer && !CL_FinishedIntro()) {
+			UI_StartStageKeyEvent();
+		}
+	}
+#endif
+
 	if (CL_FinishedIntro()) {
 		if (clc.state == CA_DISCONNECTED) {
 			if (!UI_MenuActive() && !com_sv_running->integer) {

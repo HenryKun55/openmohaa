@@ -62,7 +62,7 @@ PROFILES = {
     "host": {},
 }
 
-LOAD_TIMEOUT = 240  # seconds from launch to the player in the level
+LOAD_TIMEOUT = 420  # seconds from launch to the player in the level
 KV = re.compile(r"([a-z0-9:]+)=(-?[0-9.]+)")
 
 

@@ -1982,6 +1982,10 @@ void Com_Init( char *commandLine ) {
 	// the title and the legal screens unskippable, over vita_autoexec.cfg's choice: any
 	// button skips them, in every campaign.
 	Cbuf_AddText( "set ui_skip_eamovie 1\nset ui_skip_titlescreen 1\nset ui_skip_legalscreen 1\n" );
+	// Test runs skip the intro on their own (cl_main.cpp): nobody presses a button.
+	if ( FS_ReadFile( "vita_test.cfg", NULL ) > 0 ) {
+		Cvar_Get( "vita_test_skipintro", "1", CVAR_TEMP );
+	}
 #endif
 	Cbuf_Execute( 0 );
 	Com_StartupVariable( NULL );
