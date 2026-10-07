@@ -178,25 +178,22 @@ static const char *s_skin_vert_src =
     "attribute vec4 a_morph;\n"     /* face animation: xyz = offset, w = the weight it moves (9 = none) */
     /* Must fit the Vita's vertex uniform budget (GL_MAX_VERTEX_UNIFORM_VECTORS, logged
      * at init; the 424-vector version crashed at link on hardware): 4 + 96 + 4 + 12 = 116. */
-    "uniform   mat4 u_mvp;\n"
-    "uniform   vec4 u_boneMat[96];\n"    /* 32 slots * 3 rows; w = translation */
-    "uniform   vec4 u_mvZ;\n"            /* modelview row producing eye-space z */
-    "uniform   vec4 u_fog;\n"            /* x = start, y = end, z = enabled */
-    "uniform   vec4 u_ambient;\n"        /* rgb 0..255, a = alpha 0..1 */
-    "uniform   vec4 u_lightInfo;\n"      /* x = numLights, y = fullbright */
-    "uniform   vec4 u_lDir[4];\n"        /* xyz = direction, w = lighttype_t */
-    "uniform   vec4 u_lOrg[4];\n"        /* xyz = origin, w = fSpotConst */
-    "uniform   vec4 u_lCol[4];\n"        /* xyz = colour, w = fSpotScale */
+    /* Every vertex uniform in ONE array, uploaded with one glUniform4fv per draw (each
+     * glUniform* call costs a lookup and a type query in vitaGL):
+     *   0-3 mvp columns | 4 eye-z row | 5 fog (start, end, enabled) | 6 ambient
+     *   7 light info (count, fullbright) | 8-11 light dir+type | 12-15 light origin+spot
+     *   16-19 light colour+spot scale | 20-115 bones (32 slots * 3 rows, w = translation) */
+    "uniform   vec4 u_data[116];\n"
     "varying   vec4 v_tc;\n"             /* xy = uv, z = fog factor */
     "varying   vec4 v_lit;\n"
     "vec3 skinOne(int s, vec3 p) {\n"
     "    int o = s * 3;\n"
     "    vec4 q = vec4(p, 1.0);\n"
-    "    return vec3(dot(u_boneMat[o], q), dot(u_boneMat[o + 1], q), dot(u_boneMat[o + 2], q));\n"
+    "    return vec3(dot(u_data[o + 20], q), dot(u_data[o + 21], q), dot(u_data[o + 22], q));\n"
     "}\n"
     "vec3 rotOne(int s, vec3 n) {\n"
     "    int o = s * 3;\n"
-    "    return vec3(dot(u_boneMat[o].xyz, n), dot(u_boneMat[o + 1].xyz, n), dot(u_boneMat[o + 2].xyz, n));\n"
+    "    return vec3(dot(u_data[o + 20].xyz, n), dot(u_data[o + 21].xyz, n), dot(u_data[o + 22].xyz, n));\n"
     "}\n"
     /* One RB_Light_Real light. Called with constant indices (no loop/break or dynamic
      * light indexing, which the on-device shader compiler is fragile with). */
@@ -234,24 +231,26 @@ static const char *s_skin_vert_src =
     "            + a_w1.w * skinOne(s1, a_w1.xyz + m1)\n"
     "            + a_w2.w * skinOne(s2, a_w2.xyz + m2)\n"
     "            + a_w3.w * skinOne(s3, a_w3.xyz + m3);\n"
-    "    gl_Position = u_mvp * vec4(sk, 1.0);\n"
+    "    gl_Position = mat4(u_data[0], u_data[1], u_data[2], u_data[3]) * vec4(sk, 1.0);\n"
     "    v_tc.xy = a_texcoord;\n"
     "    vec3 n = normalize(rotOne(s0, a_normal));\n"
     "    vec3 c;\n"
     "    float a = 1.0;\n"
-    "    if (u_lightInfo.y > 0.5) {\n"
+    "    vec4 li = u_data[7];\n"
+    "    if (li.y > 0.5) {\n"
     "        c = vec3(255.0);\n"
-    "    } else if (u_lightInfo.x < 0.5) {\n"
-    "        c = u_ambient.rgb; a = u_ambient.a;\n"
+    "    } else if (li.x < 0.5) {\n"
+    "        c = u_data[6].rgb; a = u_data[6].a;\n"
     "    } else {\n"
-    "        c = u_ambient.rgb + lightOne(u_lDir[0], u_lOrg[0], u_lCol[0], n, sk);\n"
-    "        if (u_lightInfo.x > 1.5) c += lightOne(u_lDir[1], u_lOrg[1], u_lCol[1], n, sk);\n"
-    "        if (u_lightInfo.x > 2.5) c += lightOne(u_lDir[2], u_lOrg[2], u_lCol[2], n, sk);\n"
-    "        if (u_lightInfo.x > 3.5) c += lightOne(u_lDir[3], u_lOrg[3], u_lCol[3], n, sk);\n"
+    "        c = u_data[6].rgb + lightOne(u_data[8], u_data[12], u_data[16], n, sk);\n"
+    "        if (li.x > 1.5) c += lightOne(u_data[9], u_data[13], u_data[17], n, sk);\n"
+    "        if (li.x > 2.5) c += lightOne(u_data[10], u_data[14], u_data[18], n, sk);\n"
+    "        if (li.x > 3.5) c += lightOne(u_data[11], u_data[15], u_data[19], n, sk);\n"
     "    }\n"
     "    v_lit = vec4(clamp(c, 0.0, 255.0) * (1.0 / 255.0), a);\n"
-    "    float ez = -dot(u_mvZ, vec4(sk, 1.0));\n"
-    "    v_tc.z = u_fog.z > 0.5 ? clamp((u_fog.y - ez) / (u_fog.y - u_fog.x), 0.0, 1.0) : 1.0;\n"
+    "    vec4 fg = u_data[5];\n"
+    "    float ez = -dot(u_data[4], vec4(sk, 1.0));\n"
+    "    v_tc.z = fg.z > 0.5 ? clamp((fg.y - ez) / (fg.y - fg.x), 0.0, 1.0) : 1.0;\n"
     "    v_tc.w = 1.0;\n"
     "}\n";
 
@@ -327,6 +326,14 @@ typedef struct {
     /* The surface has morph targets (faces): drawn here only for entities whose
      * morphs are off this frame, which RB_SkelMesh also skins without them. */
     qboolean           hasMorphs;
+    /* Sparse morph targets (first batch only, built at the first animated frame): the
+     * vertices and offsets of target m are morphVert/morphOff[morphStart[m]..morphStart[m+1]),
+     * so a frame walks only the targets whose weight is not zero. */
+    int                morphCount;
+    int               *morphStart;
+    unsigned short    *morphVert;
+    float             *morphOff;
+
     /* A surface with more than VITA_SKIN_MAX_BONESLOTS bones (hands: the fingers) is
      * split into batches of triangles that each use at most that many; they are chained
      * through 'next' (a slot, 0 = last). */
@@ -366,9 +373,14 @@ void R_VitaGpuSkin_Unbind(void)
     }
 }
 static qboolean            s_skin_ready   = qfalse;
-static int                 s_loc_mvp = -1, s_loc_boneMatrix = -1, s_loc_diffuse = -1;
-static int                 s_loc_mvZ = -1, s_loc_fog = -1, s_loc_fogColor = -1, s_loc_alphaTest = -1;
-static int                 s_loc_ambient = -1, s_loc_lightInfo = -1, s_loc_lDir = -1, s_loc_lOrg = -1, s_loc_lCol = -1;
+static int                 s_loc_data = -1, s_loc_diffuse = -1, s_loc_fogColor = -1, s_loc_alphaTest = -1;
+/* u_data: the vertex uniforms of one draw, uploaded in one call (see the vertex shader) */
+#define VITA_SKIN_DATA_BONES       20
+#define VITA_SKIN_DATA_VECS        116
+static float               s_vdata[VITA_SKIN_DATA_VECS * 4];
+/* The fragment uniforms stay in the program between draws: set them only on change. */
+static qboolean            s_fragCacheValid = qfalse;
+static float               s_lastFogColor[4], s_lastAlphaTest[4];
 
 cvar_t *r_vita_gpu_skinning = NULL;
 
@@ -484,18 +496,11 @@ void R_VitaGpuSkin_Init(void)
     glDeleteShader(fs);
 
     s_skin_program   = prog;
-    s_loc_mvp        = glGetUniformLocation(prog, "u_mvp");
-    s_loc_boneMatrix = glGetUniformLocation(prog, "u_boneMat");
+    s_loc_data       = glGetUniformLocation(prog, "u_data");
     s_loc_diffuse    = glGetUniformLocation(prog, "u_diffuse");
-    s_loc_mvZ        = glGetUniformLocation(prog, "u_mvZ");
-    s_loc_fog        = glGetUniformLocation(prog, "u_fog");
     s_loc_fogColor   = glGetUniformLocation(prog, "u_fogColor");
     s_loc_alphaTest  = glGetUniformLocation(prog, "u_alphaTest");
-    s_loc_ambient    = glGetUniformLocation(prog, "u_ambient");
-    s_loc_lightInfo  = glGetUniformLocation(prog, "u_lightInfo");
-    s_loc_lDir       = glGetUniformLocation(prog, "u_lDir");
-    s_loc_lOrg       = glGetUniformLocation(prog, "u_lOrg");
-    s_loc_lCol       = glGetUniformLocation(prog, "u_lCol");
+    s_fragCacheValid = qfalse;
     if (!VitaSkin_AllocMorphBuffers()) {
         ri.Printf(PRINT_WARNING, "[VITA-SKIN] no memory for the morph buffers: GPU skinning off\n");
         return;
@@ -504,8 +509,8 @@ void R_VitaGpuSkin_Init(void)
 
     ri.Printf(PRINT_ALL,
         "[VITA-SKIN] program LINK OK, prog=%u (vgl* pipeline) "
-        "mvp=%d boneMat=%d diffuse=%d\n",
-        prog, s_loc_mvp, s_loc_boneMatrix, s_loc_diffuse);
+        "data=%d diffuse=%d\n",
+        prog, s_loc_data, s_loc_diffuse);
 }
 
 void R_VitaGpuSkin_Shutdown(void)
@@ -542,6 +547,14 @@ static void VitaSkin_FreeEntry(vitaSkinCacheEntry_t *e)
     e->orig = NULL;
     if (e->morphSlot) free(e->morphSlot);
     e->morphSlot = NULL;
+    free(e->morphStart);
+    free(e->morphVert);
+    free(e->morphOff);
+    e->morphStart = NULL;
+    e->morphVert  = NULL;
+    e->morphOff   = NULL;
+    e->morphCount = 0;
+
     for (int l = 0; l < e->lodCount; l++) {
         if (e->lodIbuf[l]) vglFree(e->lodIbuf[l]);
         e->lodIbuf[l] = NULL;
@@ -991,6 +1004,58 @@ static void VitaSkin_LogRefusal(const char *what, const char *name, int code, co
 int vita_skin_fail;	// RT-PROF: why the last R_VitaGpuSkin_DrawSurf fell back to the CPU
 int vita_skin_failsub;	// RT-PROF3: the stage check or surface build code behind it
 
+/* The sparse morph lists of a surface (see vitaSkinCacheEntry_t). */
+static qboolean VitaSkin_BuildMorphLists(vitaSkinCacheEntry_t *e, const skelSurfaceGame_t *sf)
+{
+    const skeletorVertex_t *v;
+    int                     i, k, total = 0, count = 0;
+    int                    *fill;
+
+    v = sf->pVerts;
+    for (i = 0; i < sf->numVerts; i++) {
+        const skeletorMorph_t *m = (const skeletorMorph_t *)((const byte *)v + sizeof(skeletorVertex_t));
+        for (k = 0; k < v->numMorphs; k++, m++) {
+            if (m->morphIndex + 1 > count) count = m->morphIndex + 1;
+            total++;
+        }
+        v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                       + sizeof(skeletorMorph_t) * v->numMorphs + sizeof(skelWeight_t) * v->numWeights);
+    }
+    e->morphStart = (int *)calloc(count + 1, sizeof(int));
+    e->morphVert  = (unsigned short *)malloc((total ? total : 1) * sizeof(unsigned short));
+    e->morphOff   = (float *)malloc((total ? total : 1) * 3 * sizeof(float));
+    fill          = (int *)calloc(count + 1, sizeof(int));
+    if (!e->morphStart || !e->morphVert || !e->morphOff || !fill) {
+        free(fill);
+        return qfalse;
+    }
+    /* count per target, then prefix sums, then fill */
+    v = sf->pVerts;
+    for (i = 0; i < sf->numVerts; i++) {
+        const skeletorMorph_t *m = (const skeletorMorph_t *)((const byte *)v + sizeof(skeletorVertex_t));
+        for (k = 0; k < v->numMorphs; k++, m++) e->morphStart[m->morphIndex + 1]++;
+        v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                       + sizeof(skeletorMorph_t) * v->numMorphs + sizeof(skelWeight_t) * v->numWeights);
+    }
+    for (i = 0; i < count; i++) e->morphStart[i + 1] += e->morphStart[i];
+    v = sf->pVerts;
+    for (i = 0; i < sf->numVerts; i++) {
+        const skeletorMorph_t *m = (const skeletorMorph_t *)((const byte *)v + sizeof(skeletorVertex_t));
+        for (k = 0; k < v->numMorphs; k++, m++) {
+            const int at = e->morphStart[m->morphIndex] + fill[m->morphIndex]++;
+            e->morphVert[at]        = (unsigned short)i;
+            e->morphOff[at * 3 + 0] = m->offset[0];
+            e->morphOff[at * 3 + 1] = m->offset[1];
+            e->morphOff[at * 3 + 2] = m->offset[2];
+        }
+        v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
+                                       + sizeof(skeletorMorph_t) * v->numMorphs + sizeof(skelWeight_t) * v->numWeights);
+    }
+    free(fill);
+    e->morphCount = count;
+    return qtrue;
+}
+
 qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *bonesV, float scale, int renderCount)
 {
     skelSurfaceGame_t *sf        = (skelSurfaceGame_t *)sfV;
@@ -1003,7 +1068,6 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     int   alphaTestMode = 0;
     float entityAlpha   = 1.0f;
     float mvp[16], mvZ[4], fog[4], fogColor[4], alphaTest[4], ambient[4], lightInfo[4];
-    static float boneMatrixData[VITA_SKIN_MAX_BONESLOTS * 3 * 4];
     static float lDir[VITA_SKIN_MAX_LIGHTS * 4], lOrg[VITA_SKIN_MAX_LIGHTS * 4], lCol[VITA_SKIN_MAX_LIGHTS * 4];
 
     if (!s_skin_ready || !r_vita_gpu_skinning || !r_vita_gpu_skinning->integer) { vita_skin_fail = 1; return qfalse; }
@@ -1028,49 +1092,54 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     if (e->hasMorphs && backEnd.currentEntity->e.hasMorph) {
         static float tmp[VITA_SKIN_MAX_BATCH_VERTS * 3];
         const int   *weights = &backEnd.data->morphCache[backEnd.currentEntity->e.morphstart];
-        int          need = 0;
+        int          need = 0, active = 0, m;
         float       *dst;
-        const skeletorVertex_t *v;
 
-        for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
-            need += be->numVerts;
-            if (!be->next || be->next >= s_skin_cache_count) break;
-        }
-        if (sf->numVerts > VITA_SKIN_MAX_BATCH_VERTS || !s_morphRing[s_morphFrame]
-            || s_morphUsed + need > VITA_SKIN_MORPH_VERTS) {
-            vita_skin_fail = 0;                     /* no room this frame → CPU morphs */
+        if (!e->morphStart && !VitaSkin_BuildMorphLists(e, sf)) {
+            vita_skin_fail = 0;                     /* no memory → CPU morphs */
             return qfalse;
         }
-        v = sf->pVerts;
-        for (i = 0; i < sf->numVerts; i++) {
-            const skeletorMorph_t *m = (const skeletorMorph_t *)((const byte *)v + sizeof(skeletorVertex_t));
-            float                 *t = &tmp[i * 3];
-            t[0] = t[1] = t[2] = 0.0f;
-            for (int k = 0; k < v->numMorphs; k++, m++) {
-                const int w = weights[m->morphIndex];
-                if (w) {
-                    t[0] += w * m->offset[0];
-                    t[1] += w * m->offset[1];
-                    t[2] += w * m->offset[2];
+        for (m = 0; m < e->morphCount && !active; m++) {
+            active = weights[m] && e->morphStart[m + 1] > e->morphStart[m];
+        }
+        /* a face at rest draws with the zero offsets, like a surface without morphs */
+        if (active) {
+            for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+                need += be->numVerts;
+                if (!be->next || be->next >= s_skin_cache_count) break;
+            }
+            if (sf->numVerts > VITA_SKIN_MAX_BATCH_VERTS || !s_morphRing[s_morphFrame]
+                || s_morphUsed + need > VITA_SKIN_MORPH_VERTS) {
+                vita_skin_fail = 0;                 /* no room this frame → CPU morphs */
+                return qfalse;
+            }
+            memset(tmp, 0, sf->numVerts * 3 * sizeof(float));
+            for (m = 0; m < e->morphCount; m++) {
+                const int w = weights[m];
+                int       k;
+                if (!w) continue;
+                for (k = e->morphStart[m]; k < e->morphStart[m + 1]; k++) {
+                    float       *t = &tmp[e->morphVert[k] * 3];
+                    const float *o = &e->morphOff[k * 3];
+                    t[0] += w * o[0];
+                    t[1] += w * o[1];
+                    t[2] += w * o[2];
                 }
             }
-            v = (const skeletorVertex_t *)((const byte *)v + sizeof(skeletorVertex_t)
-                                           + sizeof(skeletorMorph_t) * v->numMorphs
-                                           + sizeof(skelWeight_t) * v->numWeights);
-        }
-        dst       = s_morphRing[s_morphFrame] + s_morphUsed * 4;
-        morphData = dst;
-        for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
-            for (i = 0; i < be->numVerts; i++, dst += 4) {
-                const float *t = &tmp[be->orig[i] * 3];
-                dst[0] = t[0];
-                dst[1] = t[1];
-                dst[2] = t[2];
-                dst[3] = (float)be->morphSlot[i];
+            dst       = s_morphRing[s_morphFrame] + s_morphUsed * 4;
+            morphData = dst;
+            for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+                for (i = 0; i < be->numVerts; i++, dst += 4) {
+                    const float *t = &tmp[be->orig[i] * 3];
+                    dst[0] = t[0];
+                    dst[1] = t[1];
+                    dst[2] = t[2];
+                    dst[3] = (float)be->morphSlot[i];
+                }
+                if (!be->next || be->next >= s_skin_cache_count) break;
             }
-            if (!be->next || be->next >= s_skin_cache_count) break;
+            s_morphUsed += need;
         }
-        s_morphUsed += need;
     }
 
     /* Every batch needs all its bones on this model: checked before drawing any of them. */
@@ -1195,20 +1264,30 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         glUseProgram(s_skin_program);                                SKIN_GLCHK("glUseProgram");
         s_skin_program_bound = qtrue;
     }
-    glUniformMatrix4fv(s_loc_mvp, 1, 0, mvp);                        SKIN_GLCHK("uniform mvp");
-    glUniform4fv(s_loc_mvZ, 1, mvZ);
-    glUniform4fv(s_loc_fog, 1, fog);
-    glUniform4fv(s_loc_fogColor, 1, fogColor);
-    glUniform4fv(s_loc_alphaTest, 1, alphaTest);
-    glUniform4fv(s_loc_ambient, 1, ambient);
-    glUniform4fv(s_loc_lightInfo, 1, lightInfo);
+    /* Header of u_data; the bones follow per batch below. */
+    memcpy(&s_vdata[0 * 4], mvp, sizeof(mvp));
+    memcpy(&s_vdata[4 * 4], mvZ, sizeof(mvZ));
+    memcpy(&s_vdata[5 * 4], fog, sizeof(fog));
+    memcpy(&s_vdata[6 * 4], ambient, sizeof(ambient));
+    memcpy(&s_vdata[7 * 4], lightInfo, sizeof(lightInfo));
     if (lightInfo[0] > 0.0f) {
         const int numLights = (int)lightInfo[0];
-        glUniform4fv(s_loc_lDir, numLights, lDir);
-        glUniform4fv(s_loc_lOrg, numLights, lOrg);
-        glUniform4fv(s_loc_lCol, numLights, lCol);
-    }                                                                SKIN_GLCHK("uniform lighting/fog");
-    glUniform1i(s_loc_diffuse, 0);                                   SKIN_GLCHK("uniform diffuse");
+        memcpy(&s_vdata[8 * 4], lDir, numLights * 4 * sizeof(float));
+        memcpy(&s_vdata[12 * 4], lOrg, numLights * 4 * sizeof(float));
+        memcpy(&s_vdata[16 * 4], lCol, numLights * 4 * sizeof(float));
+    }
+    if (!s_fragCacheValid || memcmp(s_lastFogColor, fogColor, sizeof(fogColor))) {
+        glUniform4fv(s_loc_fogColor, 1, fogColor);
+        memcpy(s_lastFogColor, fogColor, sizeof(fogColor));
+    }
+    if (!s_fragCacheValid || memcmp(s_lastAlphaTest, alphaTest, sizeof(alphaTest))) {
+        glUniform4fv(s_loc_alphaTest, 1, alphaTest);
+        memcpy(s_lastAlphaTest, alphaTest, sizeof(alphaTest));
+    }
+    if (!s_fragCacheValid) {
+        glUniform1i(s_loc_diffuse, 0);                               SKIN_GLCHK("uniform diffuse");
+        s_fragCacheValid = qtrue;
+    }                                                                SKIN_GLCHK("uniform fog/alpha");
 
     /* vgl* pipeline, copy-less: attributes and indices come straight from the
      * GPU-mapped arrays built once in VitaSkin_BuildSurf. It does NOT touch
@@ -1219,7 +1298,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
     for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
         for (i = 0; i < be->numBoneSlots; i++) {
             const skelBoneCache_t *b    = &bones[be->localChn[i]];
-            float                 *m    = &boneMatrixData[i * 12];
+            float                 *m    = &s_vdata[(VITA_SKIN_DATA_BONES + i * 3) * 4];
             m[0]  = b->matrix[0][0] * scale;
             m[1]  = b->matrix[1][0] * scale;
             m[2]  = b->matrix[2][0] * scale;
@@ -1233,7 +1312,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
             m[10] = b->matrix[2][2] * scale;
             m[11] = b->offset[2] * scale;
         }
-        glUniform4fv(s_loc_boneMatrix, be->numBoneSlots * 3, boneMatrixData); SKIN_GLCHK("uniform boneMat");
+        glUniform4fv(s_loc_data, VITA_SKIN_DATA_BONES + be->numBoneSlots * 3, s_vdata); SKIN_GLCHK("uniform data");
         for (a = 0; a < ATTR_COUNT; a++) {
             vglVertexAttribPointerMapped(a, be->attr[a]);
         }
