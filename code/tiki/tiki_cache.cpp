@@ -240,7 +240,13 @@ dtiki_t *TIKI_RegisterTikiFlags(const char *path, qboolean use)
 
     tikianim = TIKI_RegisterTikiAnimFlags(filename, use);
     if (tikianim) {
+#ifdef __vita__
+        VP_BEGIN(tkModel);
+#endif
         tiki = TIKI_LoadTikiModel(tikianim, full_filename, &keyValues);
+#ifdef __vita__
+        lp_acc[LP_TK_MODEL] += VP_Now() - tkModel;
+#endif
         if (tiki) {
             // cache the tiki
             (*tikicache)[tiki->name] = tiki;

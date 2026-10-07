@@ -116,8 +116,9 @@ public:
     ConvertSkelFileToGame(skelAnimDataFileHeader_t *pHeader, int iBuffLength, const char *path);
     static void
     SaveProcessedAnim(skelAnimDataGameHeader_t *enAnim, const char *path, skelAnimDataFileHeader_t *pHeader);
-    static skelAnimDataGameHeader_t *LoadProcessedAnim(const char *path, void *buffer, int len, const char *name);
-    static skelAnimDataGameHeader_t *LoadProcessedAnimEx(const char *path, void *buffer, int len, const char *name);
+    // plain: buffer holds the already decoded bytes (MSG_HuffDecodeAll), read without Huffman
+    static skelAnimDataGameHeader_t *LoadProcessedAnim(const char *path, void *buffer, int len, const char *name, qboolean plain = qfalse);
+    static skelAnimDataGameHeader_t *LoadProcessedAnimEx(const char *path, void *buffer, int len, const char *name, qboolean plain = qfalse);
     void                             PrintBoneCacheList();
     void                             PrintBoneList();
     void                             LoadMorphTargetNames(skelHeaderGame_t *modelHeader);

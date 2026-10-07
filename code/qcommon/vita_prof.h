@@ -59,6 +59,13 @@ enum {
 	LP_ZREAD,		// pk3 member reads: seek + read of each compressed chunk
 	LP_ZREAD_N,
 	LP_INFLATE,		// pk3 member reads: zlib inflate
+	LP_TK_PARSE,	// TIKI_LoadTikiAnim: the .tik text (setup, init, animations, includes)
+	LP_TK_FILL,		// TIKI_FillTIKIStructureSkel: builds the anim tiki (loads its .skc)
+	LP_TK_MODEL,	// TIKI_LoadTikiModel: the model tiki (loads its .skd)
+	LP_ANIM_READ,	// .skc file reads (SkeletorCacheFileCallback)
+	LP_ANIM_CONV,	// .skc conversion to the game format (ConvertSkelFileToGame)
+	LP_ANIM_N,
+	LP_ANIM_KB,
 	LP_COUNT
 };
 extern unsigned int lp_acc[LP_COUNT];

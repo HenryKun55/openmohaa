@@ -595,7 +595,7 @@ void ReadEncodedFramesEx(msg_t *msg, skelAnimDataGameHeader_t *enAnim)
     }
 }
 
-skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnim(const char *path, void *buffer, int len, const char *name)
+skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnim(const char *path, void *buffer, int len, const char *name, qboolean plain)
 {
     skelAnimDataGameHeader_t *enAnim;
     int                       i, j;
@@ -606,7 +606,11 @@ skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnim(const char *path, void *
 
     MSG_Init(&msg, (byte *)buffer, len);
     msg.cursize = len;
-    MSG_BeginReading(&msg);
+    if (plain) {
+        MSG_BeginReadingOOB(&msg);
+    } else {
+        MSG_BeginReading(&msg);
+    }
 
     numChannels             = MSG_ReadLong(&msg);
     enAnim                  = skelAnimDataGameHeader_t::AllocRLEChannelData(numChannels);
@@ -683,7 +687,7 @@ skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnim(const char *path, void *
     return enAnim;
 }
 
-skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnimEx(const char *path, void *buffer, int len, const char *name)
+skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnimEx(const char *path, void *buffer, int len, const char *name, qboolean plain)
 {
     skelAnimDataGameHeader_t *enAnim;
     int                       i;
@@ -693,7 +697,11 @@ skelAnimDataGameHeader_t *skeletor_c::LoadProcessedAnimEx(const char *path, void
 
     MSG_Init(&msg, (byte *)buffer, len);
     msg.cursize = len;
-    MSG_BeginReading(&msg);
+    if (plain) {
+        MSG_BeginReadingOOB(&msg);
+    } else {
+        MSG_BeginReading(&msg);
+    }
 
     numChannels = MSG_ReadShort(&msg);
     enAnim      = skelAnimDataGameHeader_t::AllocRLEChannelData(numChannels);

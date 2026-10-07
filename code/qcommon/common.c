@@ -2527,6 +2527,9 @@ void Com_VitaLoadReport( void ) {
 		lp_acc[LP_IMGUP] / 1e6f, lp_acc[LP_SND] / 1e6f, lp_acc[LP_SND_N], lp_acc[LP_TIKI] / 1e6f, lp_acc[LP_TIKI_N],
 		lp_acc[LP_WORLD] / 1e6f, lp_acc[LP_CM] / 1e6f, lp_acc[LP_ZREAD] / 1e6f, lp_acc[LP_ZREAD_N],
 		lp_acc[LP_INFLATE] / 1e6f );
+	Com_Printf( "LOAD-PROF tiki (s): parse=%.2f fill=%.2f model=%.2f | anims %u (%u KB): read=%.2f convert=%.2f\n",
+		lp_acc[LP_TK_PARSE] / 1e6f, lp_acc[LP_TK_FILL] / 1e6f, lp_acc[LP_TK_MODEL] / 1e6f,
+		lp_acc[LP_ANIM_N], lp_acc[LP_ANIM_KB], lp_acc[LP_ANIM_READ] / 1e6f, lp_acc[LP_ANIM_CONV] / 1e6f );
 	{
 		// duplicates: extra reads and their bytes, and the worst offenders by bytes
 		long dupKB = 0, uniqKB = 0;

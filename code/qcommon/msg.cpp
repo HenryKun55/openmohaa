@@ -4238,6 +4238,89 @@ int msg_hData[256] = {
 13504,			// 255
 };
 
+/*
+=================
+MSG_HuffDecodeAll
+
+Decodes a whole Huffman stream of bytes (what MSG_ReadByte/Short/Long/Float/Data/String
+read one symbol at a time from a non-OOB message) into plain bytes, in one pass. A table
+indexed by the next MSG_HUFF_FAST_BITS bits gives most symbols in one lookup instead of a
+tree walk per bit; longer codes, and the end of the stream, take Huff_offsetReceive's
+walk as before. Returns the number of bytes decoded (outMax when out was too small).
+=================
+*/
+#define MSG_HUFF_FAST_BITS 12
+static unsigned short	msgHuffFast[1 << MSG_HUFF_FAST_BITS];	// symbol | length << 9, 0 = longer code
+static qboolean			msgHuffFastReady;
+static int				msgHuffMinLen = 1;	// shortest code: bounds the decoded size
+
+static void MSG_BuildHuffFast( void ) {
+	int v, len;
+	node_t *node;
+
+	for ( v = 0; v < ( 1 << MSG_HUFF_FAST_BITS ); v++ ) {
+		node = msgHuff.decompressor.tree;
+		len = 0;
+		while ( node && node->symbol == INTERNAL_NODE && len < MSG_HUFF_FAST_BITS ) {
+			node = ( ( v >> len ) & 1 ) ? node->right : node->left;
+			len++;
+		}
+		msgHuffFast[v] = ( node && node->symbol != INTERNAL_NODE && len > 0 ) ? (unsigned short)( node->symbol | ( len << 9 ) ) : 0;
+	}
+	msgHuffMinLen = MSG_HUFF_FAST_BITS;
+	for ( v = 0; v < ( 1 << MSG_HUFF_FAST_BITS ); v++ ) {
+		if ( msgHuffFast[v] && ( msgHuffFast[v] >> 9 ) < msgHuffMinLen ) {
+			msgHuffMinLen = msgHuffFast[v] >> 9;
+		}
+	}
+	msgHuffFastReady = qtrue;
+}
+
+// The most bytes inLen bytes of Huffman stream can decode to.
+int MSG_HuffMaxDecoded( int inLen ) {
+	if ( !msgInit ) {
+		MSG_initHuffman();
+	}
+	if ( !msgHuffFastReady ) {
+		MSG_BuildHuffFast();
+	}
+	return inLen * 8 / msgHuffMinLen + 1;
+}
+
+int MSG_HuffDecodeAll( const byte *in, int inLen, byte *out, int outMax ) {
+	const int	maxbit = inLen << 3;
+	int			bit = 0, n = 0, get;
+
+	if ( !msgInit ) {
+		MSG_initHuffman();
+	}
+	if ( !msgHuffFastReady ) {
+		MSG_BuildHuffFast();
+	}
+	while ( n < outMax && bit < maxbit ) {
+		const int	at = bit >> 3;
+		unsigned int v = in[at];
+		unsigned short e;
+
+		if ( at + 1 < inLen ) v |= in[at + 1] << 8;
+		if ( at + 2 < inLen ) v |= in[at + 2] << 16;
+		e = msgHuffFast[( v >> ( bit & 7 ) ) & ( ( 1 << MSG_HUFF_FAST_BITS ) - 1 )];
+		// a symbol ending on the stream's last bit is refused, like MSG_ReadBits does
+		// (readcount = bit / 8 + 1 > cursize)
+		if ( e && bit + ( e >> 9 ) < maxbit ) {
+			out[n++] = (byte)( e & 0x1ff );
+			bit += e >> 9;
+		} else {
+			Huff_offsetReceive( msgHuff.decompressor.tree, &get, (byte *)in, &bit, maxbit );
+			if ( bit >= maxbit ) {
+				break;
+			}
+			out[n++] = (byte)get;
+		}
+	}
+	return n;
+}
+
 void MSG_initHuffman( void ) {
 	int i,j;
 

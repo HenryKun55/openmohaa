@@ -85,6 +85,8 @@ void MSG_WriteEntityNum(msg_t* sb, short number);
 
 void	MSG_BeginReading (msg_t *sb);
 void	MSG_BeginReadingOOB(msg_t *sb);
+int		MSG_HuffDecodeAll(const byte *in, int inLen, byte *out, int outMax);
+int		MSG_HuffMaxDecoded(int inLen);
 
 int		MSG_ReadBits( msg_t *msg, int bits );
 

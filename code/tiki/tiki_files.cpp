@@ -29,6 +29,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../client/client.h"
 #include "../corepp/tiki.h"
 #include "../corepp/mem_tempalloc.h"
+#ifdef __vita__
+#    include "../qcommon/vita_prof.h"
+#    define TK_PROF_BEGIN(v) unsigned int v = VP_Now()
+#    define TK_PROF_END(slot, v) (lp_acc[slot] += VP_Now() - (v))
+#else
+#    define TK_PROF_BEGIN(v)
+#    define TK_PROF_END(slot, v)
+#endif
 
 qboolean tiki_loading;
 cvar_t  *dumploadedanims;
@@ -181,6 +189,7 @@ dtikianim_t *TIKI_LoadTikiAnim(const char *path)
     loaddef.numserverinitcmds = 0;
     loaddef.numclientinitcmds = 0;
 
+    TK_PROF_BEGIN(tkParse);
     if (loaddef.tikiFile.LoadFile(path, qfalse)) {
         loaddef.bInIncludesSection = false;
 
@@ -254,12 +263,15 @@ dtikianim_t *TIKI_LoadTikiAnim(const char *path)
         loaddef.hasSkel = true;
     }
 
+    TK_PROF_END(LP_TK_PARSE, tkParse);
     TIKI_AddDefaultIdleAnim(&loaddef);
     if (loaddef.numanims) {
         Com_sprintf(tempName, sizeof(tempName), "a%s", path);
         UI_LoadResource(tempName);
 
+        TK_PROF_BEGIN(tkFill);
         tiki = TIKI_FillTIKIStructureSkel(&loaddef);
+        TK_PROF_END(LP_TK_FILL, tkFill);
         if (tiki) {
             Com_sprintf(tempName, sizeof(tempName), "b%s", path);
             UI_LoadResource(tempName);
@@ -520,6 +532,29 @@ void TIKI_CalcRadius(dtiki_t *tiki)
 
 /*
 ===============
+TIKI_LoadProcessedAnimFast
+
+The processed animations (newanim/, .skc v14+) are Huffman streams read one symbol at a
+time through MSG_Read*, a tree walk per bit: 20 s of a 66 s level load on the Vita. Decode
+the whole file in one table-driven pass, then read the plain bytes.
+===============
+*/
+static skelAnimDataGameHeader_t *
+TIKI_LoadProcessedAnimFast(const char *path, void *buffer, int len, const char *name, qboolean ex)
+{
+    skelAnimDataGameHeader_t *anim;
+    const int                 maxOut = MSG_HuffMaxDecoded(len);
+    byte                     *plain  = (byte *)Z_Malloc(maxOut);
+    const int                 n      = MSG_HuffDecodeAll((const byte *)buffer, len, plain, maxOut);
+
+    anim = ex ? skeletor_c::LoadProcessedAnimEx(path, plain, n, name, qtrue)
+              : skeletor_c::LoadProcessedAnim(path, plain, n, name, qtrue);
+    Z_Free(plain);
+    return anim;
+}
+
+/*
+===============
 SkeletorCacheFileCallback
 ===============
 */
@@ -542,12 +577,26 @@ skelAnimDataGameHeader_t *SkeletorCacheFileCallback(const char *path)
     Q_strncpyz(npath, "newanim/", sizeof(npath));
     Q_strcat(npath, sizeof(npath), path);
 
+    TK_PROF_BEGIN(tkNRead);
     iBuffLength = TIKI_ReadFileEx(npath, (void **)&buffer, qtrue);
+    TK_PROF_END(LP_ANIM_READ, tkNRead);
     if (iBuffLength > 0) {
-        finishedHeader = skeletor_c::LoadProcessedAnim(npath, buffer, iBuffLength, path);
+#ifdef __vita__
+        lp_acc[LP_ANIM_N]++;
+        lp_acc[LP_ANIM_KB] += iBuffLength / 1024;
+#endif
+        TK_PROF_BEGIN(tkProc);
+        finishedHeader = TIKI_LoadProcessedAnimFast(npath, buffer, iBuffLength, path, qfalse);
+        TK_PROF_END(LP_ANIM_CONV, tkProc);
         TIKI_FreeFile(buffer);
     } else {
+        TK_PROF_BEGIN(tkRead);
         iBuffLength = TIKI_ReadFileEx(path, (void **)&pHeader, qtrue);
+        TK_PROF_END(LP_ANIM_READ, tkRead);
+#ifdef __vita__
+        lp_acc[LP_ANIM_N]++;
+        if (iBuffLength > 0) lp_acc[LP_ANIM_KB] += iBuffLength / 1024;
+#endif
         if (iBuffLength <= 0) {
             Com_DPrintf("Skeletor CacheAnimSkel: Could not open binary file %s\n", path);
             return NULL;
@@ -586,7 +635,9 @@ skelAnimDataGameHeader_t *SkeletorCacheFileCallback(const char *path)
             pHeader->ofsChannelNames = LittleLong(pHeader->ofsChannelNames);
             pHeader->numFrames = LittleLong(pHeader->numFrames);
 
+            TK_PROF_BEGIN(tkConv);
             finishedHeader = skeletor_c::ConvertSkelFileToGame(pHeader, iBuffLength, path);
+            TK_PROF_END(LP_ANIM_CONV, tkConv);
             if (convertAnims && convertAnims->integer) {
                 skeletor_c::SaveProcessedAnim(finishedHeader, path, pHeader);
             }
@@ -598,7 +649,7 @@ skelAnimDataGameHeader_t *SkeletorCacheFileCallback(const char *path)
             iBuffLength -= sizeof(int) + sizeof(int);
 
             // loads the processed animation
-            finishedHeader = skeletor_c::LoadProcessedAnimEx(path, buffer, iBuffLength, path);
+            finishedHeader = TIKI_LoadProcessedAnimFast(path, buffer, iBuffLength, path, qtrue);
         }
 
         TIKI_FreeFile(pHeader);
