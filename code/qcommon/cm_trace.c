@@ -1291,7 +1291,9 @@ void CM_VitaLock( void ) {
 	if ( cm_vitaLockHook && !cm_vitaLockDepth ) {
 		cm_vitaLockHook();
 	}
-	if ( cm_vitaLockReady ) {
+	if ( cm_vitaLockReady && !vp_on ) {
+		sceKernelLockLwMutex( &cm_vitaLock, 1, NULL );
+	} else if ( cm_vitaLockReady ) {
 		// FRAME-PROF: time waiting for the lock and holding it, per thread
 		const int isRT = sceKernelGetThreadId() == vp_renderThreadId;
 		if ( sceKernelTryLockLwMutex( &cm_vitaLock, 1 ) < 0 ) {
@@ -1308,9 +1310,11 @@ void CM_VitaLock( void ) {
 
 void CM_VitaUnlock( void ) {
 	cm_vitaLockDepth--;
-	if ( cm_vitaLockReady ) {
+	if ( cm_vitaLockReady && !vp_on && !cm_vitaHoldDepth[0] && !cm_vitaHoldDepth[1] ) {
+		sceKernelUnlockLwMutex( &cm_vitaLock, 1 );
+	} else if ( cm_vitaLockReady ) {
 		const int isRT = sceKernelGetThreadId() == vp_renderThreadId;
-		if ( --cm_vitaHoldDepth[isRT] == 0 ) {
+		if ( cm_vitaHoldDepth[isRT] > 0 && --cm_vitaHoldDepth[isRT] == 0 ) {
 			vp_acc[isRT ? VP_CMHOLD_RT : VP_CMHOLD] += VP_Now() - cm_vitaHoldStart[isRT];
 		}
 		sceKernelUnlockLwMutex( &cm_vitaLock, 1 );

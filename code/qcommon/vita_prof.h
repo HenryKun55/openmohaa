@@ -39,6 +39,7 @@ enum {
 };
 
 extern int vp_renderThreadId;	// set by the render thread (tr_vita_smp.c)
+extern int vp_on;				// r_vita_perflog, read once a frame (Com_VitaProfFrame)
 
 // LOAD-PROF: where level loading time goes. Totals overlap (an image load includes its
 // file read); counters are plain counts. Com_VitaLoadMark stamps phases relative to the

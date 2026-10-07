@@ -2464,6 +2464,7 @@ Com_Frame
 */
 #ifdef __vita__
 unsigned int vp_acc[VP_COUNT];
+int vp_on;
 int          vp_renderThreadId = -1;
 unsigned int vp_rt[VPR_COUNT];
 unsigned int lp_acc[LP_COUNT];
@@ -2710,6 +2711,23 @@ static void Com_VitaProfFrame( void ) {
 	unsigned int now = VP_Now();
 	char line[512];
 	int i, n;
+
+	// The frame breakdown and the collision lock's timing only with the perf log on.
+	{
+		static cvar_t *perflog;
+		if ( !perflog ) {
+			perflog = Cvar_Get( "r_vita_perflog", "0", 0 );
+		}
+		vp_on = perflog->integer;
+		if ( !vp_on ) {
+			last = 0;
+			frames = 0;
+			for ( i = 0; i < VP_COUNT; i++ ) {
+				vp_acc[i] = 0;
+			}
+			return;
+		}
+	}
 
 	if ( last ) {
 		vp_acc[VP_FRAME] += now - last;
