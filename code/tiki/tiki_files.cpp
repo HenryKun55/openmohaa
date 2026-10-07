@@ -63,6 +63,41 @@ public:
 
 static int                  m_cachedDataLookup[MAX_TIKI_ALIASES];
 static skeletorCacheEntry_t m_cachedData[MAX_TIKI_ALIASES];
+
+// Path hash over m_cachedData slots: SkeletorCacheFindFilename is asked for every
+// animation of every TIKI (~100 000 times in a level load), and its binary search
+// compared long paths with a shared prefix (models/human/animation/...). A slot is
+// linked while it is in use (lookup != -1).
+#define SKEL_PATH_HASH 4096
+static int m_pathHashHead[SKEL_PATH_HASH];   // slot + 1, 0 = end
+static int m_pathHashNext[MAX_TIKI_ALIASES];
+
+static unsigned int SkeletorCachePathHash(const char *path)
+{
+    unsigned int h = 0;
+    for (; *path; path++) {
+        h = h * 31 + (unsigned char)tolower((unsigned char)*path);
+    }
+    return h & (SKEL_PATH_HASH - 1);
+}
+
+static void SkeletorCachePathLink(int slot)
+{
+    const unsigned int h = SkeletorCachePathHash(m_cachedData[slot].path);
+    m_pathHashNext[slot] = m_pathHashHead[h];
+    m_pathHashHead[h]    = slot + 1;
+}
+
+static void SkeletorCachePathUnlink(int slot)
+{
+    int *link = &m_pathHashHead[SkeletorCachePathHash(m_cachedData[slot].path)];
+    for (; *link; link = &m_pathHashNext[*link - 1]) {
+        if (*link - 1 == slot) {
+            *link = m_pathHashNext[slot];
+            return;
+        }
+    }
+}
 InitSkelCache               InitSkelCache::init;
 MEM_TempAlloc               TIKI_allocator;
 
@@ -697,6 +732,17 @@ bool SkeletorCacheFindFilename(const char *path, int *indexPtr)
     int upperBound;
     int index;
 
+    for (int i = m_pathHashHead[SkeletorCachePathHash(path)]; i; i = m_pathHashNext[i - 1]) {
+        const skeletorCacheEntry_t *entry = &m_cachedData[i - 1];
+        if (entry->lookup != -1 && !Q_stricmp(path, entry->path)) {
+            if (indexPtr) {
+                *indexPtr = entry->lookup;
+            }
+            return true;
+        }
+    }
+    // not cached: the binary search gives the sorted position to insert it at
+
     lowerBound = 0;
     upperBound = m_numInCache - 1;
     while (lowerBound <= upperBound) {
@@ -767,6 +813,7 @@ bool SkeletorCacheLoadData(const char *path, bool precache, int newIndex)
     m_cachedData[lookup].data    = data;
     Q_strncpyz(m_cachedData[lookup].path, path, sizeof(m_cachedData[lookup].path));
     m_cachedData[lookup].numusers = 0;
+    SkeletorCachePathLink(lookup);
     m_numInCache++;
 
     return true;
@@ -792,6 +839,7 @@ void SkeletorCacheUnloadData(int index)
         m_cachedData[m_cachedDataLookup[index]].data = NULL;
     }
 
+    SkeletorCachePathUnlink(m_cachedDataLookup[index]);
     m_cachedData[m_cachedDataLookup[index]].lookup = -1;
 
     for (i = index; i < m_numInCache; i++) {
