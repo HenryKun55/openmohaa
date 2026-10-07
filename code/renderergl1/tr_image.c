@@ -42,6 +42,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 static void LoadBMP( const char *name, byte **pic, int *width, int *height );
 static void LoadTGA( const char *name, byte **pic, int *width, int *height );
 static void LoadJPG( const char *name, byte **pic, int *width, int *height );
+#ifdef __vita__
+/* LoadJPG on the Vita (see LoadJPG_Vita): the picmip the image will get (set around
+ * R_LoadImage by R_FindImageFileOld), the part of it the decoding already did, and the
+ * size the game knows the image by. */
+static int jpegShrinkWanted, jpegShrinkDone, jpegNominalW, jpegNominalH;
+#endif
 
 static byte			 s_intensitytable[256];
 static unsigned char s_gammatable[256];
@@ -2008,7 +2014,93 @@ static void R_JPGOutputMessage(j_common_ptr cinfo)
   ri.Printf(PRINT_ALL, "%s\n", buffer);
 }
 
+#ifdef __vita__
+#include <turbojpeg.h>
+/*
+LoadJPG_Vita
+
+The libjpeg the port links has a decompression struct 4 bytes off the one in its header,
+so libjpeg read out_color_space (JCS_RGB = 2) as scale_num: every JPEG came out at twice
+its size (4x the pixels, through the 16x16 IDCT) and the picmip then halved it again. The
+turbojpeg API passes no struct. To keep every texture exactly as the game has had it
+(twice the file's size, then the picmip), it decodes straight at that final size,
+2 / 2^picmip of the file (2x ... 1/8), into RGBA: on the D-Day levels' 512x512 terrain
+textures, a quarter of the pixels at the default picmip 1, and no RGB -> RGBA pass.
+*/
+static qboolean LoadJPG_Vita( const char *filename, byte **pic, int *width, int *height, int *done ) {
+	static const tjscalingfactor factors[] = { { 2, 1 }, { 1, 1 }, { 1, 2 }, { 1, 4 }, { 1, 8 } };
+	byte			*fbuffer, *out;
+	tjhandle		tj;
+	int				len, w, h, outW, outH, shrink;
+	tjscalingfactor	sf;
+
+	len = ri.FS_ReadFile( ( char * )filename, ( void ** )&fbuffer );
+	if ( len <= 0 || !fbuffer ) {
+		return qfalse;
+	}
+	VP_BEGIN( lpJpeg );
+	tj = tj3Init( TJINIT_DECOMPRESS );
+	if ( !tj ) {
+		ri.FS_FreeFile( fbuffer );
+		return qfalse;
+	}
+	if ( tj3DecompressHeader( tj, fbuffer, len ) < 0 ) {
+		ri.Printf( PRINT_WARNING, "LoadJPG: %s: %s\n", filename, tj3GetErrorStr( tj ) );
+		tj3Destroy( tj );
+		ri.FS_FreeFile( fbuffer );
+		return qfalse;
+	}
+	w      = tj3Get( tj, TJPARAM_JPEGWIDTH );
+	h      = tj3Get( tj, TJPARAM_JPEGHEIGHT );
+	shrink = jpegShrinkWanted > 4 ? 4 : ( jpegShrinkWanted < 0 ? 0 : jpegShrinkWanted );
+	/* small pictures: not below a sixteenth of the file's size per side */
+	while ( shrink > 0 && ( TJSCALED( w, factors[shrink] ) < 8 || TJSCALED( h, factors[shrink] ) < 8 ) ) {
+		shrink--;
+	}
+	sf   = factors[shrink];
+	outW = TJSCALED( w, sf );
+	outH = TJSCALED( h, sf );
+	if ( w <= 0 || h <= 0 || outW <= 0 || outH <= 0 || tj3SetScalingFactor( tj, sf ) < 0 ) {
+		tj3Destroy( tj );
+		ri.FS_FreeFile( fbuffer );
+		return qfalse;
+	}
+	out = ( byte * )ri.Malloc( outW * outH * 4 );
+	if ( tj3Decompress8( tj, fbuffer, len, out, outW * 4, TJPF_RGBA ) < 0 ) {
+		ri.Printf( PRINT_WARNING, "LoadJPG: %s: %s\n", filename, tj3GetErrorStr( tj ) );
+		if ( tj3GetErrorCode( tj ) == TJERR_FATAL ) {
+			ri.Free( out );
+			tj3Destroy( tj );
+			ri.FS_FreeFile( fbuffer );
+			return qfalse;
+		}
+	}
+	tj3Destroy( tj );
+	ri.FS_FreeFile( fbuffer );
+	lp_acc[LP_JPEG] += VP_Now() - lpJpeg;
+	lp_acc[LP_JPEG_N]++;
+
+	*pic         = out;
+	*width       = outW;
+	*height      = outH;
+	*done        = shrink;
+	jpegNominalW = w * 2;
+	jpegNominalH = h * 2;
+	return qtrue;
+}
+#endif
+
 static void LoadJPG( const char *filename, unsigned char **pic, int *width, int *height ) {
+#ifdef __vita__
+  {
+    int done = 0;
+    *pic = NULL;
+    if ( LoadJPG_Vita( filename, pic, width, height, &done ) ) {
+      jpegShrinkDone = done;
+    }
+    return;
+  }
+#endif
   /* This struct contains the JPEG decompression parameters and pointers to
    * working space (which is allocated as needed by the JPEG library).
    */
@@ -2642,6 +2734,9 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 		VP_BEGIN( lpT );
 		pic = NULL;
 		glCompressMode = 0;
+		jpegShrinkWanted = 0;
+		jpegShrinkDone = 0;
+		jpegNominalW = jpegNominalH = 0;
 		// Menu pictures with words on them can have a translated copy in
 		// lang/<code>/ (built by misc/vita/make_menu_text.py) for the Text Language
 		// chosen in the Vita settings. Only the menu folder is looked at, so level
@@ -2677,7 +2772,14 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 			}
 		}
 		if (!pic) {
+			jpegShrinkWanted = allowPicmip > 0 ? allowPicmip : 0;
+			jpegShrinkDone   = 0;
+			jpegNominalW     = jpegNominalH = 0;
 			R_LoadImage(name, &pic, &width, &height, &hasAlpha, &glCompressMode, &numMipmaps, &iMipmapsAvailable);
+			jpegShrinkWanted = 0;
+		} else {
+			jpegShrinkDone = 0;
+			jpegNominalW   = jpegNominalH = 0;
 		}
 		lp_acc[LP_IMGLOAD] += VP_Now() - lpT;
 		lp_acc[LP_IMG_N]++;
@@ -2699,12 +2801,20 @@ image_t* R_FindImageFileOld(const char* name, qboolean mipmap, qboolean allowPic
 		height,
 		numMipmaps,
 		iMipmapsAvailable,
-		allowPicmip,
+		allowPicmip - jpegShrinkDone,	/* the rest of the picmip (LoadJPG_Vita did part of it) */
 		force32bit,
 		hasAlpha,
 		glCompressMode,
 		glWrapClampModeX,
 		glWrapClampModeY);
+	if (image && jpegNominalW) {
+		/* the size and picmip the game has always known this JPEG by */
+		image->width       = jpegNominalW;
+		image->height      = jpegNominalH;
+		image->allowPicmip = allowPicmip;
+	}
+	jpegShrinkDone = 0;
+	jpegNominalW   = jpegNominalH = 0;
 	lp_acc[LP_IMGUP] += VP_Now() - lpUp;
 	}
 #else

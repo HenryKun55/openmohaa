@@ -66,6 +66,8 @@ enum {
 	LP_ANIM_CONV,	// .skc conversion to the game format (ConvertSkelFileToGame)
 	LP_ANIM_N,
 	LP_ANIM_KB,
+	LP_JPEG,		// JPEG decode (LoadJPG after the file read)
+	LP_JPEG_N,
 	LP_COUNT
 };
 extern unsigned int lp_acc[LP_COUNT];

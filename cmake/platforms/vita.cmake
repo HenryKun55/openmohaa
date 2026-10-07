@@ -172,6 +172,7 @@ list(APPEND COMMON_LIBRARIES
     opusfile
     opus
     mad
+    turbojpeg # LoadJPG (tr_image.c): the turbojpeg API, see LoadJPG_Vita
     curl
     ssl
     crypto
