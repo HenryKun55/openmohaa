@@ -309,7 +309,17 @@ long triangular_dither_noise(int nbits) {
     // see The Theory of Dithered Quantization by Robert Alexander Wannamaker
     // for complete proof of why that's optimal
 
+#ifdef __vita__
+    // Dither noise needs no Mersenne Twister: two xorshift32 draws give the same
+    // triangular noise, at a fraction of the cost (genrand was 20% of the music thread).
+    static unsigned int xs = 2463534242u;
+    unsigned int        r1, r2;
+    xs ^= xs << 13; xs ^= xs >> 17; xs ^= xs << 5; r1 = xs;
+    xs ^= xs << 13; xs ^= xs >> 17; xs ^= xs << 5; r2 = xs;
+    long v = (long)(r1 / 2) - (long)(r2 / 2); // in ]-2^31, 2^31[
+#else
     long v = (genrand() / 2 - genrand() / 2); // in ]-2^31, 2^31[
+#endif
     //int signe = (v>0) ? 1 : -1;
     long P = 1 << (32 - nbits); // the power of 2
     v /= P;
