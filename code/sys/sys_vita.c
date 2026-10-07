@@ -110,7 +110,7 @@ static int Sys_VitaClockProbe(void)
  * end just before a boundary the eboot fails to build ("Cannot allocate N bytes for
  * SCE data at end of segment 0; segment 1 overlaps"). This read-only block moves the
  * end of the code past that boundary; resize it if the error ever comes back. */
-__attribute__((used)) const unsigned char g_vitaSegmentPad[16 * 1024] = { 1 };
+__attribute__((used)) const unsigned char g_vitaSegmentPad[24 * 1024] = { 1 };
 
 /* ---- boot picture ------------------------------------------------------------
  * The Vita shows sce_sys/pic0.png from the bubble tap until the app sets a display
