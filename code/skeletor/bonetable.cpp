@@ -225,12 +225,33 @@ static const char *bogusNameTable[] = {
     "left foot placeholder rot"
 };
 
+// Case-insensitive hash of a channel name: IsBogusChannelName runs for every channel of
+// every animation loaded, and compared each against the whole table with Q_stricmp.
+static unsigned int BogusNameHash(const char *name)
+{
+    unsigned int h = 2166136261u;
+    for (; *name; name++) {
+        h = (h ^ (unsigned char)tolower((unsigned char)*name)) * 16777619u;
+    }
+    return h;
+}
+
 bool IsBogusChannelName(const char *name)
 {
-    int i;
+    static unsigned int bogusHashes[sizeof(bogusNameTable) / sizeof(bogusNameTable[0])];
+    static bool         bogusHashesReady;
+    unsigned int        h;
+    int                 i;
 
+    if (!bogusHashesReady) {
+        for (i = 0; i < sizeof(bogusNameTable) / sizeof(bogusNameTable[0]); i++) {
+            bogusHashes[i] = BogusNameHash(bogusNameTable[i]);
+        }
+        bogusHashesReady = true;
+    }
+    h = BogusNameHash(name);
     for (i = 0; i < sizeof(bogusNameTable) / sizeof(bogusNameTable[0]); i++) {
-        if (!Q_stricmp(name, bogusNameTable[i])) {
+        if (bogusHashes[i] == h && !Q_stricmp(name, bogusNameTable[i])) {
             return true;
         }
     }
@@ -278,12 +299,13 @@ int ChannelNameTable::RegisterChannel(const char *name)
 {
     int index;
 
-    if (IsBogusChannelName(name)) {
-        return -1;
-    }
-
+    // a registered name was never bogus: look it up first
     if (FindIndexFromName(name, &index)) {
         return m_Channels[index].channelNum;
+    }
+
+    if (IsBogusChannelName(name)) {
+        return -1;
     }
 
     if (m_iNumChannels >= MAX_SKELETOR_CHANNELS) {
