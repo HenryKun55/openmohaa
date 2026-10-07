@@ -2354,6 +2354,11 @@ void MSG_WriteDeltaEntity( msg_t *msg, struct entityState_s *from, struct entity
     entityStateFields = MSG_GetEntityStateFields(numFields);
 
 	lc = 0;
+	// Most entities of a snapshot did not change at all: one compare of the whole state
+	// says so (every field's compare below would), instead of a call per field.
+	if ( from && !memcmp( from, to, sizeof( *to ) ) ) {
+		numFields = 0;
+	}
 	// build the change vector as bytes so it is endien independent
 	for ( i = 0, field = entityStateFields ; i < numFields; i++, field++ ) {
 		fromF = (int *)( (byte *)from + field->offset );
@@ -2668,6 +2673,30 @@ void MSG_WritePackedCoordExtra_ver_15(msg_t* msg, float fromValue, float toValue
 	MSG_WriteDeltaCoordExtra(msg, packedFrom, packedTo);
 }
 
+// A field unchanged: the common sizes compared inline (this runs for every field of every
+// entity of every snapshot, a memcmp call each).
+static inline qboolean MSG_FieldSame(const void* fromField, const void* toField, int size)
+{
+	switch (size) {
+	case 4: {
+		int a, b;
+		memcpy(&a, fromField, 4);
+		memcpy(&b, toField, 4);
+		return a == b;
+	}
+	case 2: {
+		short a, b;
+		memcpy(&a, fromField, 2);
+		memcpy(&b, toField, 2);
+		return a == b;
+	}
+	case 1:
+		return *(const byte*)fromField == *(const byte*)toField;
+	default:
+		return !memcmp(fromField, toField, size);
+	}
+}
+
 qboolean MSG_DeltaNeeded_ver_15(const void* fromField, const void* toField, int fieldType, int bits, int size)
 {
 	int packedFrom;
@@ -2676,7 +2705,7 @@ qboolean MSG_DeltaNeeded_ver_15(const void* fromField, const void* toField, int 
 	int xoredValue;
 	int i;
 
-	if (!memcmp(fromField, toField, size)) {
+	if (MSG_FieldSame(fromField, toField, size)) {
 		// same values, not needed
 		return qfalse;
 	}
@@ -2925,7 +2954,7 @@ qboolean MSG_DeltaNeeded_ver_6(const void* fromField, const void* toField, int f
 {
 	// Unoptimized in base game
 	// Doesn't compare packed values
-	return memcmp(fromField, toField, size);
+	return !MSG_FieldSame(fromField, toField, size);
 }
 
 float MSG_ReadPackedAngle(msg_t* msg, int bits) {
