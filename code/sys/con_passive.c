@@ -69,6 +69,17 @@ void CON_Print( const char *msg )
 	else
 		fputs( msg, stderr );
 
+#ifdef __vita__
+	/* boot.log is block buffered (sys_vita.c): write it out every half second */
+	{
+		static unsigned int lastFlush;
+		const unsigned int  now = Sys_Milliseconds();
+		if ( now - lastFlush >= 500 ) {
+			fflush( stderr );
+			lastFlush = now;
+		}
+	}
+#endif
 #ifdef __SWITCH__
 	/* Bring-up: sdmc: writes are block-cached by the libnx fs layer, so a
 	 * hard crash drops the unflushed tail of boot.log and hides where we

@@ -213,7 +213,13 @@ void Sys_PlatformInit(void)
      * share one FILE * and one offset. Two FILE *s over the same path
      * would stomp each other's offsets and we'd lose data. */
     freopen(VITA_BOOT_LOG, "w", stdout);
-    setvbuf(stdout, NULL, _IOLBF, 0);
+    /* Block buffered: line buffering wrote every line (a few thousand per level load)
+     * to the memory card on its own. CON_Print flushes at most every half second, so a
+     * crash loses at most that much of the log. */
+    {
+        static char logBuf[32 * 1024];
+        setvbuf(stdout, logBuf, _IOFBF, sizeof(logBuf));
+    }
     stderr = stdout;
 
     fprintf(stdout, "=== OpenMoHAA Vita boot.log ===\n");
