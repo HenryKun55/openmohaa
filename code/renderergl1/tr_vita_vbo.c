@@ -65,6 +65,15 @@ colours. Only surfaces whose shader that reproduces exactly may go in:
     vertex-lighting colours, which tinted walls grey.
 ====================
 */
+/* r_vita_vbo_world, or r_vita_vbo_world_test when a test run sets it (never saved) */
+static qboolean R_VitaWorldVBO_Wanted(void)
+{
+    static cvar_t *test;
+    if (!test) test = ri.Cvar_Get("r_vita_vbo_world_test", "-1", CVAR_TEMP);
+    if (test->integer >= 0) return test->integer != 0;
+    return r_vita_vbo_world && r_vita_vbo_world->integer;
+}
+
 static qboolean R_VitaWorldVBO_ShaderEligible(const msurface_t *surf)
 {
     const shader_t      *sh = surf->shader;
@@ -219,7 +228,7 @@ void R_VitaWorldVBO_Build(void)
 
     R_VitaWorldVBO_Free();
 
-    if (!r_vita_vbo_world || !r_vita_vbo_world->integer) {
+    if (!R_VitaWorldVBO_Wanted()) {
         return;
     }
     if (!tr.world || tr.world->numsurfaces <= 0) {
@@ -369,7 +378,7 @@ level. Cheap check used in the draw hot path.
 qboolean R_VitaWorldVBO_IsReady(void)
 {
     if (!worldVboBuilt) return qfalse;
-    if (!r_vita_vbo_world || !r_vita_vbo_world->integer) return qfalse;
+    if (!R_VitaWorldVBO_Wanted()) return qfalse;
     return qtrue;
 }
 
