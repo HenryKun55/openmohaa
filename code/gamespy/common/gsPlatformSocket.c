@@ -113,6 +113,11 @@ int SetSockBlocking(SOCKET sock, int isblocking)
 		rcode = setsockopt(sock, SCE_NET_INET_SOL_SOCKET, SCE_NET_INET_SO_NBIO, &argp, sizeof(argp));
 	#elif defined(_PS3)
 		rcode = setsockopt(sock, SOL_SOCKET, SO_NBIO, &argp, sizeof(argp));
+	#elif defined(__vita__)
+		{
+			int nb = (int)argp;
+			rcode = setsockopt(sock, SOL_SOCKET, SO_NONBLOCK, &nb, sizeof(nb));
+		}
 	#else
 		rcode = ioctlsocket(sock, FIONBIO, &argp);
 	#endif

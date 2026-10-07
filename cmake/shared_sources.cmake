@@ -2,7 +2,7 @@ include_guard(GLOBAL)
 
 include(utils/add_git_dependency)
 include(utils/disable_warnings)
-if(NOT VITA AND NOT SWITCH)
+if(NOT SWITCH)
     include(gamespy)
 endif()
 
@@ -35,14 +35,7 @@ set(COMMON_SOURCES
     ${SOURCE_DIR}/qcommon/unzip.c
 )
 
-if(VITA)
-    # Real UDP sockets: the vitasdk's newlib has BSD sockets over sceNet (the updater's
-    # curl uses them), so the Vita keeps the full net_ip.c like the Switch.
-    list(APPEND COMMON_SOURCES
-        ${SOURCE_DIR}/gamespy/gamespy_vita_stub.c
-        ${SOURCE_DIR}/qcommon/net_ip.c
-    )
-elseif(SWITCH)
+if(SWITCH)
     # Switch has real BSD sockets via libnx, so it keeps the full net_ip.c
     # (direct-IP / LAN play works). Only GameSpy's offline master-server
     # SDK is stubbed out — same no-op shim the Vita uses.
@@ -117,11 +110,10 @@ list(APPEND COMMON_SOURCES
 	${SOURCE_DIR}/corepp/tiki_script.cpp
 )
 
-# Gamespy
-# Stubbed out on Vita — vitasdk lacks BSD sockets and the GameSpy master
-# servers are offline anyway.
+# Gamespy: stubbed out on the Switch. The Vita builds the real SDK (the vitasdk's newlib
+# has BSD sockets over sceNet): LAN and internet server lists, and hosting.
 
-if(NOT VITA AND NOT SWITCH)
+if(NOT SWITCH)
     list(APPEND SERVER_SOURCES
         ${SOURCE_DIR}/gamespy/sv_gamespy.c
         ${SOURCE_DIR}/gamespy/sv_gqueryreporting.c

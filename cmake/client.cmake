@@ -47,11 +47,11 @@ set(CLIENT_SOURCES
 # gamespy/goaceng.h → gsPlatform.h (BSD sockets). libmumblelink.c
 # wants sys/mman.h. Both belong to features (MP browser, voice chat)
 # already disabled on Vita and Switch.
+if(NOT SWITCH)
+    list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/cl_uiserverlist.cpp)
+endif()
 if(NOT VITA AND NOT SWITCH)
-    list(APPEND CLIENT_SOURCES
-        ${SOURCE_DIR}/client/cl_uiserverlist.cpp
-        ${SOURCE_DIR}/client/libmumblelink.c
-    )
+    list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/client/libmumblelink.c)
 endif()
 
 list(APPEND CLIENT_SOURCES
@@ -73,8 +73,8 @@ list(APPEND CLIENT_SOURCES
 )
 
 # Gamespy SDK glue — only built on platforms with the full GameSpy SDK.
-# Vita and Switch use gamespy_vita_stub.c added by shared_sources.cmake.
-if(NOT VITA AND NOT SWITCH)
+# The Switch uses gamespy_vita_stub.c added by shared_sources.cmake.
+if(NOT SWITCH)
     list(APPEND CLIENT_SOURCES ${SOURCE_DIR}/gamespy/cl_gamespy.c)
 endif()
 

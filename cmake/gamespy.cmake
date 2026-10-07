@@ -33,6 +33,11 @@ set_property(TARGET gcd_common gcd_key PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 if(UNIX)
 	add_definitions(-D_LINUX=1)
+elseif(VITA)
+	# the SDK's Linux code paths (BSD sockets, pthreads), for the SDK's own sources only
+	foreach(LIB gcd_common gcd_key gcd_natneg gcd_qr2)
+		target_compile_definitions(${LIB} PRIVATE _LINUX=1 PATH_MAX=1024)
+	endforeach()
 endif()
 
 set(DEPENDENT_LIBS

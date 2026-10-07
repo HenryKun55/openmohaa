@@ -151,6 +151,10 @@ add_link_options(
     -Wl,--no-warn-mismatch
 )
 
+# libstdc++ (added by the driver after every library) calls pthread_cancel; name it and
+# pthread again at the very end so the static link resolves it whatever pulled in first.
+set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lstdc++ -lpthread")
+
 # vitasdk libraries OpenMoHAA links against. The renderer pulls in vitaGL
 # (OpenGL ES wrapper to GXM) plus the shader compiler, the Sce* stubs are
 # the platform syscall trampolines that vita-elf-create resolves later.

@@ -139,8 +139,15 @@
 	#include <stdio.h>
 	#include <sys/types.h>
 	#include <sys/socket.h>
+	#ifndef __vita__ // no ioctl in the vitasdk's newlib: SetSockBlocking uses SO_NONBLOCK
 	#include <sys/ioctl.h>
+	#endif
 	#include <netinet/in.h>
+
+	#if defined(__vita__) && defined(__cplusplus) && !defined(restrict)
+		// the vitasdk's netdb.h uses C99 'restrict', which C++ spells __restrict
+		#define restrict __restrict
+	#endif
 
 	// MACOSX Warning!! netdb.h has it's own NOFILE define.
 	// GameSpy uses NOFILE to determine if an HD is available
@@ -159,6 +166,21 @@
 	#include <limits.h>
 	//#include <sys/syslimits.h>
 	#include <netinet/tcp.h>
+
+	#ifdef __vita__
+		#include <sys/select.h>
+		// The SDK calls select(FD_SETSIZE, ...), which the Vita's select refuses (EINVAL):
+		// pass the highest descriptor actually in the sets instead.
+		static inline int gsiVitaSelect(int n, fd_set *r, fd_set *w, fd_set *e, struct timeval *t)
+		{
+			int i, high = -1;
+			for (i = 0; i < n && i < FD_SETSIZE; i++)
+				if ((r && FD_ISSET(i, r)) || (w && FD_ISSET(i, w)) || (e && FD_ISSET(i, e)))
+					high = i;
+			return select(high + 1, r, w, e, t);
+		}
+		#define select gsiVitaSelect
+	#endif
 
     // ICMP ping support is unsupported on Linux/MacOSX due to needing super-user access for raw sockets
     #define SB_NO_ICMP_SUPPORT
