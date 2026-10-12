@@ -1788,6 +1788,8 @@ void R_Init( void ) {
 	 * No-op when cvar is 0 (default). Logs success/failure inline. */
 	R_VitaGpuSkin_Init();
 
+	R_VitaQgl_Init();
+
 	// Last: from here on the backend may run on the render thread.
 	R_SmpInit();
 	/* Perf instrumentation — gated by r_vita_perflog. Prints 1×/sec. */

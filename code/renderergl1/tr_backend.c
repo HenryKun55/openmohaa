@@ -1818,6 +1818,7 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 #ifdef __vita__
 	R_VitaGpuSkin_EndFrame();
+	R_VitaQgl_Frame();
 #endif
 
 	return (const void *)(cmd + 1);

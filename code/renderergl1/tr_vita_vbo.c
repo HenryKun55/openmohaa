@@ -45,6 +45,16 @@ extern void glColorPointer         ( int size, unsigned int type, int stride, co
 extern void glClientActiveTexture  ( unsigned int texture );
 extern void glEnableClientState    ( unsigned int array );
 extern void glDisableClientState   ( unsigned int array );
+/* Through tr_vita_qgl.c's tracking, like the rest of the renderer: a raw call here would
+ * leave its record of vitaGL's client arrays wrong. */
+#define glVertexPointer       qglVertexPointer
+#define glNormalPointer       R_VitaQgl_NormalPointer
+#define glColorPointer        qglColorPointer
+#define glTexCoordPointer     qglTexCoordPointer
+#define glClientActiveTexture R_VitaQgl_ClientActiveTexture
+#define glEnableClientState   qglEnableClientState
+#define glDisableClientState  qglDisableClientState
+#define glBindBuffer          R_VitaQgl_BindBuffer
 extern void glColor4f              ( float r, float g, float b, float a );
 
 /*

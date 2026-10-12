@@ -1585,6 +1585,12 @@ void R_VitaStaticVBO_DrawRanges(const int *first, const int *count, int numRange
  * (matrix palette) instead of the CPU loop in RB_SkelMesh. Default
  * 0; Phase 2a only compiles the program at init and stops. */
 extern cvar_t *r_vita_gpu_skinning;
+void     R_VitaQgl_Init(void);		// tr_vita_qgl.c: redundant client array calls stop before vitaGL
+void     R_VitaQgl_Frame(void);
+void     R_VitaQgl_Invalidate(void);
+void     R_VitaQgl_NormalPointer(GLenum type, GLsizei stride, const GLvoid *ptr);
+void     R_VitaQgl_BindBuffer(GLenum target, GLuint buffer);
+void     APIENTRY R_VitaQgl_ClientActiveTexture(GLenum texture);
 void     R_VitaGpuSkin_Init(void);
 void     R_VitaGpuSkin_Shutdown(void);
 void     R_VitaGpuSkin_LevelReset(void);
