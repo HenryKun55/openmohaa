@@ -1443,6 +1443,11 @@ SV_SoundCallback
 */
 void SV_SoundCallback( int entnum, int channel_number, const char *name )
 {
+#ifdef __vita__
+	// The sound system calls this from the client frame, while the game frames may be
+	// running on the server thread (sv_vita_thread 2): the callback wakes game scripts.
+	SV_VitaJoinGame();
+#endif
 	if( ge ) {
 		ge->SoundCallback( entnum, channel_number, name );
 	} else {

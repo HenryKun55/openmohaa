@@ -1015,6 +1015,11 @@ void SV_ServerLoaded( void ) {
 		return;
 	}
 
+#ifdef __vita__
+	// called by the UI at the end of the loading screen (client frame): ServerSpawned runs
+	// the level's scripts, the server thread's game frames end first
+	SV_VitaJoinGame();
+#endif
 	sv.state = SS_GAME;
 	sv.timeResidual = 0;
 	svs.startTime = svs.time - svs.mapTime;

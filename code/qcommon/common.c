@@ -1337,6 +1337,14 @@ void Com_RunAndTimeServerPacket( netadr_t *evFrom, msg_t *buf ) {
 		t1 = Sys_Milliseconds ();
 	}
 
+#ifdef __vita__
+	// A server packet runs game code (ClientConnect, ClientBegin, ClientThink). The second
+	// event loop of Com_Frame comes after SV_Frame handed the game frames to the server
+	// thread (sv_vita_thread 2): while connecting, the client answers inside that loop and
+	// both threads ran game scripts at once (heap corruption, a crash entering m1l1 on
+	// hardware). Wait for those frames first.
+	SV_VitaJoinGame();
+#endif
 	SV_PacketEvent( *evFrom, buf );
 
 	if ( com_speeds->integer ) {
