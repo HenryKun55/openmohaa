@@ -1953,26 +1953,47 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
          * R_RotateForStaticModel would through the modelview */
         const cStaticModelUnpacked_t *SM    = backEnd.currentStaticModel;
         const float                   scale = SM->tiki->load_scale * SM->scale;
-        for (j = 0; j < render_count; j++) {
-            const float *p = surf->pStaticXyz[j], *n = surf->pStaticNormal[j];
-            for (i = 0; i < 3; i++) {
-                tess.xyz[baseVertex + j][i] = SM->origin[i]
-                    + scale * (SM->axis[0][i] * p[0] + SM->axis[1][i] * p[1] + SM->axis[2][i] * p[2]);
-                tess.normal[baseVertex + j][i] = SM->axis[0][i] * n[0] + SM->axis[1][i] * n[1] + SM->axis[2][i] * n[2];
+        /* The matrix in locals: the stores into tess may alias SM for the compiler, which
+         * then reloaded all of it for every vertex. Normals only for the shaders that read
+         * them (the colours come baked from staticModelData). */
+        const float ox = SM->origin[0], oy = SM->origin[1], oz = SM->origin[2];
+        const float a0 = SM->axis[0][0], a1 = SM->axis[0][1], a2 = SM->axis[0][2];
+        const float b0 = SM->axis[1][0], b1 = SM->axis[1][1], b2 = SM->axis[1][2];
+        const float c0 = SM->axis[2][0], c1 = SM->axis[2][1], c2 = SM->axis[2][2];
+        const float sa0 = scale * a0, sa1 = scale * a1, sa2 = scale * a2;
+        const float sb0 = scale * b0, sb1 = scale * b1, sb2 = scale * b2;
+        const float sc0 = scale * c0, sc1 = scale * c1, sc2 = scale * c2;
+        float      *xyz = tess.xyz[baseVertex];
+        for (j = 0; j < render_count; j++, xyz += 4) {
+            const float *p = surf->pStaticXyz[j];
+            const float  px = p[0], py = p[1], pz = p[2], pw = p[3];
+            xyz[0] = ox + sa0 * px + sb0 * py + sc0 * pz;
+            xyz[1] = oy + sa1 * px + sb1 * py + sc1 * pz;
+            xyz[2] = oz + sa2 * px + sb2 * py + sc2 * pz;
+            xyz[3] = pw;
+        }
+        if (tess.shader && tess.shader->needsNormal) {
+            float *nrm = tess.normal[baseVertex];
+            for (j = 0; j < render_count; j++, nrm += 4) {
+                const float *n = surf->pStaticNormal[j];
+                const float  nx = n[0], ny = n[1], nz = n[2], nw = n[3];
+                nrm[0] = a0 * nx + b0 * ny + c0 * nz;
+                nrm[1] = a1 * nx + b1 * ny + c1 * nz;
+                nrm[2] = a2 * nx + b2 * ny + c2 * nz;
+                nrm[3] = nw;
             }
-            tess.xyz[baseVertex + j][3]    = p[3];
-            tess.normal[baseVertex + j][3] = n[3];
         }
     }
 #endif
-    for (j = 0; j < render_count; j++) {
 #ifdef __vita__
-        if (!g_vitaStaticWorld)
+    /* same layouts on both sides: one block copy each */
+    if (g_vitaStaticWorld) {
+        memcpy(tess.texCoords[baseVertex], surf->pStaticTexCoords, render_count * sizeof(tess.texCoords[0]));
+    } else
 #endif
-        {
-            Vector4Copy(surf->pStaticXyz[j], tess.xyz[baseVertex + j]);
-            Vector4Copy(surf->pStaticNormal[j], tess.normal[baseVertex + j]);
-        }
+    for (j = 0; j < render_count; j++) {
+        Vector4Copy(surf->pStaticXyz[j], tess.xyz[baseVertex + j]);
+        Vector4Copy(surf->pStaticNormal[j], tess.normal[baseVertex + j]);
         tess.texCoords[baseVertex + j][0][0] = surf->pStaticTexCoords[j][0][0];
         tess.texCoords[baseVertex + j][0][1] = surf->pStaticTexCoords[j][0][1];
         tess.texCoords[baseVertex + j][1][0] = surf->pStaticTexCoords[j][1][0];
@@ -1987,12 +2008,16 @@ void RB_StaticMesh(staticSurface_t *staticSurf)
 
         const color4ub_t *in = (const color4ub_t *)&backEnd.data->staticModelData[offset];
 
+#ifdef __vita__
+        memcpy(tess.vertexColors[baseVertex], in, render_count * sizeof(color4ub_t));
+#else
         for (i = 0; i < render_count; i++) {
             tess.vertexColors[baseVertex + i][0] = in[i][0];
             tess.vertexColors[baseVertex + i][1] = in[i][1];
             tess.vertexColors[baseVertex + i][2] = in[i][2];
             tess.vertexColors[baseVertex + i][3] = in[i][3];
         }
+#endif
     } else {
         for (i = 0; i < render_count; i++) {
             tess.vertexColors[baseVertex + i][0] = 0xFF;
