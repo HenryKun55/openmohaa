@@ -321,6 +321,9 @@ void Sys_VitaDumpMemAndAbort(const char *who, int size, int tag)
 
 void Sys_PlatformExit(void)
 {
+    /* boot.log is block-buffered: without this the reason for the exit (Sys_Error,
+     * a fatal Com_Error) never reached the memory card. */
+    fflush(NULL);
     sceKernelExitProcess(0);
 }
 
