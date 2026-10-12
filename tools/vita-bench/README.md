@@ -15,6 +15,10 @@ Needs: the vpk unzipped into Vita3K's `ux0/app/OMHA00001`, the game data in
 `ux0/data/openmohaa` (`main`, and `mainta` / `maintt` for the expansion scenarios), and
 `r_vita_perflog 1` in its config. Paths: `VITA3K_BIN`, `VITA3K_UX0`.
 
+`VITA3K_STDOUT=<file>` keeps the emulator's log, which has the module load addresses
+("Loaded module segment 0 @") needed to symbolize a `VITA3K_PROFILE` guest profile of
+game.suprx / cgame.suprx.
+
 The Vita3K data folder is left as it was: `vita_test.cfg` is removed and the campaign
 choice restored. Only temporary cvars are set.
 

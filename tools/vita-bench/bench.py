@@ -179,8 +179,10 @@ def run_scenario(name, sc, profile, sets, outdir, early=None):
                 f.write("set vita_autocontinue 1\n")
                 f.write(f'set vita_levelcmd "{sc.get("commands", "")}"\n')
                 f.write(f"devmap {sc['map']}\n")  # devmap: cheats on (god)
-            proc = subprocess.Popen([VITA3K, "-r", TITLE], env=env, stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL, start_new_session=True)
+            # VITA3K_STDOUT=<file> keeps the emulator log (module load addresses for the profiler)
+            log = open(os.environ["VITA3K_STDOUT"], "w") if os.environ.get("VITA3K_STDOUT") else subprocess.DEVNULL
+            proc = subprocess.Popen([VITA3K, "-r", TITLE], env=env, stdout=log,
+                                    stderr=subprocess.STDOUT, start_new_session=True)
             t_launch = time.time()
             pos, t0, retry = 0, None, False
             samples = []  # (seconds since in game, kind, values)
