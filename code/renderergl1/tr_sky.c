@@ -379,6 +379,44 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 
 	GL_Bind( image );
 
+#ifdef __vita__
+	/* One indexed draw over the side's grid instead of immediate mode: vitaGL takes each
+	 * glVertex3fv/glTexCoord2fv as a call with its own copy, a seventh of the render
+	 * thread at the m3l1 beach (Vita3K profile). The generic stage iterator that draws
+	 * next sets its own client arrays again. */
+	{
+		static unsigned short idx[SKY_SUBDIVISIONS * SKY_SUBDIVISIONS * 6];
+		int                   n = 0;
+
+		for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t < maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
+		{
+			for ( s = mins[0]+HALF_SKY_SUBDIVISIONS; s < maxs[0]+HALF_SKY_SUBDIVISIONS; s++ )
+			{
+				const unsigned short a = t * ( SKY_SUBDIVISIONS + 1 ) + s;
+				const unsigned short b = a + SKY_SUBDIVISIONS + 1;	/* the next row */
+
+				/* the strip's (t,s) (t+1,s) (t,s+1) (t+1,s+1), same winding */
+				idx[n++] = a;
+				idx[n++] = b;
+				idx[n++] = a + 1;
+				idx[n++] = a + 1;
+				idx[n++] = b;
+				idx[n++] = b + 1;
+			}
+		}
+		if ( !n ) {
+			return;
+		}
+		qglDisableClientState( GL_COLOR_ARRAY );
+		qglEnableClientState( GL_TEXTURE_COORD_ARRAY );
+		qglTexCoordPointer( 2, GL_FLOAT, 0, s_skyTexCoords );
+		qglEnableClientState( GL_VERTEX_ARRAY );
+		qglVertexPointer( 3, GL_FLOAT, 0, s_skyPoints );
+		qglDrawElements( GL_TRIANGLES, n, GL_UNSIGNED_SHORT, idx );
+		return;
+	}
+#endif
+
 	for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t < maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
 	{
 		qglBegin( GL_TRIANGLE_STRIP );
