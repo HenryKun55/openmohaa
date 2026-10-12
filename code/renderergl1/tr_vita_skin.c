@@ -274,6 +274,100 @@ static const char *s_skin_frag_src =
     "    gl_FragColor = c;\n"
     "}\n";
 
+/* The same pair in CG, with u_data in a uniform buffer (r_vita_skin_ubo). vitaGL copies a
+ * program's default uniforms twice per draw (glUniform4fv into the program, then the
+ * whole 116-vector block into its circular pool, seen in the shipped libvitaGL with REA):
+ * ~800 skinned draws a frame made that a fifth of the render thread at the m3l1 beach. A
+ * buffer is bound by address (glBindBufferRange -> sceGxmSetVertexUniformBuffer), so each
+ * draw's data is written once, straight into GPU memory. CG because the GLSL translator of
+ * the vitasdk build has no uniform blocks; the varyings get explicit semantics here. */
+/* shacccg takes the buffer as a plain array with BUFFER[n]; the uniform-block form
+ * (uniform Name { ... } : BUFFER[0], what vitaGL's GLSL translator writes) does not compile. */
+static const char *s_skin_vert_cg =
+    "uniform float4 u_data[116] : BUFFER[0];\n"
+    "float3 skinOne(int s, float3 p) {\n"
+    "    int o = s * 3;\n"
+    "    float4 q = float4(p, 1.0);\n"
+    "    return float3(dot(u_data[o + 20], q), dot(u_data[o + 21], q), dot(u_data[o + 22], q));\n"
+    "}\n"
+    "float3 rotOne(int s, float3 n) {\n"
+    "    int o = s * 3;\n"
+    "    return float3(dot(u_data[o + 20].xyz, n), dot(u_data[o + 21].xyz, n), dot(u_data[o + 22].xyz, n));\n"
+    "}\n"
+    "float3 lightOne(float4 dirT, float4 org, float4 col, float3 n, float3 sk) {\n"
+    "    float t = dirT.w;\n"
+    "    if (t > 0.5 && t < 1.5) {\n"
+    "        return max(dot(dirT.xyz, n), 0.0) * col.xyz;\n"
+    "    }\n"
+    "    if (t > 1.5 && t < 2.5) {\n"
+    "        float d = dot(dirT.xyz, n);\n"
+    "        if (d <= 0.0) return float3(0.0, 0.0, 0.0);\n"
+    "        float3 v = org.xyz - sk;\n"
+    "        float pr = dot(v, dirT.xyz); pr *= pr;\n"
+    "        float d2 = dot(v, v);\n"
+    "        float mi = (org.w - d2 / pr) * col.w;\n"
+    "        return mi > 0.0 ? (d / d2) * min(mi, 1.0) * col.xyz : float3(0.0, 0.0, 0.0);\n"
+    "    }\n"
+    "    if (t > 2.5) {\n"
+    "        float d = dot(dirT.xyz, n);\n"
+    "        float3 v = org.xyz - sk;\n"
+    "        return d > 0.0 ? (d / dot(v, v)) * col.xyz : float3(0.0, 0.0, 0.0);\n"
+    "    }\n"
+    "    float3 v = org.xyz - sk;\n"
+    "    float d = dot(v, n);\n"
+    "    return d > 0.0 ? (d / dot(v, v)) * col.xyz : float3(0.0, 0.0, 0.0);\n"
+    "}\n"
+    "void main(float4 a_w0, float4 a_w1, float4 a_w2, float4 a_w3, float4 a_idx,\n"
+    "          float2 a_texcoord, float3 a_normal, float4 a_morph,\n"
+    "          float4 out vPosition : POSITION, float4 out v_tc : TEXCOORD0, float4 out v_lit : TEXCOORD1) {\n"
+    "    int s0 = (int)a_idx.x; int s1 = (int)a_idx.y; int s2 = (int)a_idx.z; int s3 = (int)a_idx.w;\n"
+    "    float3 zero = float3(0.0, 0.0, 0.0);\n"
+    "    float3 m0 = a_morph.w < 0.5 ? a_morph.xyz : zero;\n"
+    "    float3 m1 = (a_morph.w > 0.5 && a_morph.w < 1.5) ? a_morph.xyz : zero;\n"
+    "    float3 m2 = (a_morph.w > 1.5 && a_morph.w < 2.5) ? a_morph.xyz : zero;\n"
+    "    float3 m3 = (a_morph.w > 2.5 && a_morph.w < 3.5) ? a_morph.xyz : zero;\n"
+    "    float3 sk = a_w0.w * skinOne(s0, a_w0.xyz + m0)\n"
+    "              + a_w1.w * skinOne(s1, a_w1.xyz + m1)\n"
+    "              + a_w2.w * skinOne(s2, a_w2.xyz + m2)\n"
+    "              + a_w3.w * skinOne(s3, a_w3.xyz + m3);\n"
+    /* mat4(columns) * vec4(sk, 1), written out (no CG/GLSL matrix layout question) */
+    "    vPosition = u_data[0] * sk.x + u_data[1] * sk.y + u_data[2] * sk.z + u_data[3];\n"
+    "    float3 n = normalize(rotOne(s0, a_normal));\n"
+    "    float3 c;\n"
+    "    float a = 1.0;\n"
+    "    float4 li = u_data[7];\n"
+    "    if (li.y > 0.5) {\n"
+    "        c = float3(255.0, 255.0, 255.0);\n"
+    "    } else if (li.x < 0.5) {\n"
+    "        c = u_data[6].rgb; a = u_data[6].a;\n"
+    "    } else {\n"
+    "        c = u_data[6].rgb + lightOne(u_data[8], u_data[12], u_data[16], n, sk);\n"
+    "        if (li.x > 1.5) c += lightOne(u_data[9], u_data[13], u_data[17], n, sk);\n"
+    "        if (li.x > 2.5) c += lightOne(u_data[10], u_data[14], u_data[18], n, sk);\n"
+    "        if (li.x > 3.5) c += lightOne(u_data[11], u_data[15], u_data[19], n, sk);\n"
+    "    }\n"
+    "    v_lit = float4(clamp(c, 0.0, 255.0) * (1.0 / 255.0), a);\n"
+    "    float4 fg = u_data[5];\n"
+    "    float ez = -dot(u_data[4], float4(sk, 1.0));\n"
+    "    v_tc = float4(a_texcoord, fg.z > 0.5 ? clamp((fg.y - ez) / (fg.y - fg.x), 0.0, 1.0) : 1.0, 1.0);\n"
+    "}\n";
+
+static const char *s_skin_frag_cg =
+    "uniform sampler2D u_diffuse;\n"
+    "uniform float4    u_fogColor;\n"
+    "uniform float4    u_alphaTest;\n"
+    "float4 main(float4 v_tc : TEXCOORD0, float4 v_lit : TEXCOORD1) : COLOR {\n"
+    "    float4 c = tex2D(u_diffuse, v_tc.xy) * v_lit;\n"
+    "    c.a *= u_alphaTest.y;\n"
+    "    if (u_alphaTest.x > 0.5) {\n"
+    "        if (u_alphaTest.x < 1.5) { if (c.a <= 0.0) discard; }\n"
+    "        else if (u_alphaTest.x < 2.5) { if (c.a >= 0.5) discard; }\n"
+    "        else { if (c.a < 0.5) discard; }\n"
+    "    }\n"
+    "    c.rgb = lerp(u_fogColor.rgb, c.rgb, v_tc.z);\n"
+    "    return c;\n"
+    "}\n";
+
 /* vgl* attribute indices — must match the vglBindAttribLocation calls. */
 #define ATTR_W0       0
 #define ATTR_W1       1
@@ -370,6 +464,7 @@ void R_VitaGpuSkin_Unbind(void)
     if (s_skin_program_bound) {
         glUseProgram(0);
         s_skin_program_bound = qfalse;
+        if (vp_on) vp_rt[VPR_SKIN_UNBIND]++;
     }
 }
 static qboolean            s_skin_ready   = qfalse;
@@ -399,7 +494,7 @@ static unsigned int VitaSkin_CompileStage(unsigned int type, const char *src, co
         int  len = 0;
         glGetShaderInfoLog(sh, sizeof(log), &len, log);
         log[sizeof(log) - 1] = 0;
-        ri.Printf(PRINT_WARNING, "[VITA-SKIN] %s compile FAILED:\n%s\n", label, log);
+        ri.Printf(PRINT_ALL, "[VITA-SKIN] %s compile FAILED:\n%s\n", label, log);
         glDeleteShader(sh);
         return 0;
     }
@@ -410,6 +505,35 @@ static unsigned int VitaSkin_CompileStage(unsigned int type, const char *src, co
 static float *s_morphZero;                              /* vec4 zeros, VITA_SKIN_MAX_BATCH_VERTS */
 static float *s_morphRing[VITA_SKIN_MORPH_FRAMES];      /* vec4, VITA_SKIN_MORPH_VERTS each */
 static int    s_morphFrame, s_morphUsed;
+
+/* r_vita_skin_ubo: u_data of each draw lives in this ring (one buffer per frame, like the
+ * morph ring) and is bound by address. vitaGL's glBindBufferRange takes a vbo pointer and
+ * reads only its first field (the data) and stamps last_frame: a local stand-in does. */
+#define VITA_SKIN_UBO_VECS         65536   /* vec4 per frame (1 MB): ~800 draws of ~80 */
+#ifndef GL_UNIFORM_BUFFER
+#define GL_UNIFORM_BUFFER          0x8A11
+#endif
+#ifndef GL_CG_VERTEX_SHADER_EXT
+#define GL_CG_VERTEX_SHADER_EXT    0x890E
+#define GL_CG_FRAGMENT_SHADER_EXT  0x890F
+#endif
+extern void glBindBufferRange(unsigned int target, unsigned int index, unsigned int buffer, long offset, long size);
+/* A "uniform float4 x[] : BUFFER[0]" array gets no uniform-buffer parameter of its own, so
+ * vitaGL never binds buffer 0 for it (the draws read garbage: black stretched models in
+ * Vita3K): the buffer is set on vitaGL's GXM context right before each draw. */
+extern void *gxm_context;
+extern int   sceGxmSetVertexUniformBuffer(void *context, unsigned int bufferIndex, const void *bufferData);
+static struct {
+    void         *ptr;
+    int           size;
+    void         *allocFunc;
+    unsigned int  lastFrame;
+    unsigned char pad[32];          /* room for any later vbo fields */
+} s_uboVbo;
+static float   *s_uboRing[VITA_SKIN_MORPH_FRAMES];
+static int      s_uboUsed;          /* vec4 written this frame */
+static qboolean s_skinUbo;          /* the CG program with the uniform buffer is the one in use */
+cvar_t         *r_vita_skin_ubo = NULL;
 
 static qboolean VitaSkin_AllocMorphBuffers(void)
 {
@@ -428,11 +552,13 @@ void R_VitaGpuSkin_EndFrame(void)
 {
     s_morphFrame = (s_morphFrame + 1) % VITA_SKIN_MORPH_FRAMES;
     s_morphUsed  = 0;
+    s_uboUsed    = 0;
 }
 
 void R_VitaGpuSkin_Init(void)
 {
     r_vita_gpu_skinning = ri.Cvar_Get("r_vita_gpu_skinning", "0", CVAR_ARCHIVE);
+    r_vita_skin_ubo     = ri.Cvar_Get("r_vita_skin_ubo", "1", CVAR_ARCHIVE | CVAR_LATCH);
 
     /* Only compile when enabled at boot: linking this program crashes on real
      * hardware (2026-09-23, right after "skin.frag compile OK"; fine in Vita3K),
@@ -457,10 +583,42 @@ void R_VitaGpuSkin_Init(void)
      * silently failed, leaving the vertex program NULL). Compile this pair immediately
      * (SHADER_PAIR: vertex then fragment, as done here), then restore the default. */
     vglSetSemanticBindingMode(VGL_MODE_SHADER_PAIR_ENUM);
-    unsigned int vs = VitaSkin_CompileStage(GL_VERTEX_SHADER,   s_skin_vert_src, "skin.vert");
-    if (!vs) { vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
-    unsigned int fs = VitaSkin_CompileStage(GL_FRAGMENT_SHADER, s_skin_frag_src, "skin.frag");
-    if (!fs) { glDeleteShader(vs); vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
+    unsigned int vs = 0, fs = 0;
+    s_skinUbo = qfalse;
+    if (r_vita_skin_ubo->integer) {
+        for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
+            s_uboRing[i] = (float *)VitaSkin_GpuAlloc(sizeof(float) * 4 * VITA_SKIN_UBO_VECS);
+            if (!s_uboRing[i]) {
+                extern unsigned int vglMemFree(int type);
+                ri.Printf(PRINT_ALL, "[VITA-SKIN] no memory for uniform buffer %d of %d KB (free KB: vram %u ram %u slow %u)\n", i,
+                          (int)(sizeof(float) * 4 * VITA_SKIN_UBO_VECS / 1024), vglMemFree(VGL_MEM_VRAM_TYPE) / 1024,
+                          vglMemFree(VGL_MEM_RAM_TYPE) / 1024, vglMemFree(VGL_MEM_SLOW_TYPE) / 1024);
+                break;
+            }
+            if (i == VITA_SKIN_MORPH_FRAMES - 1) s_skinUbo = qtrue;
+        }
+        if (s_skinUbo) {
+            vs = VitaSkin_CompileStage(GL_CG_VERTEX_SHADER_EXT, s_skin_vert_cg, "skin.vert (cg, uniform buffer)");
+            fs = vs ? VitaSkin_CompileStage(GL_CG_FRAGMENT_SHADER_EXT, s_skin_frag_cg, "skin.frag (cg)") : 0;
+            if (!fs) {
+                if (vs) glDeleteShader(vs);
+                vs        = 0;
+                s_skinUbo = qfalse;
+            }
+        }
+        if (!s_skinUbo) {
+            for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
+                if (s_uboRing[i]) vglFree(s_uboRing[i]);
+                s_uboRing[i] = NULL;
+            }
+        }
+    }
+    if (!s_skinUbo) {
+        vs = VitaSkin_CompileStage(GL_VERTEX_SHADER, s_skin_vert_src, "skin.vert");
+        if (!vs) { vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
+        fs = VitaSkin_CompileStage(GL_FRAGMENT_SHADER, s_skin_frag_src, "skin.frag");
+        if (!fs) { glDeleteShader(vs); vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
+    }
 
     unsigned int prog = glCreateProgram();
     glAttachShader(prog, vs);
@@ -486,7 +644,7 @@ void R_VitaGpuSkin_Init(void)
         int  len = 0;
         glGetProgramInfoLog(prog, sizeof(log), &len, log);
         log[sizeof(log) - 1] = 0;
-        ri.Printf(PRINT_WARNING, "[VITA-SKIN] program link FAILED:\n%s\n", log);
+        ri.Printf(PRINT_ALL, "[VITA-SKIN] program link FAILED:\n%s\n", log);
         glDeleteProgram(prog);
         glDeleteShader(vs);
         glDeleteShader(fs);
@@ -508,9 +666,9 @@ void R_VitaGpuSkin_Init(void)
     s_skin_ready     = qtrue;
 
     ri.Printf(PRINT_ALL,
-        "[VITA-SKIN] program LINK OK, prog=%u (vgl* pipeline) "
+        "[VITA-SKIN] program LINK OK, prog=%u (vgl* pipeline, %s) "
         "data=%d diffuse=%d\n",
-        prog, s_loc_data, s_loc_diffuse);
+        prog, s_skinUbo ? "uniform buffer" : "uniforms", s_loc_data, s_loc_diffuse);
 }
 
 void R_VitaGpuSkin_Shutdown(void)
@@ -525,7 +683,10 @@ void R_VitaGpuSkin_Shutdown(void)
     for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
         if (s_morphRing[i]) vglFree(s_morphRing[i]);
         s_morphRing[i] = NULL;
+        if (s_uboRing[i]) vglFree(s_uboRing[i]);
+        s_uboRing[i] = NULL;
     }
+    s_skinUbo    = qfalse;
     s_skin_ready = qfalse;
 }
 
@@ -1142,8 +1303,11 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         }
     }
 
-    /* Every batch needs all its bones on this model: checked before drawing any of them. */
+    /* Every batch needs all its bones on this model (and, with the uniform buffer, room
+     * in this frame's ring): checked before drawing any of them. */
+    int uboNeed = 0;
     for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+        uboNeed += VITA_SKIN_DATA_BONES + be->numBoneSlots * 3;
         if (be->sf != sf || !be->ibuf) { vita_skin_fail = 4; return qfalse; }    /* stale guard */
         if (be->localChnTiki != tiki) {
             for (i = 0; i < be->numBoneSlots; i++) {
@@ -1155,6 +1319,10 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
             if (be->localChn[i] < 0) { vita_skin_fail = 5; return qfalse; }      /* channel absent → CPU */
         }
         if (!be->next || be->next >= s_skin_cache_count) break;
+    }
+    if (s_skinUbo && s_uboUsed + uboNeed > VITA_SKIN_UBO_VECS) {
+        vita_skin_fail = 6;                         /* ring full this frame → CPU path */
+        return qfalse;
     }
 
     /* MVP from the engine's own matrices. (Do NOT use glGetFloatv with
@@ -1296,9 +1464,15 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
      * by the model scale: the CPU path scales the final skinned position, and scaling the
      * bone rotation rows + translation gives the same; the shader normalizes the normal). */
     for (vitaSkinCacheEntry_t *be = e;; be = &s_skin_cache[be->next]) {
+        const int vecs = VITA_SKIN_DATA_BONES + be->numBoneSlots * 3;
+        /* the uniform buffer path writes this draw's data straight into the ring */
+        float    *data = s_skinUbo ? s_uboRing[s_morphFrame] + s_uboUsed * 4 : s_vdata;
+        if (s_skinUbo) {
+            memcpy(data, s_vdata, VITA_SKIN_DATA_BONES * 4 * sizeof(float));
+        }
         for (i = 0; i < be->numBoneSlots; i++) {
             const skelBoneCache_t *b    = &bones[be->localChn[i]];
-            float                 *m    = &s_vdata[(VITA_SKIN_DATA_BONES + i * 3) * 4];
+            float                 *m    = &data[(VITA_SKIN_DATA_BONES + i * 3) * 4];
             m[0]  = b->matrix[0][0] * scale;
             m[1]  = b->matrix[1][0] * scale;
             m[2]  = b->matrix[2][0] * scale;
@@ -1312,7 +1486,14 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
             m[10] = b->matrix[2][2] * scale;
             m[11] = b->offset[2] * scale;
         }
-        glUniform4fv(s_loc_data, VITA_SKIN_DATA_BONES + be->numBoneSlots * 3, s_vdata); SKIN_GLCHK("uniform data");
+        if (s_skinUbo) {
+            s_uboVbo.ptr = s_uboRing[s_morphFrame];
+            glBindBufferRange(GL_UNIFORM_BUFFER, 0, (unsigned int)&s_uboVbo, s_uboUsed * 16, vecs * 16);
+            sceGxmSetVertexUniformBuffer(gxm_context, 0, data);
+            s_uboUsed += vecs;                                       SKIN_GLCHK("uniform buffer");
+        } else {
+            glUniform4fv(s_loc_data, vecs, s_vdata);                 SKIN_GLCHK("uniform data");
+        }
         for (a = 0; a < ATTR_COUNT; a++) {
             vglVertexAttribPointerMapped(a, be->attr[a]);
         }
