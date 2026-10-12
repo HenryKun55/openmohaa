@@ -568,10 +568,19 @@ static int R_VitaStaticVBO_Collapse(const skelSurfaceGame_t *surf, int renderCou
     return j;
 }
 
+/* r_vita_vbo_static, or r_vita_vbo_static_test when a test run sets it (never saved) */
+static qboolean R_VitaStaticVBO_Wanted(void)
+{
+    static cvar_t *test;
+    if (!test) test = ri.Cvar_Get("r_vita_vbo_static_test", "-1", CVAR_TEMP);
+    if (test->integer >= 0) return test->integer != 0;
+    return r_vita_vbo_static && r_vita_vbo_static->integer;
+}
+
 int R_VitaStaticVBO_FirstEntry(int staticModel)
 {
     if (!staticFirstEntry || staticModel < 0 || staticModel >= staticNumModels) return -1;
-    if (!r_vita_vbo_static || !r_vita_vbo_static->integer) return -1;
+    if (!R_VitaStaticVBO_Wanted()) return -1;
     return staticFirstEntry[staticModel];
 }
 
@@ -732,7 +741,7 @@ void R_VitaStaticVBO_Build(void)
          * came out in flat colours) in Vita3K; to retry with the buffers in CDRAM */
         r_vita_vbo_static = ri.Cvar_Get("r_vita_vbo_static", "0", CVAR_ARCHIVE | CVAR_LATCH);
     }
-    if (!r_vita_vbo_static->integer || !tr.world || tr.world->numStaticModels <= 0) return;
+    if (!R_VitaStaticVBO_Wanted() || !tr.world || tr.world->numStaticModels <= 0) return;
 
     Com_Memset(&b, 0, sizeof(b));
     staticNumModels  = tr.world->numStaticModels;
