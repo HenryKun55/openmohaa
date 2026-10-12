@@ -1420,7 +1420,7 @@ void RB_SkelMesh(skelSurfaceGame_t *sf)
             return;
         }
         vp_rt[VPR_SKIN_CPU]++;
-        vp_rt[VPR_SKINFAIL + (vita_skin_fail >= 0 && vita_skin_fail < 6 ? vita_skin_fail : 0)]++;
+        vp_rt[VPR_SKINFAIL + (vita_skin_fail >= 0 && vita_skin_fail < 7 ? vita_skin_fail : 0)]++;
     } else {
         vp_rt[VPR_SKIN_CPU]++;
         vp_rt[VPR_SKINFAIL + 1]++;

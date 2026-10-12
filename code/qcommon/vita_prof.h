@@ -96,11 +96,12 @@ enum {
 	VPR_LIST,									// RB_RenderDrawSurfList (tess + draw + per-entity setup)
 	VPR_SKIN_GPU,								// counter: skeletal surfaces drawn by GPU skinning
 	VPR_SKIN_CPU,								// counter: ... that fell back to the CPU path
-	VPR_SKINFAIL,								// counters per fallback reason (6 slots, vita_skin_fail)
-	VPR_SKINFAIL_END = VPR_SKINFAIL + 6,
+	VPR_SKINFAIL,								// counters per fallback reason (7 slots, vita_skin_fail)
+	VPR_SKINFAIL_END = VPR_SKINFAIL + 7,
 	VPR_SKIN_GPU_US = VPR_SKINFAIL_END,			// time of the skeletal surfaces drawn by GPU skinning
 	VPR_STATIC_SURFS,							// counter: static model surfaces (RB_StaticMesh)
 	VPR_STATIC_BATCHES,							// counter: the draws they took (merged: fewer)
+	VPR_SKIN_UNBIND,							// counter: skin program -> fixed function switches (vitaGL reloads its FFP shader)
 	VPR_COUNT
 };
 
