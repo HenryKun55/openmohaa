@@ -48,6 +48,18 @@ static qboolean mouseActive = qfalse;
 static cvar_t *in_mouse             = NULL;
 static cvar_t *in_nograb;
 
+#ifdef __vita__
+static cvar_t *vita_touch_aim;
+static cvar_t *vita_touch_sens;
+static cvar_t *vita_touch_ads_sens;
+static cvar_t *vita_touch_fullscreen;
+static cvar_t *vita_touch_accel;
+static cvar_t *vita_touch_accel_strength;
+static cvar_t *vita_touch_smoothing;
+static cvar_t *vita_touch_debug;
+static int vita_touch_contact = -1;
+#endif
+
 static cvar_t *in_joystick          = NULL;
 static cvar_t *in_joystickThreshold = NULL;
 static cvar_t *in_joystickNo        = NULL;
@@ -360,7 +372,7 @@ static void IN_ActivateMouse( qboolean isFullscreen )
 	{
 #if defined(__vita__) || defined(__SWITCH__)
 		/* The Vita/Switch have no real mouse — input is the right stick
-		 * driven through IN_VitaPollTouch. SDL_SetRelativeMouseMode(TRUE)
+		 * used for the menu cursor. SDL_SetRelativeMouseMode(TRUE)
 		 * hides the cursor and gives only deltas; keep absolute mode so the
 		 * synthesised motion translates to an on-screen cursor position. */
 		SDL_SetRelativeMouseMode( SDL_FALSE );
@@ -1079,45 +1091,162 @@ static void IN_JoyMove( void )
 #ifdef __vita__
 #include <psp2/touch.h>
 #endif
-/*
-===============
-IN_VitaPollTouch
-
-SDL2-Vita exposes the front + back touchpads (SDL_GetNumTouchDevices ==
-2) but its VITA_PumpEvents never calls sceTouchPeek, so finger taps
-generate no SDL_FINGER* or SDL_MOUSE* events. Poll the hardware ourselves
-each frame and synthesise mouse events: SDL_WarpMouseInWindow drives the
-SDL_MOUSEMOTION the engine already handles, and SDL_PushEvent emits the
-button down/up that becomes K_MOUSE1.
-
-Front pad raw range is 0..1920 / 0..1088 (2x oversample over the 960x544
-display), so divide by 2 to land in screen pixels. We poll FRONT only —
-the rear pad is small and easy to bump accidentally; the room-menu UI is
-better with front taps anyway.
-===============
-*/
-static void IN_PushMotion( int xrel, int yrel )
+/* Relative mouse motion for Vita touch aim and the console menu cursor. */
+static int IN_PushMotion( int xrel, int yrel )
 {
 	SDL_Event ev;
 	SDL_memset( &ev, 0, sizeof(ev) );
 	ev.type = SDL_MOUSEMOTION;
 	ev.motion.xrel = xrel;
 	ev.motion.yrel = yrel;
-	SDL_PushEvent( &ev );
+	return SDL_PushEvent( &ev );
 }
 
-static void IN_PushButton( int down, int x, int y )
+#ifdef __vita__
+/* Use the front panel's latest sample and feed the existing mouse path. */
+static void IN_VitaTouchDebug( const char *status, int reports, int dx, int dy, int outX, int outY )
 {
-	SDL_Event ev;
-	SDL_memset( &ev, 0, sizeof(ev) );
-	ev.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
-	ev.button.state = down ? SDL_PRESSED : SDL_RELEASED;
-	ev.button.button = SDL_BUTTON_LEFT;
-	ev.button.clicks = 1;
-	ev.button.x = x;
-	ev.button.y = y;
-	SDL_PushEvent( &ev );
+	static int nextLog[2];
+	const int motion = outX || outY;
+	int now;
+
+	if ( !vita_touch_debug->integer )
+		return;
+
+	now = Sys_Milliseconds();
+	if ( now < nextLog[motion] )
+		return;
+	nextLog[motion] = now + 1000;
+	Com_Printf( "vita touch: %s reports=%d contact=%d raw=(%d,%d) mouse=(%d,%d) view=(%.2f,%.2f) "
+		"aim=%d mouseActive=%d state=%d snap=%d demo=%d catcher=%x gui=%d paused=%d cinematic=%d\n",
+		status, reports, vita_touch_contact, dx, dy, outX, outY, cl.viewangles[YAW], cl.viewangles[PITCH],
+		vita_touch_aim->integer, mouseActive, clc.state, cl.snap.valid, clc.demoplaying,
+		(unsigned int)Key_GetCatcher(), in_guimouse, paused->integer, cl.snap.ps.stats[STAT_CINEMATIC] );
 }
+
+static float IN_VitaSmoothDelta( float delta, float previousDelta, float weight )
+{
+	// Blend only same-direction motion so the filter cannot produce a tail.
+	if ( delta * previousDelta > 0.0f )
+		return delta * ( 1.0f + weight * ( Com_Clamp( 0.5f, 1.5f, previousDelta / delta ) - 1.0f ) );
+	return delta;
+}
+
+static float IN_VitaTouchSetting( const cvar_t *setting, float maxValue )
+{
+	const float value = setting->value;
+	return value >= 0.0f ? Com_Clamp( 0.0f, maxValue, value ) : 0.0f;
+}
+
+static void IN_VitaTouchAim( void )
+{
+	static int lastX, lastY, lastPoll, lastElapsed;
+	static int lastDX, lastDY;
+	static float remainderX, remainderY;
+	SceTouchData data;
+	const SceTouchReport *touch = NULL;
+	unsigned int i;
+	int dx, dy, outX, outY, now, elapsed, count;
+	float scale, motionX, motionY, smoothing;
+
+	if ( !vita_touch_aim->integer || !mouseActive || clc.state != CA_ACTIVE ||
+		 !cl.snap.valid || clc.demoplaying || Key_GetCatcher() || in_guimouse ||
+		 paused->integer || ( cl.snap.ps.stats[STAT_CINEMATIC] & 1 ) )
+	{
+		vita_touch_contact = -1;
+		IN_VitaTouchDebug( "blocked", 0, 0, 0, 0, 0 );
+		return;
+	}
+
+	count = sceTouchPeek( SCE_TOUCH_PORT_FRONT, &data, 1 );
+	if ( count <= 0 )
+	{
+		vita_touch_contact = -1;
+		IN_VitaTouchDebug( "peek", count, 0, 0, 0, 0 );
+		return;
+	}
+
+	for ( i = 0; i < data.reportNum && i < SCE_TOUCH_MAX_REPORT; i++ )
+	{
+		if ( vita_touch_contact >= 0 ? data.report[i].id == vita_touch_contact :
+			 ( vita_touch_fullscreen->integer || data.report[i].x >= 960 ) )
+		{
+			touch = &data.report[i];
+			break;
+		}
+	}
+	if ( !touch )
+	{
+		vita_touch_contact = -1;
+		IN_VitaTouchDebug( "no eligible contact", data.reportNum, 0, 0, 0, 0 );
+		return;
+	}
+	now = Sys_Milliseconds();
+	if ( vita_touch_contact < 0 )
+	{
+		vita_touch_contact = touch->id;
+		lastX = touch->x;
+		lastY = touch->y;
+		lastPoll = now;
+		lastElapsed = 0;
+		lastDX = lastDY = 0;
+		remainderX = remainderY = 0.0f;
+		IN_VitaTouchDebug( "gesture start", data.reportNum, 0, 0, 0, 0 );
+		return;
+	}
+
+	dx = touch->x - lastX;
+	dy = touch->y - lastY;
+	elapsed = now - lastPoll;
+	lastX = touch->x;
+	lastY = touch->y;
+	lastPoll = now;
+
+	// Five times the original 0.5 mouse counts per raw coordinate unit.
+	// The engine still applies mouse sensitivity and its native FOV scale.
+	scale = 2.5f * IN_VitaTouchSetting( vita_touch_sens, 20.0f );
+	if ( cl.snap.ps.stats[STAT_INZOOM] )
+		scale *= IN_VitaTouchSetting( vita_touch_ads_sens, 4.0f );
+
+	if ( vita_touch_accel->integer && elapsed > 0 )
+	{
+		const float distanceSquared = (float)dx * dx + (float)dy * dy;
+		// Half boost at 1000 display pixels/second (2 raw units/ms).
+		const float halfBoostDistance = 2.0f * elapsed;
+		const float strength = IN_VitaTouchSetting( vita_touch_accel_strength, 2.0f );
+		scale *= 1.0f + strength * distanceSquared /
+			( distanceSquared + halfBoostDistance * halfBoostDistance );
+	}
+
+	motionX = dx;
+	motionY = dy;
+	smoothing = IN_VitaTouchSetting( vita_touch_smoothing, 1.0f );
+	if ( smoothing > 0.0f && elapsed > 0 && lastElapsed > 0 )
+	{
+		const float timeRatio = (float)elapsed / lastElapsed;
+		const float weight = smoothing * 8.0f / ( elapsed + 8.0f );
+		motionX = IN_VitaSmoothDelta( motionX, lastDX * timeRatio, weight );
+		motionY = IN_VitaSmoothDelta( motionY, lastDY * timeRatio, weight );
+	}
+	lastDX = dx;
+	lastDY = dy;
+	lastElapsed = elapsed;
+
+	remainderX += motionX * scale;
+	remainderY += motionY * scale * 0.75f;
+	outX = (int)remainderX;
+	outY = (int)remainderY;
+	remainderX -= outX;
+	remainderY -= outY;
+
+	if ( outX || outY )
+	{
+		const int pushed = IN_PushMotion( outX, outY );
+		IN_VitaTouchDebug( pushed == 1 ? "SDL motion queued" : "SDL motion dropped",
+			data.reportNum, dx, dy, outX, outY );
+	}
+}
+#endif
 
 static void IN_VitaPollTouch( void )
 {
@@ -1180,6 +1309,9 @@ static void IN_ProcessEvents( void )
 	if( !SDL_WasInit( SDL_INIT_VIDEO ) )
 			return;
 
+#ifdef __vita__
+	IN_VitaTouchAim();
+#endif
 #if defined(__vita__) || defined(__SWITCH__)
 	IN_VitaPollTouch();
 #endif
@@ -1469,6 +1601,17 @@ void IN_Init( void *windowData )
 	// mouse variables
 	in_mouse = Cvar_Get( "in_mouse", "1", CVAR_ARCHIVE );
 	in_nograb = Cvar_Get( "in_nograb", "0", CVAR_ARCHIVE );
+#ifdef __vita__
+	vita_touch_contact = -1;
+	vita_touch_aim = Cvar_Get( "vita_touch_aim", "1", CVAR_ARCHIVE );
+	vita_touch_sens = Cvar_Get( "vita_touch_sens", "1.0", CVAR_ARCHIVE );
+	vita_touch_ads_sens = Cvar_Get( "vita_touch_ads_sens", "0.8", CVAR_ARCHIVE );
+	vita_touch_fullscreen = Cvar_Get( "vita_touch_fullscreen", "0", CVAR_ARCHIVE );
+	vita_touch_accel = Cvar_Get( "vita_touch_accel", "0", CVAR_ARCHIVE );
+	vita_touch_accel_strength = Cvar_Get( "vita_touch_accel_strength", "0.65", CVAR_ARCHIVE );
+	vita_touch_smoothing = Cvar_Get( "vita_touch_smoothing", "0", CVAR_ARCHIVE );
+	vita_touch_debug = Cvar_Get( "vita_touch_debug", "0", 0 );
+#endif
 
 	in_joystick = Cvar_Get( "in_joystick", "0", CVAR_ARCHIVE|CVAR_LATCH );
 	in_joystickThreshold = Cvar_Get( "joy_threshold", "0.15", CVAR_ARCHIVE );
