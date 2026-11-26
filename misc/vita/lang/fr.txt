@@ -828,6 +828,26 @@
 { "Show the crosshair when not aiming." "Afficher le réticule sans viser." }
 { "Crosshair (aim)" "Réticule (visée)" }
 { "Show the crosshair while aiming." "Afficher le réticule en visant." }
+{ "Aim Assist" "Aide à la visée" }
+{ "Single player: the aim slows down and is gently pulled near a visible enemy." "Solo : la visée ralentit et est légèrement attirée près d'un ennemi visible." }
+{ "Aim Assist Preset" "Préréglage de l'aide" }
+{ "Balanced, Strong or Very Strong: sets every aim assist option below at once." "Équilibrée, Forte ou Très forte : règle d'un coup toutes les options d'aide ci-dessous." }
+{ "Balanced" "Équilibrée" }
+{ "Strong" "Forte" }
+{ "Very Strong" "Très forte" }
+{ "Legacy" "Ancienne" }
+{ "Friction Strength" "Force de friction" }
+{ "How much the aim slows down when the crosshair is near an enemy." "À quel point la visée ralentit quand le réticule est près d'un ennemi." }
+{ "Assist Radius" "Rayon de l'aide" }
+{ "How far from the crosshair, in degrees, an enemy gets assistance." "À quelle distance du réticule, en degrés, un ennemi déclenche l'aide." }
+{ "Magnetism Strength" "Force du magnétisme" }
+{ "How strongly the aim is pulled toward the enemy while you move it." "À quel point la visée est attirée vers l'ennemi quand vous la bougez." }
+{ "Rotational Assist" "Aide rotationnelle" }
+{ "Helps the aim follow an enemy while you strafe." "Aide la visée à suivre un ennemi quand vous vous déplacez latéralement." }
+{ "Rotation Cap" "Limite de rotation" }
+{ "Most the strafe assistance can turn the aim in one step." "Le maximum dont l'aide peut tourner la visée en une fois en déplacement latéral." }
+{ "Aim Assist Debug" "Débogage de l'aide à la visée" }
+{ "Shows the aim assist state on screen. Not saved." "Affiche l'état de l'aide à la visée à l'écran. Non enregistré." }
 { "Restore defaults" "Réglages par défaut" }
 { "Back to the port's recommended settings." "Revenir aux réglages recommandés du portage." }
 { "Debug menu" "Menu de debug" }

@@ -828,6 +828,26 @@
 { "Show the crosshair when not aiming." "Zeigt das Fadenkreuz ohne Zielen." }
 { "Crosshair (aim)" "Fadenkreuz (Zielen)" }
 { "Show the crosshair while aiming." "Zeigt das Fadenkreuz beim Zielen." }
+{ "Aim Assist" "Zielhilfe" }
+{ "Single player: the aim slows down and is gently pulled near a visible enemy." "Einzelspieler: Das Zielen wird nahe einem sichtbaren Gegner langsamer und leicht angezogen." }
+{ "Aim Assist Preset" "Zielhilfe-Stufe" }
+{ "Balanced, Strong or Very Strong: sets every aim assist option below at once." "Ausgewogen, Stark oder Sehr stark: stellt alle Zielhilfe-Optionen darunter auf einmal ein." }
+{ "Balanced" "Ausgewogen" }
+{ "Strong" "Stark" }
+{ "Very Strong" "Sehr stark" }
+{ "Legacy" "Alt" }
+{ "Friction Strength" "Reibungsstärke" }
+{ "How much the aim slows down when the crosshair is near an enemy." "Wie stark das Zielen nahe einem Gegner langsamer wird." }
+{ "Assist Radius" "Hilfe-Radius" }
+{ "How far from the crosshair, in degrees, an enemy gets assistance." "Wie weit vom Fadenkreuz, in Grad, ein Gegner Zielhilfe auslöst." }
+{ "Magnetism Strength" "Magnetismus-Stärke" }
+{ "How strongly the aim is pulled toward the enemy while you move it." "Wie stark das Zielen beim Bewegen zum Gegner gezogen wird." }
+{ "Rotational Assist" "Rotationshilfe" }
+{ "Helps the aim follow an enemy while you strafe." "Hilft dem Zielen, einem Gegner beim Seitwärtslaufen zu folgen." }
+{ "Rotation Cap" "Rotationslimit" }
+{ "Most the strafe assistance can turn the aim in one step." "Wie weit die Hilfe das Zielen beim Seitwärtslaufen pro Schritt höchstens dreht." }
+{ "Aim Assist Debug" "Zielhilfe-Debug" }
+{ "Shows the aim assist state on screen. Not saved." "Zeigt den Zustand der Zielhilfe auf dem Bildschirm. Wird nicht gespeichert." }
 { "Restore defaults" "Zurücksetzen" }
 { "Back to the port's recommended settings." "Zurück zu den empfohlenen Einstellungen des Ports." }
 { "Debug menu" "Debug-Menü" }

@@ -828,6 +828,26 @@
 { "Show the crosshair when not aiming." "Mostra il mirino quando non miri." }
 { "Crosshair (aim)" "Mirino (mira)" }
 { "Show the crosshair while aiming." "Mostra il mirino mentre miri." }
+{ "Aim Assist" "Assistenza mira" }
+{ "Single player: the aim slows down and is gently pulled near a visible enemy." "Giocatore singolo: la mira rallenta ed è attirata leggermente vicino a un nemico visibile." }
+{ "Aim Assist Preset" "Preimpostazione assistenza" }
+{ "Balanced, Strong or Very Strong: sets every aim assist option below at once." "Bilanciata, Forte o Molto forte: imposta insieme tutte le opzioni di assistenza qui sotto." }
+{ "Balanced" "Bilanciata" }
+{ "Strong" "Forte" }
+{ "Very Strong" "Molto forte" }
+{ "Legacy" "Vecchia" }
+{ "Friction Strength" "Forza attrito" }
+{ "How much the aim slows down when the crosshair is near an enemy." "Quanto rallenta la mira quando il mirino è vicino a un nemico." }
+{ "Assist Radius" "Raggio assistenza" }
+{ "How far from the crosshair, in degrees, an enemy gets assistance." "A che distanza dal mirino, in gradi, un nemico attiva l'assistenza." }
+{ "Magnetism Strength" "Forza magnetismo" }
+{ "How strongly the aim is pulled toward the enemy while you move it." "Quanto la mira è attirata verso il nemico mentre la muovi." }
+{ "Rotational Assist" "Assistenza rotazionale" }
+{ "Helps the aim follow an enemy while you strafe." "Aiuta la mira a seguire un nemico mentre ti sposti di lato." }
+{ "Rotation Cap" "Limite rotazione" }
+{ "Most the strafe assistance can turn the aim in one step." "Il massimo che l'assistenza può ruotare la mira in un passo spostandoti di lato." }
+{ "Aim Assist Debug" "Debug assistenza mira" }
+{ "Shows the aim assist state on screen. Not saved." "Mostra sullo schermo lo stato dell'assistenza mira. Non salvato." }
 { "Restore defaults" "Ripristina predefiniti" }
 { "Back to the port's recommended settings." "Torna alle impostazioni consigliate del port." }
 { "Debug menu" "Menu di debug" }

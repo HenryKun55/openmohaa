@@ -254,6 +254,13 @@ static const VitaMenuText g_vmTexts[] = {
     { "Look Sens (aim)", "Right stick look speed while aiming down the sights." },
     { "Crosshair (hip)", "Show the crosshair when not aiming." },
     { "Crosshair (aim)", "Show the crosshair while aiming." },
+    { "Aim Assist", "Single player: the aim slows down and is gently pulled near a visible enemy." },
+    { "Aim Assist Preset", "Balanced, Strong or Very Strong: sets every aim assist option below at once." },
+    { "Friction Strength", "How much the aim slows down when the crosshair is near an enemy." },
+    { "Assist Radius", "How far from the crosshair, in degrees, an enemy gets assistance." },
+    { "Magnetism Strength", "How strongly the aim is pulled toward the enemy while you move it." },
+    { "Rotational Assist", "Helps the aim follow an enemy while you strafe." },
+    { "Rotation Cap", "Most the strafe assistance can turn the aim in one step." },
 
     /* SETTINGS: system */
     { "Change campaign", "Starts the game again to choose another campaign." },
@@ -303,6 +310,7 @@ static const VitaMenuText g_vmTexts[] = {
     { "r_speeds Print" },
     { "com_speeds Print" },
     { "Perf log", "Timing lines in boot.log every second." },
+    { "Aim Assist Debug", "Shows the aim assist state on screen. Not saved." },
     { "Back to settings" },
 };
 
@@ -575,7 +583,6 @@ static VitaPerfMenuItem g_smControls[] = {
     { "Magnetism Strength","vita_aim_magnetism_gain", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimMagnetism) },
     { "Rotational Assist", "vita_aim_rotational", qfalse, 0 },
     { "Rotation Cap",      "vita_aim_rotational_cap", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimRotationCap) },
-    { "Aim Assist Debug",  "vita_aim_debug",      qfalse, 0 },
 #endif
 };
 
@@ -690,6 +697,7 @@ static VitaPerfMenuItem g_dmDiag[] = {
     { "r_speeds Print",         "r_speeds",       qfalse, 6 },
     { "com_speeds Print",       "com_speeds",     qfalse, 0 },
     { "Perf log",               "r_vita_perflog", qfalse, 0 },
+    { "Aim Assist Debug",       "vita_aim_debug", qfalse, 0 },
     { "Back to settings",       NULL, qfalse, 0, VPM_ACTION_SETTINGS },
 };
 
@@ -1603,12 +1611,6 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
     menuFont->setColor(UWhite);
     menuFont->Print(boxX + 12.0f, boxY + boxH - 24.0f,
         VitaMenu_Latin1(VT("L/R: tab   D-pad: select   X: change   O: close")), -1, NULL);
-#ifdef __vita__
-    const char *buildMarker = "AIM ASSIST V2 PRESETS";
-    menuFont->setColor(UYellow);
-    menuFont->Print(boxX + boxW - 12.0f - (float)menuFont->getWidth(buildMarker, -1),
-                    boxY + boxH - 24.0f, buildMarker, -1, NULL);
-#endif
 
     re.SetColor(NULL);
 }

@@ -43,6 +43,9 @@ static int modelUserCount[ MAX_MODELS ];
 // The client samples targets after input dispatch, before SV_Frame starts the game worker.
 void SV_VitaAimTarget( int clientNum, const vec3_t eye, const vec3_t angles, float radiusTangent,
                        qboolean (*snapshotVisible)( int ), struct vitaAimTarget_s *target ) {
+	// Game code from the main thread: the server thread's game frames end first
+	// (sv_vita_thread 2). Com_Frame already joined them, this keeps it safe if moved.
+	SV_VitaJoinGame();
 	if ( sv.state == SS_GAME && ge && ge->VitaAimTarget && clientNum >= 0 && clientNum < svs.iNumClients ) {
 		ge->VitaAimTarget( SV_GentityNum( clientNum ), eye, angles, radiusTangent, snapshotVisible, target );
 	} else if ( target->debug ) {
