@@ -433,6 +433,7 @@ G_AddGEntity
 
 #ifdef __vita__
 unsigned int gp_acc[GP_COUNT];
+int          gp_on;
 static int   gp_frames;
 
 static void G_VitaProfFrame(void)
@@ -481,12 +482,16 @@ void G_AddGEntity(gentity_t *edict, qboolean showentnums)
         );
     } else {
 #ifdef __vita__
-        const int slot = ent->IsSubclassOfActor() ? GP_ACTORS : ent->IsSubclassOfPlayer() ? GP_PLAYER : GP_OTHERS;
-        gp_acc[GP_NENTS]++;
-        if (slot == GP_ACTORS) {
-            gp_acc[GP_NACTORS]++;
+        if (gp_on) {
+            const int slot = ent->IsSubclassOfActor() ? GP_ACTORS : ent->IsSubclassOfPlayer() ? GP_PLAYER : GP_OTHERS;
+            gp_acc[GP_NENTS]++;
+            if (slot == GP_ACTORS) {
+                gp_acc[GP_NACTORS]++;
+            }
+            GP(slot, G_RunEntity(ent));
+        } else {
+            G_RunEntity(ent);
         }
-        GP(slot, G_RunEntity(ent));
 #else
         G_RunEntity(ent);
 #endif
@@ -531,7 +536,12 @@ void G_RunFrame(int levelTime, int frameTime)
 
     try {
 #ifdef __vita__
-        const unsigned int gpFrameStart = sceKernelGetProcessTimeLow();
+        static cvar_t *gp_perflog;
+        if (!gp_perflog) {
+            gp_perflog = gi.Cvar_Get("r_vita_perflog", "0", 0);
+        }
+        gp_on = gp_perflog->integer;
+        const unsigned int gpFrameStart = gp_on ? sceKernelGetProcessTimeLow() : 0;
 #endif
         g_iInThinks = 0;
 
@@ -684,8 +694,10 @@ void G_RunFrame(int levelTime, int frameTime)
         // Process any pending events that got posted during the script code
         GP(GP_EVENTS, L_ProcessPendingEvents());
 #ifdef __vita__
-        gp_acc[GP_TOTAL] += sceKernelGetProcessTimeLow() - gpFrameStart;
-        G_VitaProfFrame();
+        if (gp_on) {
+            gp_acc[GP_TOTAL] += sceKernelGetProcessTimeLow() - gpFrameStart;
+            G_VitaProfFrame();
+        }
 #endif
 
         // show how many traces the game code is doing

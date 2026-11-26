@@ -33,9 +33,16 @@ enum {
 };
 
 extern unsigned int gp_acc[GP_COUNT];
+// r_vita_perflog, read once a server frame: off (the players' default), GP() costs nothing
+// (it read the clock twice per entity and per actor think step, every frame)
+extern int          gp_on;
 
 #define GP(slot, stmt) \
     do { \
+        if (!gp_on) { \
+            stmt; \
+            break; \
+        } \
         unsigned int _gpT = sceKernelGetProcessTimeLow(); \
         stmt; \
         gp_acc[slot] += sceKernelGetProcessTimeLow() - _gpT; \
