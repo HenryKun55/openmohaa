@@ -95,6 +95,20 @@ def screenshot(pid, path):
     return False
 
 
+TITLE_FPS = re.compile(r"\| (\d+) FPS \(")
+
+
+def title_fps(pid):
+    """Vita3K's own frame rate from its window title: works with the perf log off (the
+    players' setting), when the game writes no timings."""
+    try:
+        t = subprocess.run([winid_tool(), str(pid), "title"], capture_output=True, text=True, timeout=10).stdout
+        m = TITLE_FPS.search(t)
+        return float(m.group(1)) if m else None
+    except (subprocess.SubprocessError, OSError):
+        return None
+
+
 def kill_vita3k():
     subprocess.run(["pkill", "-9", "-f", f"Vita3K.app.*-r {TITLE}"], capture_output=True)
     time.sleep(1)
@@ -135,8 +149,9 @@ def summarize(samples):
     frames = [v for kind, v in samples if kind == "frame" and v.get("frame", 0) > 0]
     rts = [v for kind, v in samples if kind == "rt" and v.get("3d", 0) > 0]
     rt2s = [v for kind, v in samples if kind == "rt2"]
+    titles = [v for kind, v in samples if kind == "title"]
     if not frames:
-        return None
+        return {"title_fps": mean(titles, "fps")} if titles else None
     frame_ms = mean(frames, "frame")
     out = {
         "fps": round(1000.0 / frame_ms, 1) if frame_ms else None,
@@ -150,6 +165,7 @@ def summarize(samples):
         "rt_swap": mean(rts, "swap"),
         "batches": mean(rts, "batches"),
         "samples": len(frames),
+        "title_fps": mean(titles, "fps"),
     }
     for key in ("tess:skel", "draw:skel", "draw:static", "draw:other"):
         out[key] = mean(rts, key)
@@ -191,6 +207,7 @@ def run_scenario(name, sc, profile, sets, outdir, early=None):
             t_launch = time.time()
             pos, t0, retry = 0, None, False
             samples = []  # (seconds since in game, kind, values)
+            last_title = 0.0
             last_end = max(w["to"] for w in sc["windows"])
             shots = {w["name"]: False for w in sc["windows"]}
             while True:
@@ -226,6 +243,11 @@ def run_scenario(name, sc, profile, sets, outdir, early=None):
                         break
                     continue
                 elapsed = now - t0
+                if now - last_title >= 1.0:
+                    last_title = now
+                    fps = title_fps(proc.pid)
+                    if fps is not None:
+                        samples.append((elapsed, "title", {"fps": fps}))
                 for w in sc["windows"]:
                     if not shots[w["name"]] and elapsed >= w["to"]:
                         shots[w["name"]] = True
@@ -259,7 +281,7 @@ def run_scenario(name, sc, profile, sets, outdir, early=None):
     return result
 
 
-COLUMNS = [("fps", "FPS"), ("frame_ms", "frame"), ("worst_ms", "worst"), ("main_sv", "sv"), ("main_cl", "cl"),
+COLUMNS = [("title_fps", "Vita3K FPS"), ("fps", "FPS"), ("frame_ms", "frame"), ("worst_ms", "worst"), ("main_sv", "sv"), ("main_cl", "cl"),
            ("rthread", "rthread"), ("rt_3d", "3d"), ("batches", "draws"), ("tess:skel", "skin"),
            ("draw:static", "static"), ("draw:other", "other")]
 
@@ -294,7 +316,9 @@ def main():
         if n not in scenarios:
             sys.exit(f"unknown scenario '{n}' (have: {', '.join(scenarios)})")
     sets = dict(s.split("=", 1) for s in args.set)
-    sets.setdefault("r_vita_perflog", "1")  # the timings come from the perf log
+    # the timings come from the perf log; --set r_vita_perflog=0 measures as players play
+    # (Vita3K FPS column only)
+    sets.setdefault("r_vita_perflog", "1")
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
     outdir = args.out or os.path.join(os.path.dirname(REPO), "openmohaa-bench-results", stamp)
     os.makedirs(outdir, exist_ok=True)

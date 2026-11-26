@@ -1,11 +1,14 @@
 import CoreGraphics
 import Foundation
-// prints the window id of the first on-screen window whose owner PID is argv[1]
+// prints the window id of the first on-screen window whose owner PID is argv[1];
+// with "title" as argv[2], its title instead (Vita3K shows its FPS there)
 let pid = Int32(CommandLine.arguments[1])!
+let wantTitle = CommandLine.arguments.count > 2 && CommandLine.arguments[2] == "title"
 let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as! [[String: Any]]
 for w in list {
     if (w[kCGWindowOwnerPID as String] as? Int32) == pid, (w[kCGWindowLayer as String] as? Int) == 0,
        let b = w[kCGWindowBounds as String] as? [String: Any], (b["Height"] as? Double ?? 0) > 300 {
-        print(w[kCGWindowNumber as String] as! Int); break
+        if wantTitle { print(w[kCGWindowName as String] as? String ?? "") } else { print(w[kCGWindowNumber as String] as! Int) }
+        break
     }
 }
