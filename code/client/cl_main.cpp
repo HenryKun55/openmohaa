@@ -1318,6 +1318,13 @@ CL_Connect
 void CL_Connect( const char *server, netadrtype_t family ) {
 	const char *serverString;
 
+#if defined(__vita__)
+	// a remote server needs the sockets, which stay off in the campaigns
+	if ( Q_stricmp( server, "localhost" ) && !CL_VitaNetEnsure() ) {
+		return;
+	}
+#endif
+
 	// save arguments for reconnect
 	switch(family)
 	{

@@ -2628,6 +2628,33 @@ void UI_DeactiveFloatingWindows(void)
     uWinMan.DeactiveFloatingWindows();
 }
 
+#if defined(__vita__)
+/*
+====================
+CL_VitaNetEnsure
+
+The sockets are off while the campaigns run (net_ip.c). Brings the Vita's network up
+and turns them on, or shows the Wi-Fi notice and returns qfalse. Used by the
+multiplayer menus and by connect, which can be typed before any menu was opened.
+====================
+*/
+qboolean CL_VitaNetEnsure(void)
+{
+    if (!Sys_VitaNetUp()) {
+        extern void CL_VitaNotice_Multiplayer(void);
+        CL_VitaNotice_Multiplayer();
+        return qfalse;
+    }
+    if (!Cvar_VariableIntegerValue("net_enabled")) {
+        Cvar_Set("net_enabled", "1");
+        // NET_Config directly, not "net_restart" through the command buffer: connect
+        // calls this while its own arguments are still being read.
+        NET_Config(qtrue);
+    }
+    return qtrue;
+}
+#endif
+
 /*
 ====================
 UI_PushMenu
@@ -2643,14 +2670,8 @@ void UI_PushMenu(const char *name)
     // multiplayer menus brings the Vita's network up and turns them on, or says Wi-Fi is
     // needed.
     if (!str::icmp(name, "multiplayer") || !str::icmp(name, "dm_main")) {
-        if (!Sys_VitaNetUp()) {
-            extern void CL_VitaNotice_Multiplayer(void);
-            CL_VitaNotice_Multiplayer();
+        if (!CL_VitaNetEnsure()) {
             return;
-        }
-        if (!Cvar_VariableIntegerValue("net_enabled")) {
-            Cvar_Set("net_enabled", "1");
-            Cbuf_ExecuteText(EXEC_NOW, "net_restart\n");
         }
     }
 #elif defined(__SWITCH__)

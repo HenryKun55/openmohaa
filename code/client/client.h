@@ -542,6 +542,9 @@ void CL_AddReliableCommand(const char *cmd, qboolean isDisconnectCmd);
 void CL_StartHunkUsers( qboolean rendererOnly );
 
 void CL_Connect( const char *server, netadrtype_t family );
+#if defined(__vita__)
+qboolean CL_VitaNetEnsure( void );
+#endif
 
 void CL_Disconnect_f (void);
 void CL_GetChallengePacket (void);
