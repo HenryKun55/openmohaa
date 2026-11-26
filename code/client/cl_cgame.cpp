@@ -1164,7 +1164,10 @@ void CL_FirstSnapshot( void ) {
 	}
 #ifdef __vita__
 	// marks the start of play for the test tools (tools/vita-bench)
-	Com_Printf( "[VITA] in game: %s at %d ms\n", Cvar_VariableString( "mapname" ), Sys_Milliseconds() );
+	// server time: minus "[VITA] level spawned at server time" (sv_init.c) = how long the
+	// level ran before the player got in
+	Com_Printf( "[VITA] in game: %s at %d ms, server time %d ms\n", Cvar_VariableString( "mapname" ), Sys_Milliseconds(),
+		cl.snap.serverTime );
 #endif
 
 #ifdef USE_MUMBLE

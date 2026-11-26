@@ -991,6 +991,11 @@ void SV_SpawnServer( const char *server, qboolean loadgame, qboolean restart, qb
 
 	iEnd = Sys_Milliseconds();
 	Com_Printf( "------ Server Initialization Complete ------ %5.2f seconds\n", ( float )iEnd / 1000.0f );
+#ifdef __vita__
+	// with "[VITA] in game ... level time" (cl_cgame.cpp): how far the level ran before
+	// the player got in
+	Com_Printf( "[VITA] level spawned at server time %d ms\n", svs.time );
+#endif
 
 	UI_LoadResource( "*143" );
 
