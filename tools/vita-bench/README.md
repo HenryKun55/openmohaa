@@ -13,7 +13,9 @@ a screenshot of the game window at the end of each window.
 
 Needs: the vpk unzipped into Vita3K's `ux0/app/OMHA00001`, the game data in
 `ux0/data/openmohaa` (`main`, and `mainta` / `maintt` for the expansion scenarios), and
-`r_vita_perflog 1` in its config. Paths: `VITA3K_BIN`, `VITA3K_UX0`.
+Paths: `VITA3K_BIN`, `VITA3K_UX0`. The run turns `r_vita_perflog` on and puts
+`configs/omconfig.cfg` back as it was afterwards. Profiles: `vita` (calibrated, 333 MHz),
+`vita200` (CPU at 200 MHz, harsher than the device), `host`.
 
 `VITA3K_STDOUT=<file>` keeps the emulator's log, which has the module load addresses
 ("Loaded module segment 0 @") needed to symbolize a `VITA3K_PROFILE` guest profile of

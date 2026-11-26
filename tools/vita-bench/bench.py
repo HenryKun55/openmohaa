@@ -54,12 +54,17 @@ BOOT_LOG = os.path.join(MAIN, "boot.log")
 TEST_CFG = os.path.join(MAIN, "vita_test.cfg")
 EARLY_CFG = os.path.join(MAIN, "vita_test_early.cfg")  # read before the video starts
 GAME_CHOICE = os.path.join(DATA, "vita_game.txt")
+# the game saves archived cvars here on exit: kept aside during a run and put back after,
+# so a --set of an archived cvar (r_vita_perflog=1) never stays in the config
+CONFIG = os.path.join(MAIN, "configs", "omconfig.cfg")
 TITLE = "OMHA00001"
 
 # Speed profiles: environment for the Vita3K fork. "vita" is calibrated against a PS Vita
 # 1000 at the default clocks (README.md, CALIBRATION).
 PROFILES = {
     "vita": {"VITA3K_CPU_MHZ": "333", "VITA3K_CORES": "3", "VITA3K_GPU_SCALE": "37"},
+    # harsher than the device: CPU bottlenecks show up first
+    "vita200": {"VITA3K_CPU_MHZ": "200", "VITA3K_CORES": "3", "VITA3K_GPU_SCALE": "37"},
     "host": {},
 }
 
@@ -289,16 +294,23 @@ def main():
         if n not in scenarios:
             sys.exit(f"unknown scenario '{n}' (have: {', '.join(scenarios)})")
     sets = dict(s.split("=", 1) for s in args.set)
+    sets.setdefault("r_vita_perflog", "1")  # the timings come from the perf log
     stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
     outdir = args.out or os.path.join(os.path.dirname(REPO), "openmohaa-bench-results", stamp)
     os.makedirs(outdir, exist_ok=True)
 
     results = []
+    saved_config = open(CONFIG, "rb").read() if os.path.exists(CONFIG) else None
     try:
         for n in names:
             results.append(run_scenario(n, scenarios[n], args.profile, sets, outdir, dict(e.split("=", 1) for e in args.early)))
     except KeyboardInterrupt:
         print("interrupted", flush=True)
+    finally:
+        kill_vita3k()
+        if saved_config is not None:
+            with open(CONFIG, "wb") as f:
+                f.write(saved_config)
     table = report(results)
     head = (f"# vita-bench {stamp}\n\nprofile {args.profile} {PROFILES[args.profile]}, set {sets}, "
             f"commit {subprocess.run(['git', '-C', REPO, 'rev-parse', '--short', 'HEAD'], capture_output=True, text=True).stdout.strip()}\n\n")
