@@ -1750,9 +1750,14 @@ const void	*RB_SwapBuffers( const void *data ) {
 	}
 
 
+#ifndef __vita__
+	// On the Vita this ran on every frame with no 3D view (menus, loading screens): a
+	// glFinish ends vitaGL's GXM scene and waits for the GPU to drain. vglSwapBuffers
+	// already paces the frames (r_vita_finish 1 brings a wait back, after the swap).
 	if ( !glState.finishCalled ) {
 		qglFinish();
 	}
+#endif
 
 	GLimp_LogComment( "***************** RB_SwapBuffers *****************\n\n\n" );
 

@@ -368,6 +368,36 @@ static const char *s_skin_frag_cg =
     "    return c;\n"
     "}\n";
 
+/* The same fragment shaders without alpha test. On the Vita's PowerVR GPU a shader that
+ * CONTAINS discard is treated as alpha-tested for every pixel it draws, even when the
+ * branch is never taken: the GPU loses its hidden surface removal and defers the depth
+ * write. Opaque surfaces (nearly all of them) use these. */
+static const char *s_skin_frag_src_opaque =
+    "#version 100\n"
+    "precision mediump float;\n"
+    "uniform sampler2D u_diffuse;\n"
+    "uniform vec4     u_fogColor;\n"
+    "uniform vec4     u_alphaTest;\n"
+    "varying vec4     v_tc;\n"
+    "varying vec4     v_lit;\n"
+    "void main(void) {\n"
+    "    vec4 c = texture2D(u_diffuse, v_tc.xy) * v_lit;\n"
+    "    c.a *= u_alphaTest.y;\n"
+    "    c.rgb = mix(u_fogColor.rgb, c.rgb, v_tc.z);\n"
+    "    gl_FragColor = c;\n"
+    "}\n";
+
+static const char *s_skin_frag_cg_opaque =
+    "uniform sampler2D u_diffuse;\n"
+    "uniform float4    u_fogColor;\n"
+    "uniform float4    u_alphaTest;\n"
+    "float4 main(float4 v_tc : TEXCOORD0, float4 v_lit : TEXCOORD1) : COLOR {\n"
+    "    float4 c = tex2D(u_diffuse, v_tc.xy) * v_lit;\n"
+    "    c.a *= u_alphaTest.y;\n"
+    "    c.rgb = lerp(u_fogColor.rgb, c.rgb, v_tc.z);\n"
+    "    return c;\n"
+    "}\n";
+
 /* vgl* attribute indices — must match the vglBindAttribLocation calls. */
 #define ATTR_W0       0
 #define ATTR_W1       1
@@ -453,7 +483,11 @@ static int                  s_skin_cache_count = 1;
 static skelSurfaceGame_t *s_hash_key[VITA_SKIN_HASH_SIZE];
 static int                s_hash_slot[VITA_SKIN_HASH_SIZE];
 
-static unsigned int        s_skin_program = 0;
+/* [0]: opaque (no discard), [1]: alpha-tested. r_vita_skin_opaque 0 uses [1] for all. */
+#define VITA_SKIN_PROGS 2
+static unsigned int        s_skin_programs[VITA_SKIN_PROGS];
+static int                 s_skin_bound_prog = -1;
+cvar_t                    *r_vita_skin_opaque = NULL;
 /* The skin program stays bound across consecutive GPU-skinned surfaces (the surface
  * list is sorted by shader, so they usually come in runs); R_VitaGpuSkin_Unbind puts
  * program 0 back before any fixed-function draw. */
@@ -464,18 +498,20 @@ void R_VitaGpuSkin_Unbind(void)
     if (s_skin_program_bound) {
         glUseProgram(0);
         s_skin_program_bound = qfalse;
+        s_skin_bound_prog    = -1;
         if (vp_on) vp_rt[VPR_SKIN_UNBIND]++;
     }
 }
 static qboolean            s_skin_ready   = qfalse;
-static int                 s_loc_data = -1, s_loc_diffuse = -1, s_loc_fogColor = -1, s_loc_alphaTest = -1;
+static int                 s_loc_data[VITA_SKIN_PROGS], s_loc_diffuse[VITA_SKIN_PROGS],
+                           s_loc_fogColor[VITA_SKIN_PROGS], s_loc_alphaTest[VITA_SKIN_PROGS];
 /* u_data: the vertex uniforms of one draw, uploaded in one call (see the vertex shader) */
 #define VITA_SKIN_DATA_BONES       20
 #define VITA_SKIN_DATA_VECS        116
 static float               s_vdata[VITA_SKIN_DATA_VECS * 4];
 /* The fragment uniforms stay in the program between draws: set them only on change. */
-static qboolean            s_fragCacheValid = qfalse;
-static float               s_lastFogColor[4], s_lastAlphaTest[4];
+static qboolean            s_fragCacheValid[VITA_SKIN_PROGS];
+static float               s_lastFogColor[VITA_SKIN_PROGS][4], s_lastAlphaTest[VITA_SKIN_PROGS][4];
 
 cvar_t *r_vita_gpu_skinning = NULL;
 
@@ -555,27 +591,11 @@ void R_VitaGpuSkin_EndFrame(void)
     s_uboUsed    = 0;
 }
 
-void R_VitaGpuSkin_Init(void)
+/* Compiles and links one skin program: alpha 1 = with alpha test (discard), 0 = opaque.
+ * Uses the CG pair with the uniform buffer when s_skinUbo, else the GLSL pair. */
+static unsigned int VitaSkin_BuildProgram(int alpha)
 {
-    r_vita_gpu_skinning = ri.Cvar_Get("r_vita_gpu_skinning", "0", CVAR_ARCHIVE);
-    r_vita_skin_ubo     = ri.Cvar_Get("r_vita_skin_ubo", "1", CVAR_ARCHIVE | CVAR_LATCH);
-
-    /* Only compile when enabled at boot: linking this program crashes on real
-     * hardware (2026-09-23, right after "skin.frag compile OK"; fine in Vita3K),
-     * so with the cvar off at init nothing here may run. */
-    if (!r_vita_gpu_skinning->integer) {
-        return;
-    }
-    if (s_skin_ready) {
-        return;
-    }
-
-    {
-        int maxVec = 0;
-        glGetIntegerv(0x8DFB /* GL_MAX_VERTEX_UNIFORM_VECTORS */, &maxVec);
-        glGetError();
-        ri.Printf(PRINT_ALL, "[VITA-SKIN] GL_MAX_VERTEX_UNIFORM_VECTORS=%d (shader uses 116)\n", maxVec);
-    }
+    unsigned int vs, fs;
     /* vitaGL's default VGL_MODE_POSTPONED makes glCompileShader only store the source
      * and compiles in glLinkProgram. But vglBindAttribLocation must run BEFORE the link
      * and looks the names up in the compiled program: with nothing compiled yet it called
@@ -583,41 +603,19 @@ void R_VitaGpuSkin_Init(void)
      * silently failed, leaving the vertex program NULL). Compile this pair immediately
      * (SHADER_PAIR: vertex then fragment, as done here), then restore the default. */
     vglSetSemanticBindingMode(VGL_MODE_SHADER_PAIR_ENUM);
-    unsigned int vs = 0, fs = 0;
-    s_skinUbo = qfalse;
-    if (r_vita_skin_ubo->integer) {
-        for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
-            s_uboRing[i] = (float *)VitaSkin_GpuAlloc(sizeof(float) * 4 * VITA_SKIN_UBO_VECS);
-            if (!s_uboRing[i]) {
-                extern unsigned int vglMemFree(int type);
-                ri.Printf(PRINT_ALL, "[VITA-SKIN] no memory for uniform buffer %d of %d KB (free KB: vram %u ram %u slow %u)\n", i,
-                          (int)(sizeof(float) * 4 * VITA_SKIN_UBO_VECS / 1024), vglMemFree(VGL_MEM_VRAM_TYPE) / 1024,
-                          vglMemFree(VGL_MEM_RAM_TYPE) / 1024, vglMemFree(VGL_MEM_SLOW_TYPE) / 1024);
-                break;
-            }
-            if (i == VITA_SKIN_MORPH_FRAMES - 1) s_skinUbo = qtrue;
-        }
-        if (s_skinUbo) {
-            vs = VitaSkin_CompileStage(GL_CG_VERTEX_SHADER_EXT, s_skin_vert_cg, "skin.vert (cg, uniform buffer)");
-            fs = vs ? VitaSkin_CompileStage(GL_CG_FRAGMENT_SHADER_EXT, s_skin_frag_cg, "skin.frag (cg)") : 0;
-            if (!fs) {
-                if (vs) glDeleteShader(vs);
-                vs        = 0;
-                s_skinUbo = qfalse;
-            }
-        }
-        if (!s_skinUbo) {
-            for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
-                if (s_uboRing[i]) vglFree(s_uboRing[i]);
-                s_uboRing[i] = NULL;
-            }
-        }
-    }
-    if (!s_skinUbo) {
+    if (s_skinUbo) {
+        vs = VitaSkin_CompileStage(GL_CG_VERTEX_SHADER_EXT, s_skin_vert_cg, "skin.vert (cg, uniform buffer)");
+        fs = vs ? VitaSkin_CompileStage(GL_CG_FRAGMENT_SHADER_EXT, alpha ? s_skin_frag_cg : s_skin_frag_cg_opaque,
+                                        alpha ? "skin.frag (cg)" : "skin.frag (cg, opaque)") : 0;
+    } else {
         vs = VitaSkin_CompileStage(GL_VERTEX_SHADER, s_skin_vert_src, "skin.vert");
-        if (!vs) { vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
-        fs = VitaSkin_CompileStage(GL_FRAGMENT_SHADER, s_skin_frag_src, "skin.frag");
-        if (!fs) { glDeleteShader(vs); vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM); return; }
+        fs = vs ? VitaSkin_CompileStage(GL_FRAGMENT_SHADER, alpha ? s_skin_frag_src : s_skin_frag_src_opaque,
+                                        alpha ? "skin.frag" : "skin.frag (opaque)") : 0;
+    }
+    if (!fs) {
+        if (vs) glDeleteShader(vs);
+        vglSetSemanticBindingMode(VGL_MODE_POSTPONED_ENUM);
+        return 0;
     }
 
     unsigned int prog = glCreateProgram();
@@ -644,21 +642,86 @@ void R_VitaGpuSkin_Init(void)
         int  len = 0;
         glGetProgramInfoLog(prog, sizeof(log), &len, log);
         log[sizeof(log) - 1] = 0;
-        ri.Printf(PRINT_ALL, "[VITA-SKIN] program link FAILED:\n%s\n", log);
+        ri.Printf(PRINT_ALL, "[VITA-SKIN] program link FAILED (%s):\n%s\n", alpha ? "alpha" : "opaque", log);
         glDeleteProgram(prog);
         glDeleteShader(vs);
         glDeleteShader(fs);
-        return;
+        return 0;
     }
     glDeleteShader(vs);
     glDeleteShader(fs);
 
-    s_skin_program   = prog;
-    s_loc_data       = glGetUniformLocation(prog, "u_data");
-    s_loc_diffuse    = glGetUniformLocation(prog, "u_diffuse");
-    s_loc_fogColor   = glGetUniformLocation(prog, "u_fogColor");
-    s_loc_alphaTest  = glGetUniformLocation(prog, "u_alphaTest");
-    s_fragCacheValid = qfalse;
+    s_loc_data[alpha]       = glGetUniformLocation(prog, "u_data");
+    s_loc_diffuse[alpha]    = glGetUniformLocation(prog, "u_diffuse");
+    s_loc_fogColor[alpha]   = glGetUniformLocation(prog, "u_fogColor");
+    s_loc_alphaTest[alpha]  = glGetUniformLocation(prog, "u_alphaTest");
+    s_fragCacheValid[alpha] = qfalse;
+    return prog;
+}
+
+void R_VitaGpuSkin_Init(void)
+{
+    r_vita_gpu_skinning = ri.Cvar_Get("r_vita_gpu_skinning", "0", CVAR_ARCHIVE);
+    r_vita_skin_ubo     = ri.Cvar_Get("r_vita_skin_ubo", "1", CVAR_ARCHIVE | CVAR_LATCH);
+    /* 1: opaque surfaces use the program without discard (PowerVR hidden surface removal) */
+    r_vita_skin_opaque  = ri.Cvar_Get("r_vita_skin_opaque", "1", 0);
+
+    /* Only compile when enabled at boot: linking this program crashes on real
+     * hardware (2026-09-23, right after "skin.frag compile OK"; fine in Vita3K),
+     * so with the cvar off at init nothing here may run. */
+    if (!r_vita_gpu_skinning->integer) {
+        return;
+    }
+    if (s_skin_ready) {
+        return;
+    }
+
+    {
+        int maxVec = 0;
+        glGetIntegerv(0x8DFB /* GL_MAX_VERTEX_UNIFORM_VECTORS */, &maxVec);
+        glGetError();
+        ri.Printf(PRINT_ALL, "[VITA-SKIN] GL_MAX_VERTEX_UNIFORM_VECTORS=%d (shader uses 116)\n", maxVec);
+    }
+    /* vitaGL's default VGL_MODE_POSTPONED makes glCompileShader only store the source
+     * and compiles in glLinkProgram. But vglBindAttribLocation must run BEFORE the link
+     * and looks the names up in the compiled program: with nothing compiled yet it called
+     * sceGxmProgramFindParameterByName(NULL) (data abort on hardware; in Vita3K it
+     * silently failed, leaving the vertex program NULL). Compile this pair immediately
+     * (SHADER_PAIR: vertex then fragment, as done here), then restore the default. */
+    s_skinUbo = qfalse;
+    if (r_vita_skin_ubo->integer) {
+        for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
+            s_uboRing[i] = (float *)VitaSkin_GpuAlloc(sizeof(float) * 4 * VITA_SKIN_UBO_VECS);
+            if (!s_uboRing[i]) {
+                extern unsigned int vglMemFree(int type);
+                ri.Printf(PRINT_ALL, "[VITA-SKIN] no memory for uniform buffer %d of %d KB (free KB: vram %u ram %u slow %u)\n", i,
+                          (int)(sizeof(float) * 4 * VITA_SKIN_UBO_VECS / 1024), vglMemFree(VGL_MEM_VRAM_TYPE) / 1024,
+                          vglMemFree(VGL_MEM_RAM_TYPE) / 1024, vglMemFree(VGL_MEM_SLOW_TYPE) / 1024);
+                break;
+            }
+            if (i == VITA_SKIN_MORPH_FRAMES - 1) s_skinUbo = qtrue;
+        }
+    }
+
+    /* the alpha-tested program first: it is the one every surface can fall back to */
+    unsigned int progAlpha = VitaSkin_BuildProgram(1);
+    if (!progAlpha && s_skinUbo) {
+        /* no CG with the uniform buffer: the GLSL program with plain uniforms */
+        s_skinUbo = qfalse;
+        progAlpha = VitaSkin_BuildProgram(1);
+    }
+    if (!s_skinUbo) {
+        for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
+            if (s_uboRing[i]) vglFree(s_uboRing[i]);
+            s_uboRing[i] = NULL;
+        }
+    }
+    if (!progAlpha) {
+        return;
+    }
+    s_skin_programs[1] = progAlpha;
+    s_skin_programs[0] = VitaSkin_BuildProgram(0); /* 0 if it fails: the alpha one draws all */
+    s_skin_bound_prog  = -1;
     if (!VitaSkin_AllocMorphBuffers()) {
         ri.Printf(PRINT_WARNING, "[VITA-SKIN] no memory for the morph buffers: GPU skinning off\n");
         return;
@@ -666,18 +729,20 @@ void R_VitaGpuSkin_Init(void)
     s_skin_ready     = qtrue;
 
     ri.Printf(PRINT_ALL,
-        "[VITA-SKIN] program LINK OK, prog=%u (vgl* pipeline, %s) "
+        "[VITA-SKIN] program LINK OK, opaque=%u alpha=%u (vgl* pipeline, %s) "
         "data=%d diffuse=%d\n",
-        prog, s_skinUbo ? "uniform buffer" : "uniforms", s_loc_data, s_loc_diffuse);
+        s_skin_programs[0], s_skin_programs[1], s_skinUbo ? "uniform buffer" : "uniforms",
+        s_loc_data[1], s_loc_diffuse[1]);
 }
 
 void R_VitaGpuSkin_Shutdown(void)
 {
     R_VitaGpuSkin_LevelReset();
-    if (s_skin_program) {
-        glDeleteProgram(s_skin_program);
-        s_skin_program = 0;
+    for (int p = 0; p < VITA_SKIN_PROGS; p++) {
+        if (s_skin_programs[p]) glDeleteProgram(s_skin_programs[p]);
+        s_skin_programs[p] = 0;
     }
+    s_skin_bound_prog = -1;
     if (s_morphZero) vglFree(s_morphZero);
     s_morphZero = NULL;
     for (int i = 0; i < VITA_SKIN_MORPH_FRAMES; i++) {
@@ -1428,9 +1493,12 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
 
     if (!s_skin_err_traced) glGetError(); /* clear any pre-existing error so checks below are ours */
 
-    if (!s_skin_program_bound || !s_skin_err_traced) {
-        glUseProgram(s_skin_program);                                SKIN_GLCHK("glUseProgram");
+    /* opaque surfaces take the program without discard (see s_skin_frag_cg_opaque) */
+    const int pi = (alphaTestMode || !s_skin_programs[0] || !r_vita_skin_opaque->integer) ? 1 : 0;
+    if (!s_skin_program_bound || s_skin_bound_prog != pi || !s_skin_err_traced) {
+        glUseProgram(s_skin_programs[pi]);                           SKIN_GLCHK("glUseProgram");
         s_skin_program_bound = qtrue;
+        s_skin_bound_prog    = pi;
     }
     /* Header of u_data; the bones follow per batch below. */
     memcpy(&s_vdata[0 * 4], mvp, sizeof(mvp));
@@ -1444,17 +1512,17 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
         memcpy(&s_vdata[12 * 4], lOrg, numLights * 4 * sizeof(float));
         memcpy(&s_vdata[16 * 4], lCol, numLights * 4 * sizeof(float));
     }
-    if (!s_fragCacheValid || memcmp(s_lastFogColor, fogColor, sizeof(fogColor))) {
-        glUniform4fv(s_loc_fogColor, 1, fogColor);
-        memcpy(s_lastFogColor, fogColor, sizeof(fogColor));
+    if (!s_fragCacheValid[pi] || memcmp(s_lastFogColor[pi], fogColor, sizeof(fogColor))) {
+        glUniform4fv(s_loc_fogColor[pi], 1, fogColor);
+        memcpy(s_lastFogColor[pi], fogColor, sizeof(fogColor));
     }
-    if (!s_fragCacheValid || memcmp(s_lastAlphaTest, alphaTest, sizeof(alphaTest))) {
-        glUniform4fv(s_loc_alphaTest, 1, alphaTest);
-        memcpy(s_lastAlphaTest, alphaTest, sizeof(alphaTest));
+    if (!s_fragCacheValid[pi] || memcmp(s_lastAlphaTest[pi], alphaTest, sizeof(alphaTest))) {
+        glUniform4fv(s_loc_alphaTest[pi], 1, alphaTest);
+        memcpy(s_lastAlphaTest[pi], alphaTest, sizeof(alphaTest));
     }
-    if (!s_fragCacheValid) {
-        glUniform1i(s_loc_diffuse, 0);                               SKIN_GLCHK("uniform diffuse");
-        s_fragCacheValid = qtrue;
+    if (!s_fragCacheValid[pi]) {
+        glUniform1i(s_loc_diffuse[pi], 0);                           SKIN_GLCHK("uniform diffuse");
+        s_fragCacheValid[pi] = qtrue;
     }                                                                SKIN_GLCHK("uniform fog/alpha");
 
     /* vgl* pipeline, copy-less: attributes and indices come straight from the
@@ -1492,7 +1560,7 @@ qboolean R_VitaGpuSkin_DrawSurf(void *sfV, void *tikiV, void *skelmodelV, void *
             sceGxmSetVertexUniformBuffer(gxm_context, 0, data);
             s_uboUsed += vecs;                                       SKIN_GLCHK("uniform buffer");
         } else {
-            glUniform4fv(s_loc_data, vecs, s_vdata);                 SKIN_GLCHK("uniform data");
+            glUniform4fv(s_loc_data[pi], vecs, s_vdata);                 SKIN_GLCHK("uniform data");
         }
         for (a = 0; a < ATTR_COUNT; a++) {
             vglVertexAttribPointerMapped(a, be->attr[a]);

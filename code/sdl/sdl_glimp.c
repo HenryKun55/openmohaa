@@ -584,6 +584,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder, qbool
 			s_vitaWidth  = mode == 1 ? 720 : 960;
 			s_vitaHeight = mode == 1 ? 408 : 544;
 			ri.Printf( PRINT_ALL, "[VITA] render resolution %dx%d\n", s_vitaWidth, s_vitaHeight );
+			/* vitaGL's garbage collector thread may run on any core by default, the render
+			 * thread's (core 1) included: keep it on core 2 with the game's server thread,
+			 * which leaves the most room. Must be set before vglInit*. */
+			{
+				extern void vglSetupGarbageCollector( int priority, int affinity );
+				vglSetupGarbageCollector( 0x10000100, 0x40000 /* SCE_KERNEL_CPU_MASK_USER_2 */ );
+			}
 			vglInitExtended( 4 * 1024 * 1024, s_vitaWidth, s_vitaHeight, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_NONE );
 			vglStarted = qtrue;
 		}
