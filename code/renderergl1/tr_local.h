@@ -1046,6 +1046,12 @@ typedef struct cStaticModelUnpacked_s {
     float cull_radius;
     int iGridLighting;
     float lodpercentage[2];
+#ifdef __vita__
+    // world position of the model's centre: constant, computed the first frame it is
+    // looked at (the array comes zeroed from the hunk) instead of every frame
+    qboolean vitaHasWorldOrigin;
+    vec3_t   vitaWorldOrigin;
+#endif
 } cStaticModelUnpacked_t;
 
 extern	void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])(void *);

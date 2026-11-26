@@ -331,16 +331,35 @@ void R_AddStaticModelSurfaces(void)
         tr.currentEntityNum = i;
         tr.shiftedEntityNum = i << QSORT_ENTITYNUM_SHIFT;
 
+#ifndef __vita__
         R_RotateForStaticModel(SM, &tr.viewParms, &tr.ori);
+#endif
 
         ofsStaticData = 0;
 
         // get the world position
         tiki_scale = tiki->load_scale * SM->scale;
         VectorScale(tiki->load_origin, tiki_scale, tiki_localorigin);
+#ifdef __vita__
+        // Most static models are off screen: the world position is cached and the
+        // model matrix is built only for the ones that pass the sphere cull.
+        if (!SM->vitaHasWorldOrigin) {
+            R_RotateForStaticModel(SM, &tr.viewParms, &tr.ori);
+            R_LocalPointToWorld(tiki_localorigin, SM->vitaWorldOrigin);
+            SM->vitaHasWorldOrigin = qtrue;
+        }
+        VectorCopy(SM->vitaWorldOrigin, tiki_worldorigin);
+#else
         R_LocalPointToWorld(tiki_localorigin, tiki_worldorigin);
+#endif
 
         iRadiusCull = R_CullPointAndRadius(tiki_worldorigin, SM->cull_radius);
+#ifdef __vita__
+        if (iRadiusCull == CULL_OUT && !(r_showcull->integer & 8)) {
+            continue;
+        }
+        R_RotateForStaticModel(SM, &tr.viewParms, &tr.ori);
+#endif
 
         if (r_showcull->integer & 8) {
             switch (iRadiusCull) {
