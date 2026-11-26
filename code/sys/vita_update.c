@@ -41,6 +41,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <curl/curl.h>
 #include <openssl/sha.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+#include <openssl/x509.h>
 
 #include <pthread.h>
 #include <stdarg.h>
@@ -268,9 +271,12 @@ static size_t VU_Header(char *line, size_t size, size_t n, void *user)
     return size * n;
 }
 
-// The certificate list, read once with sceIo and handed to curl in memory. The vdpm
-// OpenSSL 3 build fails to open "app0:cacert.pem" by itself on the console (curl 77, "error
-// adding trust anchors"; Vita3K opened it fine): only sceIo touches the file now.
+// The certificate list. On the console, OpenSSL's PEM reader fails on cacert.pem (curl 77:
+// "error adding trust anchors", BIO_new "malloc failure" inside PEM_read_bio_ex, from v0.6 on,
+// with the rebuilt SDK; Vita3K reads it fine, and the heap, BIO_new and the locks all work
+// when tried alone). So OpenSSL never reads PEM here: the file is read with sceIo, its
+// base64 blocks decoded by the game, and each certificate handed over as DER (d2i_X509,
+// no BIO) straight into the connection's store, through curl's SSL_CTX callback.
 static char  *s_caBlob;
 static size_t s_caLen;
 
@@ -289,15 +295,98 @@ static void VU_LoadCA(void)
     size = sceIoLseek(fd, 0, SCE_SEEK_END);
     sceIoLseek(fd, 0, SCE_SEEK_SET);
     if (size > 0 && size < 4 * 1024 * 1024) {
-        char *buf = (char *)malloc((size_t)size);
+        char *buf = (char *)malloc((size_t)size + 1);
         if (buf && sceIoRead(fd, buf, (SceSize)size) == (int)size) {
-            s_caBlob = buf;
-            s_caLen  = (size_t)size;
+            buf[size] = 0;
+            s_caBlob  = buf;
+            s_caLen   = (size_t)size;
         } else {
             free(buf);
         }
     }
     sceIoClose(fd);
+}
+
+static int VU_B64Value(int ch)
+{
+    if (ch >= 'A' && ch <= 'Z') return ch - 'A';
+    if (ch >= 'a' && ch <= 'z') return ch - 'a' + 26;
+    if (ch >= '0' && ch <= '9') return ch - '0' + 52;
+    if (ch == '+') return 62;
+    if (ch == '/') return 63;
+    return -1;
+}
+
+// Decodes base64 from src up to end (whitespace skipped, stops at '='); returns the length.
+static int VU_B64Decode(const char *src, const char *end, unsigned char *out, int outMax)
+{
+    unsigned int acc  = 0;
+    int          bits = 0, n = 0;
+
+    for (; src < end && *src != '='; src++) {
+        const int v = VU_B64Value((unsigned char)*src);
+        if (v < 0) {
+            continue;
+        }
+        acc = (acc << 6) | (unsigned int)v;
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            if (n >= outMax) {
+                return -1;
+            }
+            out[n++] = (unsigned char)(acc >> bits);
+        }
+    }
+    return n;
+}
+
+// Every certificate of cacert.pem into the store; returns how many went in.
+static int VU_AddCertificates(X509_STORE *store)
+{
+    static const char begin[] = "-----BEGIN CERTIFICATE-----";
+    static const char endTag[] = "-----END CERTIFICATE-----";
+    static unsigned char der[16 * 1024];
+    const char          *p = s_caBlob;
+    int                  added = 0;
+
+    while (p && (p = strstr(p, begin)) != NULL) {
+        const char          *body = p + sizeof(begin) - 1;
+        const char          *stop = strstr(body, endTag);
+        const unsigned char *q;
+        X509                *x;
+        int                  len;
+
+        if (!stop) {
+            break;
+        }
+        len = VU_B64Decode(body, stop, der, sizeof(der));
+        q   = der;
+        x   = len > 0 ? d2i_X509(NULL, &q, len) : NULL;
+        if (x) {
+            if (X509_STORE_add_cert(store, x)) {
+                added++;
+            }
+            X509_free(x);
+        }
+        p = stop + sizeof(endTag) - 1;
+    }
+    ERR_clear_error(); // duplicates in the list are not a problem
+    return added;
+}
+
+static CURLcode VU_SslCtx(CURL *c, void *sslctx, void *parm)
+{
+    static int logged;
+    const int  added = VU_AddCertificates(SSL_CTX_get_cert_store((SSL_CTX *)sslctx));
+
+    (void)c;
+    (void)parm;
+    if (!logged) {
+        logged = 1;
+        VU_Log("certificates: %d from %s", added, CA_FILE);
+    }
+    return added > 0 ? CURLE_OK : CURLE_SSL_CACERT_BADFILE;
 }
 
 static CURL *VU_Curl(char *errbuf)
@@ -312,12 +401,10 @@ static CURL *VU_Curl(char *errbuf)
     curl_easy_setopt(c, CURLOPT_USERAGENT, USER_AGENT);
     VU_LoadCA();
     if (s_caBlob) {
-        struct curl_blob blob;
-        blob.data  = s_caBlob;
-        blob.len   = s_caLen;
-        blob.flags = CURL_BLOB_NOCOPY; // s_caBlob lives as long as the game
-        curl_easy_setopt(c, CURLOPT_CAINFO_BLOB, &blob);
-        curl_easy_setopt(c, CURLOPT_CAINFO, NULL);  // no default file on top of it
+        // no CA file for OpenSSL to read: the certificates come from VU_SslCtx
+        curl_easy_setopt(c, CURLOPT_CAINFO, NULL);
+        curl_easy_setopt(c, CURLOPT_CAPATH, NULL);
+        curl_easy_setopt(c, CURLOPT_SSL_CTX_FUNCTION, VU_SslCtx);
     } else {
         curl_easy_setopt(c, CURLOPT_CAINFO, CA_FILE);
     }

@@ -25,6 +25,7 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
     ${SOURCE_DIR}/sys/vita_update.c
     ${SOURCE_DIR}/sys/vita_net.c
     ${SOURCE_DIR}/sys/vita_ime.c
+    ${SOURCE_DIR}/sys/vita_rwlock.c
     ${SOURCE_DIR}/sys/vita_bootui.c
     ${SOURCE_DIR}/sys/vita_corepp_shims.cpp
     # Custom dlopen wrapping sceKernelLoadStartModule for .suprx — used
@@ -263,6 +264,14 @@ function(package_vita_vpk)
     # negative SceNet error for a host name on some systems (Vita3K), which curl takes for
     # "an IP address" and then refuses GitHub's certificate.
     target_link_options(${CLIENT_BINARY} PRIVATE -Wl,--wrap=inet_pton)
+    # pthread rwlocks without kernel objects (sys/vita_rwlock.c): OpenSSL makes one per
+    # certificate and ran out of them on the console (update check, from v0.6 on)
+    target_link_options(${CLIENT_BINARY} PRIVATE
+        -Wl,--wrap=pthread_rwlock_init -Wl,--wrap=pthread_rwlock_destroy
+        -Wl,--wrap=pthread_rwlock_rdlock -Wl,--wrap=pthread_rwlock_wrlock
+        -Wl,--wrap=pthread_rwlock_tryrdlock -Wl,--wrap=pthread_rwlock_trywrlock
+        -Wl,--wrap=pthread_rwlock_timedrdlock -Wl,--wrap=pthread_rwlock_timedwrlock
+        -Wl,--wrap=pthread_rwlock_unlock)
     # vita-elf-create appends the SCE module data (~5 KB, more with every import) at the end
     # of the code segment, and the data segment starts at the next 64 KB boundary: when the
     # code happened to end less than that before it, packaging failed ("Cannot allocate N
