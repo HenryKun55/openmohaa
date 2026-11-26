@@ -275,6 +275,22 @@ for pkg in zlib bzip2 libpng libjpeg-turbo \
 done
 ```
 
+### vitaGL and libmad, rebuilt
+
+Two of those packages do not work for this port as vdpm ships them, and both fail without
+an error in the game: the vitaGL package lacks the `vgl*` pipeline the GPU skinning draws
+with (no soldiers, no weapon in hand), and the libmad package uses 8-bit enums (no MP3
+music or ambience). Rebuild both, once after the packages and again after any
+`vdpm vitaGL` / `vdpm libmad`:
+
+```sh
+misc/vita/sdk_libs.sh
+```
+
+It builds the pinned vitaGL with `ENABLE_LEGACY_PIPELINE=1` and the repo's libmad with
+32-bit enums, and keeps the replaced files as `*.vdpm`. The build checks both and stops
+with a pointer to the script when they are wrong.
+
 ### librt stub
 
 vitasdk does not ship `librt` (POSIX realtime — `clock_gettime` lives

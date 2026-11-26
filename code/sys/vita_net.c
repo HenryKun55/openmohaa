@@ -16,6 +16,7 @@
  */
 #include <psp2/net/net.h>
 #include <psp2/net/netctl.h>
+#include <sys/socket.h> // AF_INET, AF_INET6 (__wrap_inet_pton)
 
 #define VITA_NET_POOL (1024 * 1024)
 
@@ -67,4 +68,24 @@ qboolean Sys_VitaNetUp(void)
     up = qtrue;
     Com_Printf("Sys_VitaNetUp: network up\n");
     return qtrue;
+}
+
+/*
+inet_pton as POSIX has it, for curl (linked with --wrap=inet_pton, cmake/platforms/vita.cmake).
+For text that is not an address, libc's inet_pton passes on sceNetInetPton's result, which
+is a negative error on some systems (Vita3K) instead of 0. curl decides whether the server
+is named by an IP address with a plain non-zero test (vtls get_peer_type), so the update
+check compared api.github.com with the certificate's IP addresses and refused it:
+"no alternative certificate subject name matches target ipv4 address 'api.github.com'".
+*/
+int __real_inet_pton(int af, const char *src, void *dst);
+
+int __wrap_inet_pton(int af, const char *src, void *dst)
+{
+    const int res = __real_inet_pton(af, src, dst);
+
+    if (res < 0 && (af == AF_INET || af == AF_INET6)) {
+        return 0; // not an address of that family
+    }
+    return res;
 }

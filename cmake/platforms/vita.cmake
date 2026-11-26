@@ -155,6 +155,29 @@ add_link_options(
 # pthread again at the very end so the static link resolves it whatever pulled in first.
 set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lstdc++ -lpthread")
 
+# Two vdpm packages are unusable as shipped; misc/vita/sdk_libs.sh rebuilds them. Checked
+# here because both fail silently in the game: no animated models (vitaGL without its vgl*
+# pipeline, used by the GPU skinning) or no MP3 sound (libmad with 8-bit enums).
+find_library(VITA_VITAGL_LIB vitaGL)
+find_library(VITA_LIBMAD_LIB mad)
+if(VITA_VITAGL_LIB)
+    execute_process(COMMAND ${CMAKE_NM} -g --defined-only ${VITA_VITAGL_LIB}
+        OUTPUT_VARIABLE _vita_vitagl_syms ERROR_QUIET)
+    if(NOT _vita_vitagl_syms MATCHES "legacy_vertex_attrib_config")
+        message(FATAL_ERROR "${VITA_VITAGL_LIB} was built without ENABLE_LEGACY_PIPELINE: "
+            "the GPU-skinned models (soldiers, the weapon in hand) would not be drawn. "
+            "Run misc/vita/sdk_libs.sh, then configure again.")
+    endif()
+endif()
+if(VITA_LIBMAD_LIB)
+    execute_process(COMMAND ${VITASDK}/bin/arm-vita-eabi-readelf -A ${VITA_LIBMAD_LIB}
+        OUTPUT_VARIABLE _vita_libmad_attrs ERROR_QUIET)
+    if(_vita_libmad_attrs MATCHES "Tag_ABI_enum_size: small")
+        message(FATAL_ERROR "${VITA_LIBMAD_LIB} uses 8-bit enums (-fshort-enums): every MP3 "
+            "would fail to open. Run misc/vita/sdk_libs.sh, then configure again.")
+    endif()
+endif()
+
 # vitasdk libraries OpenMoHAA links against. The renderer pulls in vitaGL
 # (OpenGL ES wrapper to GXM) plus the shader compiler, the Sce* stubs are
 # the platform syscall trampolines that vita-elf-create resolves later.
@@ -234,6 +257,17 @@ function(package_vita_vpk)
     if(NOT TARGET ${CLIENT_BINARY})
         return()
     endif()
+
+    # curl's inet_pton calls go through __wrap_inet_pton (sys/vita_net.c): libc's returns a
+    # negative SceNet error for a host name on some systems (Vita3K), which curl takes for
+    # "an IP address" and then refuses GitHub's certificate.
+    target_link_options(${CLIENT_BINARY} PRIVATE -Wl,--wrap=inet_pton)
+    # vita-elf-create appends the SCE module data (~5 KB, more with every import) at the end
+    # of the code segment, and the data segment starts at the next 64 KB boundary: when the
+    # code happened to end less than that before it, packaging failed ("Cannot allocate N
+    # bytes for SCE data at end of segment 0; segment 1 overlaps"). The vitasdk linker
+    # script leaves __sce_headroom bytes free there.
+    target_link_options(${CLIENT_BINARY} PRIVATE -Wl,--defsym=__sce_headroom=0x4000)
 
     set(ELF_FILE $<TARGET_FILE:${CLIENT_BINARY}>)
     set(VELF_FILE ${CMAKE_BINARY_DIR}/${CLIENT_BINARY}.velf)

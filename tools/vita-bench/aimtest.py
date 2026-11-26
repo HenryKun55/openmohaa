@@ -54,7 +54,8 @@ def summary():
     best = lambda k: max(float(v.get(k, 0)) for v in vals)
     near = [v for v in vals if v.get("nearest", "-1") != "-1"]
     print(f"[AIM] enemies<={best('enemies'):.0f} eligible<={best('eligible'):.0f} cone<={best('cone'):.0f} "
-          f"visible<={best('visible'):.0f} lines-with-nearest={len(near)} | totals: {lines[-1].split('frames=')[1].strip()}")
+          f"visible<={best('visible'):.0f} lines-with-nearest={len(near)} | totals: "
+          f"{[l for l in lines if 'encoded=' in l][-1].split('frames=')[1].strip() if any('encoded=' in l for l in lines) else '-'}")
 
 
 def main():
@@ -63,6 +64,7 @@ def main():
     ap.add_argument("--map", default="training")
     ap.add_argument("--levelcmd", default="god; notarget; spawn Actor model models/human/german_wehrmact_soldier.tik")
     ap.add_argument("--touch", default=DEFAULT_TOUCH, help="vita_touch_test swipes")
+    ap.add_argument("--debug", default="2", help="vita_aim_debug (0: no overlay)")
     ap.add_argument("--steps", default=DEFAULT_STEPS,
                     help="comma list: shot:<name> key:<S|I|J|K|L>:<ms> drag:x0:y0:x1:y1:ms (after focus) focus wait:<ms>")
     args = ap.parse_args()
@@ -80,7 +82,7 @@ def main():
             f.write("0\n")
         with open(bench.TEST_CFG, "w") as f:
             f.write("set thereisnomonkey 1\nset cheats 1\n")
-            f.write('set vita_aim_debug "2"\nset vita_touch_debug "1"\n')  # 2: [AIM] lines in boot.log
+            f.write(f'set vita_aim_debug "{args.debug}"\nset vita_touch_debug "1"\n')  # 2: [AIM] lines in boot.log
             f.write(f'set vita_touch_test "{args.touch}"\n')
             f.write("set vita_autocontinue 1\n")
             f.write(f'set vita_levelcmd "{args.levelcmd}"\n')
