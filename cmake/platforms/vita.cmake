@@ -24,6 +24,7 @@ list(APPEND SYSTEM_PLATFORM_SOURCES
     # New version check / download (the install is done by misc/vita/updater).
     ${SOURCE_DIR}/sys/vita_update.c
     ${SOURCE_DIR}/sys/vita_net.c
+    ${SOURCE_DIR}/sys/vita_ime.c
     ${SOURCE_DIR}/sys/vita_bootui.c
     ${SOURCE_DIR}/sys/vita_corepp_shims.cpp
     # Custom dlopen wrapping sceKernelLoadStartModule for .suprx — used

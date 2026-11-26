@@ -33,8 +33,46 @@ UIField::UIField()
     m_iPreStep = 0;
 }
 
+#ifdef __vita__
+// The Vita has no keyboard: pressing a text field opens the system's on-screen
+// keyboard (sys/vita_ime.c), and this field takes its text when it is confirmed.
+static UIField *s_imeField;
+
+UIField::~UIField()
+{
+    if (s_imeField == this) {
+        s_imeField = NULL;
+        Sys_VitaIme_Release();
+    }
+}
+
+static void UIField_VitaImeTake(UIField *field, EditField &edit, const str &cvarname)
+{
+    char text[EDITFIELD_BUFSIZE];
+    int  res = Sys_VitaIme_Poll(text, sizeof(text));
+
+    if (res == 0) {
+        return; // still typing
+    }
+    s_imeField = NULL;
+    if (res < 0) {
+        return; // cancelled: the field keeps its text
+    }
+    Q_strncpyz(edit.m_buffer, text, sizeof(edit.m_buffer));
+    edit.m_cursor = strlen(edit.m_buffer);
+    if (cvarname.length()) {
+        uii.Cvar_Set(cvarname, edit.m_buffer);
+    }
+}
+#endif
+
 void UIField::Draw(void)
 {
+#ifdef __vita__
+    if (s_imeField == this) {
+        UIField_VitaImeTake(this, m_edit, m_cvarname);
+    }
+#endif
     UpdateData();
 
     // the width of the widget that can be filled with valid text
@@ -305,6 +343,14 @@ void UIField::UpdateData(void)
 
 void UIField::Pressed(Event *ev)
 {
+#ifdef __vita__
+    if (!Sys_VitaIme_Active()) {
+        UpdateData();
+        if (Sys_VitaIme_Open("", m_edit.m_buffer, EDITFIELD_BUFSIZE - 1)) {
+            s_imeField = this;
+        }
+    }
+#endif
     float xpos  = ev->GetFloat(1);
     float point = (xpos - m_frame.pos.x) / getVirtualScale()[0];
     point       = Q_max(point, 0.0f); // added in 2.15

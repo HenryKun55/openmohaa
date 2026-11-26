@@ -38,6 +38,9 @@ private:
 
 public:
     UIField();
+#ifdef __vita__
+    ~UIField();
+#endif
 
     void UpdateData(void) override;
     void Pressed(Event *ev);

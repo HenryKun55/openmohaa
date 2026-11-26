@@ -1635,6 +1635,14 @@ void IN_Frame( void )
 	else
 		IN_ActivateMouse( cls.glconfig.isFullscreen );
 
+#ifdef __vita__
+	if ( Sys_VitaIme_Active( ) ) {
+		// the on-screen keyboard has the buttons and the touch screen: drop what the game
+		// would read (sys/vita_ime.c)
+		SDL_PumpEvents( );
+		SDL_FlushEvents( SDL_FIRSTEVENT, SDL_LASTEVENT );
+	} else
+#endif
 	IN_ProcessEvents( );
 
 	// Set event time for next frame to earliest possible time an event could happen

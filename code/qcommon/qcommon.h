@@ -1308,6 +1308,10 @@ void SV_VitaAimTarget( int clientNum, const vec3_t eye, const vec3_t angles, flo
                        qboolean (*snapshotVisible)( int ), struct vitaAimTarget_s *target );
 void Com_WriteConfiguration( void );
 qboolean FS_VitaConfigPerCampaign( void );
+qboolean Sys_VitaIme_Open( const char *title, const char *initial, int maxLen );	// on-screen keyboard (vita_ime.c)
+int      Sys_VitaIme_Poll( char *out, int outLen );	// 0 open, 1 text in out, -1 cancelled
+qboolean Sys_VitaIme_Active( void );
+void     Sys_VitaIme_Release( void );
 qboolean Sys_VitaNetUp( void );	// the Vita's network for sockets, started once (sys_vita.c)	// Vita settings > System > Settings per campaign (files.cpp)
 #endif
 void SV_PacketEvent( netadr_t from, msg_t *msg );
