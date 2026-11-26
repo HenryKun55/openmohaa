@@ -58,6 +58,8 @@ static cvar_t *vita_touch_accel_strength;
 static cvar_t *vita_touch_smoothing;
 static cvar_t *vita_touch_debug;
 static int vita_touch_contact = -1;
+void CL_VitaAimDebugPadSample( int x, int y );
+void CL_VitaAimDebugTouchSample( int dx, int dy, int mouseX, int mouseY );
 #endif
 
 static cvar_t *in_joystick          = NULL;
@@ -866,6 +868,10 @@ static void IN_GamepadMove( void )
 	}
 
 	// set translated axes
+#ifdef __vita__
+	CL_VitaAimDebugPadSample( stick_state.oldaaxes[SDL_CONTROLLER_AXIS_RIGHTX],
+	                         stick_state.oldaaxes[SDL_CONTROLLER_AXIS_RIGHTY] );
+#endif
 	if (in_joystickUseAnalog->integer)
 	{
 		for (i = 0; i < MAX_JOYSTICK_AXIS; i++)
@@ -1090,13 +1096,21 @@ static void IN_JoyMove( void )
 #if defined(__vita__) || defined(__SWITCH__)
 #ifdef __vita__
 #include <psp2/touch.h>
+// Private SDL mouse device ID for front-panel look events.
+#define VITA_FRONT_TOUCH_MOUSE_ID (SDL_TOUCH_MOUSEID - 1u)
 #endif
 /* Relative mouse motion for Vita touch aim and the console menu cursor. */
-static int IN_PushMotion( int xrel, int yrel )
+static int IN_PushMotion( int xrel, int yrel, qboolean frontTouch )
 {
 	SDL_Event ev;
 	SDL_memset( &ev, 0, sizeof(ev) );
 	ev.type = SDL_MOUSEMOTION;
+#ifdef __vita__
+	if ( frontTouch )
+		ev.motion.which = VITA_FRONT_TOUCH_MOUSE_ID;
+#else
+	(void)frontTouch;
+#endif
 	ev.motion.xrel = xrel;
 	ev.motion.yrel = yrel;
 	return SDL_PushEvent( &ev );
@@ -1110,6 +1124,7 @@ static void IN_VitaTouchDebug( const char *status, int reports, int dx, int dy, 
 	const int motion = outX || outY;
 	int now;
 
+	CL_VitaAimDebugTouchSample( dx, dy, outX, outY );
 	if ( !vita_touch_debug->integer )
 		return;
 
@@ -1241,7 +1256,7 @@ static void IN_VitaTouchAim( void )
 
 	if ( outX || outY )
 	{
-		const int pushed = IN_PushMotion( outX, outY );
+		const int pushed = IN_PushMotion( outX, outY, qtrue );
 		IN_VitaTouchDebug( pushed == 1 ? "SDL motion queued" : "SDL motion dropped",
 			data.reportNum, dx, dy, outX, outY );
 	}
@@ -1291,7 +1306,7 @@ static void IN_VitaPollTouch( void )
 	if ( !dx && !dy )
 		return;
 
-	IN_PushMotion( dx, dy );
+	IN_PushMotion( dx, dy, qfalse );
 }
 #endif /* __vita__ || __SWITCH__ */
 
@@ -1406,6 +1421,12 @@ static void IN_ProcessEvents( void )
 				{
 					if( !e.motion.xrel && !e.motion.yrel )
 						break;
+#ifdef __vita__
+					if ( e.motion.which == VITA_FRONT_TOUCH_MOUSE_ID ) {
+						Com_QueueEvent( in_eventTime, SE_VITA_TOUCH_MOUSE, e.motion.xrel, e.motion.yrel, 0, NULL );
+						break;
+					}
+#endif
 					Com_QueueEvent( in_eventTime, SE_MOUSE, e.motion.xrel, e.motion.yrel, 0, NULL );
 				}
 				break;

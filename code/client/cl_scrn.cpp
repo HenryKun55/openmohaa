@@ -705,6 +705,12 @@ void UpdateStereoSide( stereoFrame_t s ) {
 	}
 	UI_Update();
 
+#ifdef __vita__
+	// All gameplay and HUD widgets have submitted their draws for this frame.
+	extern void CL_VitaAimDebugDraw( void );
+	CL_VitaAimDebugDraw();
+#endif
+
 #ifdef __SWITCH__
 	/* Draw the dev-menu overlay at the very top, AFTER UI_Update() composites
 	 * the game view + HUD + UI. Inside SCR_DrawScreenField it was rendered

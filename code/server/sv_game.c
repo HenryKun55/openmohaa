@@ -37,6 +37,21 @@ int numDebugStrings;
 
 static int modelUserCount[ MAX_MODELS ];
 
+#ifdef __vita__
+#include "../qcommon/vita_aim_assist.h"
+
+// The client samples targets after input dispatch, before SV_Frame starts the game worker.
+void SV_VitaAimTarget( int clientNum, const vec3_t eye, const vec3_t angles, float radiusTangent,
+                       qboolean (*snapshotVisible)( int ), struct vitaAimTarget_s *target ) {
+	if ( sv.state == SS_GAME && ge && ge->VitaAimTarget && clientNum >= 0 && clientNum < svs.iNumClients ) {
+		ge->VitaAimTarget( SV_GentityNum( clientNum ), eye, angles, radiusTangent, snapshotVisible, target );
+	} else if ( target->debug ) {
+		target->debug->stage = sv.state != SS_GAME ? VITA_AIM_NO_SERVER :
+		                       !ge || !ge->VitaAimTarget ? VITA_AIM_NO_GAME_EXPORT : VITA_AIM_BAD_SLOT;
+	}
+}
+#endif
+
 void SV_GameError( const char *string ) {
 	Com_Error( ERR_DROP, "%s", string );
 }

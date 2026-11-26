@@ -1300,7 +1300,12 @@ void SV_Shutdown( const char *finalmsg );
 void SV_SetFrameNumber(int frameNumber);
 void SV_Frame( int msec );
 #ifdef __vita__
+void CL_VitaTouchEvent( int dx, int dy, int time );
+void CL_VitaPrepareAimAssist( int msec );
 void SV_VitaJoinGame( void );	// waits for the game frames on the server thread (sv_main.c)
+struct vitaAimTarget_s;
+void SV_VitaAimTarget( int clientNum, const vec3_t eye, const vec3_t angles, float radiusTangent,
+                       qboolean (*snapshotVisible)( int ), struct vitaAimTarget_s *target );
 void Com_WriteConfiguration( void );
 qboolean FS_VitaConfigPerCampaign( void );
 qboolean Sys_VitaNetUp( void );	// the Vita's network for sockets, started once (sys_vita.c)	// Vita settings > System > Settings per campaign (files.cpp)
@@ -1359,7 +1364,10 @@ typedef enum {
 	SE_MOUSE,	// evValue and evValue2 are reletive signed x / y moves
 	SE_JOYSTICK_AXIS,	// evValue is an axis number and evValue2 is the current state (-127 to 127)
 	SE_CONSOLE,	// evPtr is a char*
-	SE_PACKET	// evPtr is a netadr_t followed by data bytes to evPtrLength
+	SE_PACKET,	// evPtr is a netadr_t followed by data bytes to evPtrLength
+#ifdef __vita__
+	SE_VITA_TOUCH_MOUSE, // front-touch deltas use the normal mouse input path
+#endif
 } sysEventType_t;
 
 typedef struct {

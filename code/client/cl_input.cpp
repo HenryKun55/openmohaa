@@ -23,6 +23,36 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "client.h"
 #include "cl_ui.h"
+#ifdef __vita__
+#include "../qcommon/vita_aim_assist.h"
+
+static int vitaTouchX, vitaTouchY;
+static struct {
+	vitaAimTarget_t target;
+	vitaAimLook_t touch, stick;
+	float radius, engagement, friction, magnetism;
+	vitaAimRotationLimits_t rotationLimits;
+	int rotational, sampledMessage, preferredEntity, idleMsec;
+} vitaAim;
+static cvar_t *vita_aim_assist, *vita_aim_friction, *vita_aim_radius;
+static cvar_t *vita_aim_magnetism, *vita_aim_rotational;
+static cvar_t *vita_aim_magnetism_gain, *vita_aim_rotational_cap, *vita_aim_rotational_rate;
+static cvar_t *vita_aim_debug;
+extern qboolean CL_VitaPerfMenu_IsActive( void );
+
+struct VitaAimDebugFrame {
+	vitaAimDebug_t game;
+	const char *status;
+	int touchX, touchY, stickX, stickY, rawTouchX, rawTouchY, emittedX, emittedY, padX, padY;
+	int target, serverId;
+	vitaAimLook_t touch, stick, before, final, wire;
+};
+static VitaAimDebugFrame vitaDebugFrame, vitaDebugLastLook;
+static bool vitaDebugActive, vitaDebugHaveLook;
+static unsigned vitaDebugFrames, vitaDebugQueries, vitaDebugSelected, vitaDebugApplied, vitaDebugEncoded;
+static unsigned vitaDebugStickOnly, vitaDebugStickOnlyEncoded;
+static int vitaDebugRawTouchX, vitaDebugRawTouchY, vitaDebugEmittedX, vitaDebugEmittedY, vitaDebugPadX, vitaDebugPadY;
+#endif
 
 unsigned	frame_msec;
 int			old_com_frameTime;
@@ -486,6 +516,247 @@ void CL_JoystickEvent( int axis, int value, int time ) {
 	cl.joystickAxis[axis] = value;
 }
 
+#ifdef __vita__
+extern "C" void CL_VitaAimDebugPadSample( int x, int y ) {
+	if ( vita_aim_debug && vita_aim_debug->integer ) {
+		vitaDebugPadX = x;
+		vitaDebugPadY = y;
+	}
+}
+
+extern "C" void CL_VitaAimDebugTouchSample( int dx, int dy, int mouseX, int mouseY ) {
+	if ( vita_aim_debug && vita_aim_debug->integer ) {
+		vitaDebugRawTouchX = dx;
+		vitaDebugRawTouchY = dy;
+		vitaDebugEmittedX = mouseX;
+		vitaDebugEmittedY = mouseY;
+	}
+}
+
+static bool CL_VitaDebugHasInput( const VitaAimDebugFrame& sample ) {
+	return sample.touchX || sample.touchY || sample.stickX || sample.stickY ||
+	       sample.rawTouchX || sample.rawTouchY || sample.padX || sample.padY;
+}
+
+static bool CL_VitaAimDebugInGame( void ) {
+	return clc.state == CA_ACTIVE && cl.snap.valid && cge && !server_loading;
+}
+
+void CL_VitaTouchEvent( int dx, int dy, int time ) {
+	CL_MouseEvent( dx, dy, time );
+	if ( !in_guimouse && !paused->integer ) {
+		vitaTouchX += dx;
+		vitaTouchY += dy;
+	}
+}
+
+static qboolean CL_VitaAimSnapshotVisible( int entityNum ) {
+	// Packet entities are sorted by number in the snapshot ring.
+	int low = 0, high = cl.snap.numEntities;
+	if ( cl.parseEntitiesNum - cl.snap.parseEntitiesNum > MAX_PARSE_ENTITIES )
+		return qfalse;
+	while ( low < high ) {
+		const int mid = low + (high - low) / 2;
+		const entityState_t *ent = &cl.parseEntities[(cl.snap.parseEntitiesNum + mid) & (MAX_PARSE_ENTITIES - 1)];
+		if ( ent->number == entityNum )
+			return ent->modelindex && ent->alpha > 0.0f && !(ent->eFlags & EF_DEAD) &&
+			       !(ent->renderfx & (RF_DONTDRAW | RF_SKYENTITY | RF_SHADOW_PLANE)) ? qtrue : qfalse;
+		if ( ent->number < entityNum )
+			low = mid + 1;
+		else
+			high = mid;
+	}
+	return qfalse;
+}
+
+static const char *CL_VitaAssistBlock( void ) {
+	const playerState_t& ps = cl.snap.ps;
+	if ( VitaAimSetting( vita_aim_assist->value, 1.0f, 1.0f ) < 1.0f ) return "assist off";
+	if ( clc.state != CA_ACTIVE || !cl.snap.valid || !cge ) return "waiting for gameplay snapshot";
+	if ( !NET_IsLocalAddress( clc.serverAddress ) ) return "non-local server";
+	if ( clc.demoplaying ) return "demo playback";
+	if ( Key_GetCatcher() ) return "key catcher active";
+	if ( in_guimouse ) return "GUI mouse active";
+	if ( paused->integer ) return "game paused";
+	if ( UI_MenuActive() ) return "game UI menu active";
+	if ( CL_VitaPerfMenu_IsActive() ) return "Vita settings active";
+	if ( ps.pm_type != PM_NORMAL ) return "player movement mode";
+	if ( ps.stats[STAT_HEALTH] <= 0 ) return "player health";
+	if ( (ps.stats[STAT_CINEMATIC] & 1) ||
+	     (ps.pm_flags & (PMF_CAMERA_VIEW | PMF_FROZEN | PMF_INTERMISSION | PMF_TURRET)) )
+		return "camera/player flags";
+	return nullptr;
+}
+
+static void CL_VitaInitAimSettings( void ) {
+	if ( !vita_aim_assist ) {
+		const bool configured = Cvar_FindVar( "vita_aim_assist" ) || Cvar_FindVar( "vita_aim_friction" ) ||
+		                        Cvar_FindVar( "vita_aim_radius" ) || Cvar_FindVar( "vita_aim_magnetism" ) ||
+		                        Cvar_FindVar( "vita_aim_rotational" );
+		const auto& recommended = vitaAimPresets[VITA_AIM_STRONG];
+		vita_aim_assist = Cvar_Get( "vita_aim_assist", "1", CVAR_ARCHIVE );
+		vita_aim_friction = Cvar_Get( "vita_aim_friction", configured ? "0.35" : va("%g", recommended.friction), CVAR_ARCHIVE );
+		vita_aim_radius = Cvar_Get( "vita_aim_radius", configured ? "7.0" : va("%g", recommended.radius), CVAR_ARCHIVE );
+		vita_aim_magnetism = Cvar_Get( "vita_aim_magnetism", "0", CVAR_ARCHIVE );
+		vita_aim_magnetism_gain = Cvar_Get( "vita_aim_magnetism_gain",
+		                                   configured ? "-1" : va("%g", recommended.magnetism), CVAR_ARCHIVE );
+		vita_aim_rotational = Cvar_Get( "vita_aim_rotational", configured ? "0" : "1", CVAR_ARCHIVE );
+		vita_aim_rotational_cap = Cvar_Get( "vita_aim_rotational_cap",
+		                                   configured ? "0.12" : va("%g", recommended.rotation.perCommand), CVAR_ARCHIVE );
+		vita_aim_rotational_rate = Cvar_Get( "vita_aim_rotational_rate",
+		                                    configured ? "6" : va("%g", recommended.rotation.perSecond), CVAR_ARCHIVE );
+		vita_aim_debug = Cvar_Get( "vita_aim_debug", "0", CVAR_TEMP | CVAR_NORESTART );
+		Cvar_CheckRange( vita_aim_assist, 0.0f, 1.0f, qfalse );
+		Cvar_CheckRange( vita_aim_friction, 0.0f, VITA_AIM_MAX_FRICTION, qfalse );
+		Cvar_CheckRange( vita_aim_radius, 0.0f, VITA_AIM_MAX_RADIUS, qfalse );
+		Cvar_CheckRange( vita_aim_magnetism, 0.0f, 1.0f, qfalse );
+		Cvar_CheckRange( vita_aim_magnetism_gain, -1.0f, VITA_AIM_MAX_MAGNETISM, qfalse );
+		Cvar_CheckRange( vita_aim_rotational, 0.0f, 1.0f, qfalse );
+		Cvar_CheckRange( vita_aim_rotational_cap, 0.0f, VITA_AIM_MAX_ROTATION_CAP, qfalse );
+		Cvar_CheckRange( vita_aim_rotational_rate, 0.0f, VITA_AIM_MAX_ROTATION_RATE, qfalse );
+	}
+}
+
+static vitaAimPreset_t CL_VitaAimTuning( void ) {
+	return {
+		VitaAimSetting( vita_aim_friction->value, VITA_AIM_MAX_FRICTION, 0.35f ),
+		VitaAimSetting( vita_aim_radius->value, VITA_AIM_MAX_RADIUS, 7.0f ),
+		VitaAimMagnetismGain( vita_aim_magnetism_gain->value, vita_aim_magnetism->value ),
+		{VitaAimSetting( vita_aim_rotational_cap->value, VITA_AIM_MAX_ROTATION_CAP, 0.12f ),
+		 VitaAimSetting( vita_aim_rotational_rate->value, VITA_AIM_MAX_ROTATION_RATE, 6.0f )}
+	};
+}
+
+int CL_VitaAimPresetIndex( void ) {
+	CL_VitaInitAimSettings();
+	return VitaAimPresetIndex( CL_VitaAimTuning() );
+}
+
+void CL_VitaApplyAimPreset( int index ) {
+	if ( index < 0 || index >= VITA_AIM_PRESET_COUNT )
+		return;
+	CL_VitaInitAimSettings();
+	const auto& preset = vitaAimPresets[index];
+	Cvar_SetValue( "vita_aim_friction", preset.friction );
+	Cvar_SetValue( "vita_aim_radius", preset.radius );
+	Cvar_SetValue( "vita_aim_magnetism_gain", preset.magnetism );
+	Cvar_SetValue( "vita_aim_rotational_cap", preset.rotation.perCommand );
+	Cvar_SetValue( "vita_aim_rotational_rate", preset.rotation.perSecond );
+}
+
+void CL_VitaPrepareAimAssist( int msec ) {
+	static float lastRadius, radiusTangent;
+	CL_VitaInitAimSettings();
+
+	if ( vita_aim_debug->integer ) {
+		if ( !vitaDebugActive ) {
+			vitaDebugHaveLook = false;
+			vitaDebugFrames = vitaDebugQueries = vitaDebugSelected = vitaDebugApplied = vitaDebugEncoded = 0;
+			vitaDebugStickOnly = vitaDebugStickOnlyEncoded = 0;
+		}
+		vitaDebugActive = true;
+		++vitaDebugFrames;
+		vitaDebugFrame = {};
+		vitaDebugFrame.status = "input pending";
+		vitaDebugFrame.game.playerTeam = vitaDebugFrame.game.enemyTeam = -1;
+		vitaDebugFrame.game.nearest = vitaDebugFrame.game.lastChecked = vitaDebugFrame.target = -1;
+		vitaDebugFrame.game.frictionMultiplier = 1.0f;
+		vitaDebugFrame.touchX = vitaTouchX;
+		vitaDebugFrame.touchY = vitaTouchY;
+		vitaDebugFrame.stickX = cl.joystickAxis[j_yaw_axis->integer];
+		vitaDebugFrame.stickY = cl.joystickAxis[j_pitch_axis->integer];
+		vitaDebugFrame.rawTouchX = vitaDebugRawTouchX;
+		vitaDebugFrame.rawTouchY = vitaDebugRawTouchY;
+		vitaDebugFrame.emittedX = vitaDebugEmittedX;
+		vitaDebugFrame.emittedY = vitaDebugEmittedY;
+		vitaDebugFrame.padX = vitaDebugPadX;
+		vitaDebugFrame.padY = vitaDebugPadY;
+		vitaDebugFrame.serverId = cl.serverId;
+	} else {
+		vitaDebugActive = false;
+	}
+	vitaDebugRawTouchX = vitaDebugRawTouchY = vitaDebugEmittedX = vitaDebugEmittedY = 0;
+	vitaDebugPadX = vitaDebugPadY = 0;
+	vitaAim.target = {};
+	if ( const char *block = CL_VitaAssistBlock() ) {
+		if ( vitaDebugActive ) vitaDebugFrame.status = block;
+		vitaTouchX = vitaTouchY = 0;
+		vitaAim.engagement = 0.0f;
+		return;
+	}
+	const bool looking =
+		(!in_strafe.active && (vitaTouchX || cl.joystickAxis[j_yaw_axis->integer])) ||
+		(!in_strafe.active && (in_mlooking || cl_freelook->integer) && vitaTouchY) ||
+		(!in_mlooking && cl.joystickAxis[j_pitch_axis->integer]);
+	if ( !looking ) {
+		if ( vitaDebugActive ) vitaDebugFrame.status = "no eligible look input";
+		// A slow drag can briefly produce no mouse counts. Keep the preference,
+		// then require a fresh sight check as soon as look input resumes.
+		vitaAim.idleMsec += msec > 0 ? (msec < 100 ? msec : 100) : 0;
+		if ( vitaAim.idleMsec >= 100 ) {
+			vitaAim.idleMsec = 100;
+			vitaAim.engagement = 0.0f;
+		}
+		return;
+	}
+	vitaAim.idleMsec = 0;
+	if ( Cvar_VariableIntegerValue( "cg_3rd_person" ) ) {
+		if ( vitaDebugActive ) vitaDebugFrame.status = "third person";
+		vitaAim.engagement = 0.0f;
+		return;
+	}
+
+	const auto tuning = CL_VitaAimTuning();
+	vitaAim.radius = tuning.radius;
+	vitaAim.friction = tuning.friction;
+	vitaAim.magnetism = tuning.magnetism;
+	vitaAim.rotationLimits = tuning.rotation;
+	vitaAim.rotational = VitaAimSetting( vita_aim_rotational->value, 1.0f, 0.0f ) >= 1.0f;
+	if ( vitaAim.radius == 0.0f || (vitaAim.friction == 0.0f && vitaAim.magnetism == 0.0f && !vitaAim.rotational) ) {
+		if ( vitaDebugActive ) vitaDebugFrame.status = "zero radius or all effects off";
+		vitaAim.engagement = 0.0f;
+		return;
+	}
+	if ( vitaAim.radius != lastRadius ) {
+		radiusTangent = tanf( DEG2RAD( vitaAim.radius ) );
+		lastRadius = vitaAim.radius;
+	}
+
+	vec3_t eye, angles;
+	cge->CG_EyePosition( &eye );
+	cge->CG_EyeAngles( &angles );
+	const int preferred = vitaAim.engagement > 0.0f ? vitaAim.preferredEntity : -1;
+	vitaAim.target.entityNum = preferred;
+	if ( vitaDebugActive ) {
+		++vitaDebugQueries;
+		vitaAim.target.debug = &vitaDebugFrame.game;
+	}
+	SV_VitaAimTarget( cl.snap.ps.clientNum, eye, angles, radiusTangent, CL_VitaAimSnapshotVisible, &vitaAim.target );
+	if ( vitaDebugActive ) {
+		switch ( vitaDebugFrame.game.stage ) {
+		case VITA_AIM_NO_SERVER:      vitaDebugFrame.status = "server not in game"; break;
+		case VITA_AIM_NO_GAME_EXPORT: vitaDebugFrame.status = "game export missing"; break;
+		case VITA_AIM_BAD_SLOT:       vitaDebugFrame.status = "invalid server client slot"; break;
+		case VITA_AIM_BAD_MODE:       vitaDebugFrame.status = "server mode is not single-player"; break;
+		case VITA_AIM_BAD_PLAYER:     vitaDebugFrame.status = "server player invalid"; break;
+		case VITA_AIM_BAD_STATE:      vitaDebugFrame.status = "server player state blocked"; break;
+		case VITA_AIM_BAD_TEAM:       vitaDebugFrame.status = "server player team invalid"; break;
+		case VITA_AIM_SCANNED:        vitaDebugFrame.status = "no visible target"; break;
+		}
+		if ( vitaAim.target.weight > 0.0f ) {
+			++vitaDebugSelected;
+			vitaDebugFrame.target = vitaAim.target.entityNum;
+			vitaDebugFrame.status = "target visible";
+		}
+	}
+	vitaAim.sampledMessage = cl.snap.messageNum;
+	vitaAim.engagement = vitaAim.target.weight > 0.0f
+		? VitaAimEngagement( vitaAim.target.entityNum == preferred ? vitaAim.engagement : 0.0f, msec )
+		: 0.0f;
+	vitaAim.preferredEntity = vitaAim.target.entityNum;
+}
+#endif
+
 /*
 =================
 CL_UpdateMouse
@@ -558,6 +829,10 @@ void CL_JoystickMove( usercmd_t *cmd ) {
 
 	if ( !in_strafe.active ) {
 		cl.viewangles[YAW] += anglespeed * yaw;
+#ifdef __vita__
+		if ( vitaAim.target.weight > 0.0f || vitaDebugActive )
+			vitaAim.stick.yaw = anglespeed * yaw;
+#endif
 		cmd->rightmove = ClampChar( cmd->rightmove + (int)right );
 	} else {
 		cl.viewangles[YAW] += anglespeed * right;
@@ -569,6 +844,10 @@ void CL_JoystickMove( usercmd_t *cmd ) {
 		cmd->forwardmove = ClampChar( cmd->forwardmove + (int)pitch );
 	} else {
 		cl.viewangles[PITCH] += anglespeed * pitch;
+#ifdef __vita__
+		if ( vitaAim.target.weight > 0.0f || vitaDebugActive )
+			vitaAim.stick.pitch = anglespeed * pitch;
+#endif
 		cmd->forwardmove = ClampChar( cmd->forwardmove + (int)forward );
 	}
 
@@ -597,6 +876,18 @@ void CL_MouseMove( usercmd_t *cmd ) {
 	}
 
 	cl.mouseIndex ^= 1;
+#ifdef __vita__
+	float touchShareX = 0.0f, touchShareY = 0.0f;
+	const bool debugOnly = vitaDebugActive && vitaAim.target.weight <= 0.0f;
+	const int touchX = debugOnly ? vitaDebugFrame.touchX : vitaTouchX;
+	const int touchY = debugOnly ? vitaDebugFrame.touchY : vitaTouchY;
+	if ( (vitaAim.target.weight > 0.0f || vitaDebugActive) && (touchX || touchY) ) {
+		const float filter = m_filter->integer ? 0.5f : 1.0f;
+		touchShareX = VitaAimTouchShare( filter * touchX, mx );
+		touchShareY = VitaAimTouchShare( filter * touchY, my );
+	}
+	vitaTouchX = vitaTouchY = 0;
+#endif
 	cl.mouseDx[cl.mouseIndex] = 0;
 	cl.mouseDy[cl.mouseIndex] = 0;
 
@@ -674,12 +965,21 @@ void CL_MouseMove( usercmd_t *cmd ) {
 	// add mouse X/Y movement to cmd
 	if(in_strafe.active)
 		cmd->rightmove = ClampChar(cmd->rightmove + m_side->value * mx);
-	else
+	else {
 		cl.viewangles[YAW] -= m_yaw->value * mx;
+#ifdef __vita__
+		if ( touchShareX > 0.0f )
+			vitaAim.touch.yaw = -m_yaw->value * mx * touchShareX;
+#endif
+	}
 
-	if ((in_mlooking || cl_freelook->integer) && !in_strafe.active)
+	if ((in_mlooking || cl_freelook->integer) && !in_strafe.active) {
 		cl.viewangles[PITCH] += m_pitch->value * my;
-	else
+#ifdef __vita__
+		if ( touchShareY > 0.0f )
+			vitaAim.touch.pitch = m_pitch->value * my * touchShareY;
+#endif
+	} else
 		cmd->forwardmove = ClampChar(cmd->forwardmove - m_forward->value * my);
 
 	if (!isfinite(cl.viewangles[PITCH]) || !isfinite(cl.viewangles[YAW])) {
@@ -784,11 +1084,36 @@ usercmd_t CL_CreateCmd( void ) {
 	// get basic movement from keyboard
 	CL_KeyMove( &cmd );
 
+#ifdef __vita__
+	vitaAim.touch = {};
+	vitaAim.stick = {};
+#endif
+
 	// get basic movement from mouse
 	CL_MouseMove( &cmd );
 
 	// get basic movement from joystick
 	CL_JoystickMove( &cmd );
+
+#ifdef __vita__
+	vitaAimLook_t correction = {};
+	const float baseYaw = cl.viewangles[YAW], basePitch = cl.viewangles[PITCH];
+	if ( vitaAim.target.weight > 0.0f &&
+	     (vitaAim.sampledMessage == cl.snap.messageNum || CL_VitaAimSnapshotVisible( vitaAim.target.entityNum )) ) {
+		const char *block = CL_VitaAssistBlock();
+		correction = VitaAimCorrection( !block, vitaAim.target, vitaAim.touch, vitaAim.stick,
+			vitaAim.radius, vitaAim.engagement, vitaAim.friction, vitaAim.magnetism,
+			vitaAim.rotational, cmd.rightmove / 127.0f, frame_msec, vitaAim.rotationLimits );
+		if ( vitaDebugActive && block )
+			vitaDebugFrame.status = block;
+		if ( correction.yaw != 0.0f )
+			cl.viewangles[YAW] += correction.yaw;
+		if ( correction.pitch != 0.0f )
+			cl.viewangles[PITCH] += correction.pitch;
+	} else if ( vitaDebugActive && vitaAim.target.weight > 0.0f ) {
+		vitaDebugFrame.status = "target lost in newer snapshot";
+	}
+#endif
 
 	// check to make sure the angles haven't wrapped
 	if ( cl.viewangles[PITCH] - oldAngles[PITCH] > 90 ) {
@@ -799,6 +1124,37 @@ usercmd_t CL_CreateCmd( void ) {
 
 	// store out the final values
 	CL_FinishMove( &cmd );
+#ifdef __vita__
+	if ( vitaDebugActive && CL_VitaAimDebugInGame() && vitaDebugFrame.serverId == cl.serverId ) {
+		vitaDebugFrame.touch = vitaAim.touch;
+		vitaDebugFrame.stick = vitaAim.stick;
+		vitaDebugFrame.game.strafe = cmd.rightmove / 127.0f;
+		const bool stickOnly = (vitaAim.stick.yaw != 0.0f || vitaAim.stick.pitch != 0.0f) &&
+		                       vitaAim.touch.yaw == 0.0f && vitaAim.touch.pitch == 0.0f;
+		if ( stickOnly )
+			++vitaDebugStickOnly;
+		vitaDebugFrame.before = {baseYaw - oldAngles[YAW], basePitch - oldAngles[PITCH]};
+		vitaDebugFrame.final = {cl.viewangles[YAW] - oldAngles[YAW], cl.viewangles[PITCH] - oldAngles[PITCH]};
+		vitaDebugFrame.wire = {
+			(float)SHORT2ANGLE( (short)(cmd.angles[YAW] - ANGLE2SHORT(oldAngles[YAW])) ),
+			(float)SHORT2ANGLE( (short)(cmd.angles[PITCH] - ANGLE2SHORT(oldAngles[PITCH])) )
+		};
+		if ( correction.yaw != 0.0f || correction.pitch != 0.0f ) {
+			++vitaDebugApplied;
+			const float clampedPitch = Com_Clamp( oldAngles[PITCH] - 90, oldAngles[PITCH] + 90, basePitch );
+			if ( cmd.angles[YAW] != (short)ANGLE2SHORT(baseYaw) ||
+			     cmd.angles[PITCH] != (short)ANGLE2SHORT(clampedPitch) ) {
+				++vitaDebugEncoded;
+				if ( stickOnly )
+					++vitaDebugStickOnlyEncoded;
+			}
+		}
+		if ( CL_VitaDebugHasInput( vitaDebugFrame ) ) {
+			vitaDebugLastLook = vitaDebugFrame;
+			vitaDebugHaveLook = true;
+		}
+	}
+#endif
 
 	// draw debug graphs of turning for mouse testing
 	if ( cl_debugMove->integer ) {
@@ -812,6 +1168,92 @@ usercmd_t CL_CreateCmd( void ) {
 
 	return cmd;
 }
+
+#ifdef __vita__
+static const char *CL_VitaMagReason( vitaAimMagReason_t reason ) {
+	static const char *const labels[] = {
+		"no target", "blocked", "off", "idle axis", "centered axis", "axis away",
+		"swipe away", "tangent swipe", "no gain", "no room", "capped", "applied"
+	};
+	return labels[reason];
+}
+
+static const char *CL_VitaRotReason( vitaAimRotReason_t reason ) {
+	static const char *const labels[] = {
+		"no target", "blocked", "off", "no look input", "no time", "no strafe", "weak strafe",
+		"no lateral velocity", "velocity opposes strafe", "centered yaw", "parallax away",
+		"look away", "outer cone or ramp", "no room", "applied"
+	};
+	return labels[reason];
+}
+
+void CL_VitaAimDebugDraw( void ) {
+	if ( !vitaDebugActive || !vita_aim_debug->integer || !CL_VitaAimDebugInGame() ||
+	     vitaDebugFrame.serverId != cl.serverId || CL_VitaPerfMenu_IsActive() )
+		return;
+
+	const int screenWidth = cls.glconfig.vidWidth;
+	const int screenHeight = cls.glconfig.vidHeight;
+	if ( screenWidth < 17 || screenHeight < 1 )
+		return;
+
+	// The last HUD widget can leave its own viewport and clip rectangle active.
+	re.Set2DWindow( 0, 0, screenWidth, screenHeight, 0, screenWidth, screenHeight, 0, -1, 1 );
+	re.Scissor( 0, 0, screenWidth, screenHeight );
+	static UIFont overlayFont( "vita-14" );
+	UIFont *font = &overlayFont;
+
+	const bool idle = !CL_VitaDebugHasInput( vitaDebugFrame );
+	const bool held = idle && vitaDebugHaveLook && vitaDebugLastLook.serverId == cl.serverId;
+	const VitaAimDebugFrame& sample = held ? vitaDebugLastLook : vitaDebugFrame;
+	const vitaAimDebug_t& game = sample.game;
+	const bool enabled = VitaAimSetting( vita_aim_assist->value, 1.0f, 1.0f ) >= 1.0f;
+	const vec4_t background = {0.02f, 0.03f, 0.04f, 0.88f};
+	re.SetColor( background );
+	re.DrawBox( 8.0f, 8.0f, fminf( 610.0f, screenWidth - 16.0f ), 228.0f );
+	re.SetColor( nullptr );
+
+	font->setColor( UYellow );
+	font->Print( 16, 13, va("Aim assist %s | %s%s", enabled ? "ON" : "OFF",
+	                       held ? "last look: " : "", sample.status ? sample.status : "waiting"), -1, nullptr );
+	font->setColor( UWhite );
+	font->Print( 16, 30, va("Touch %d/%d  -> %+.3f/%+.3f   Stick %d/%d  -> %+.3f/%+.3f",
+	                       sample.touchX, sample.touchY, sample.touch.yaw, sample.touch.pitch,
+	                       sample.stickX, sample.stickY, sample.stick.yaw, sample.stick.pitch), -1, nullptr );
+	font->Print( 16, 47, va("Team %d -> %d   Enemies %d  Eligible %d  Cone %d  Visible %d/%d",
+	                       game.playerTeam, game.enemyTeam, game.enemies, game.eligible,
+	                       game.inCone, game.visible, game.checked), -1, nullptr );
+	font->Print( 16, 64, va("Target %d @ %.2f deg   Nearest %d @ %.2f   Tested #%d",
+	                       sample.target, game.selectedAngle, game.nearest, game.nearestAngle, game.lastChecked), -1, nullptr );
+	font->Print( 16, 81, va("Rejected   Snapshot %d   PVS %d   Solid %d   Obscured %d",
+	                       game.snapshotRejected, game.pvsRejected, game.solidRejected, game.smokeRejected), -1, nullptr );
+	const bool noLook = sample.touch.yaw + sample.stick.yaw == 0.0f && sample.touch.pitch + sample.stick.pitch == 0.0f;
+	const char *approach = game.magYaw.reason == VITA_MAG_NO_TARGET ? "n/a" : noLook ? "idle" :
+	                       game.approach > 0.0f ? "toward" : game.approach < 0.0f ? "away" : "tangent";
+	font->Print( 16, 98, va("Error Y/P %+.3f/%+.3f deg   Swipe %s   Target velocity unused",
+	                       game.magYaw.error, game.magPitch.error, approach), -1, nullptr );
+	font->Print( 16, 115, va("Mag yaw   %-14s  Raw %+.6f  Applied %+.6f",
+	                       CL_VitaMagReason(game.magYaw.reason), game.magYaw.raw, game.magYaw.applied), -1, nullptr );
+	font->Print( 16, 132, va("Mag pitch %-14s  Raw %+.6f  Applied %+.6f",
+	                       CL_VitaMagReason(game.magPitch.reason), game.magPitch.raw, game.magPitch.applied), -1, nullptr );
+	font->Print( 16, 149, va("Rot %s   Strafe %+.2f   Parallax %+.2f d/s   Applied %+.5f",
+	                       CL_VitaRotReason(game.rotReason), game.strafe, game.strafeYawRate, game.rotationalYaw), -1, nullptr );
+	font->Print( 16, 166, va("Before %+.3f %+.3f   Final %+.3f %+.3f   Cmd %+.3f %+.3f deg",
+	                       sample.before.yaw, sample.before.pitch, sample.final.yaw, sample.final.pitch,
+	                       sample.wire.yaw, sample.wire.pitch), -1, nullptr );
+	const auto tuning = CL_VitaAimTuning();
+	font->Print( 16, 183, va("Friction x%.3f (cfg %.2f)   Radius %.1f   Mag %.2f   Rot %d %.2f/%.1f",
+	                       game.frictionMultiplier, tuning.friction, tuning.radius, tuning.magnetism,
+	                       vita_aim_rotational->integer, tuning.rotation.perCommand, tuning.rotation.perSecond), -1, nullptr );
+	font->Print( 16, 200, va("F/Q/Sel/Adj/Enc %u/%u/%u/%u/%u   Stick-only cmd/enc %u/%u",
+	                       vitaDebugFrames, vitaDebugQueries, vitaDebugSelected, vitaDebugApplied, vitaDebugEncoded,
+	                       vitaDebugStickOnly, vitaDebugStickOnlyEncoded), -1, nullptr );
+	font->Print( 16, 217, va("Polled   Touch %d %d -> %d %d   Right stick %d %d",
+	                       sample.rawTouchX, sample.rawTouchY, sample.emittedX, sample.emittedY,
+	                       sample.padX, sample.padY), -1, nullptr );
+	re.SetColor( nullptr );
+}
+#endif
 
 
 /*
