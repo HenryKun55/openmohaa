@@ -463,7 +463,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 	}
 
 	startTime = ri.Milliseconds();
-	VP_BEGIN( vpScene );
+	VP_FBEGIN( vpScene );
 
 	if (!tr.world && !( fd->rdflags & RDF_NOWORLDMODEL ) ) {
 		ri.Error (ERR_DROP, "R_RenderScene: NULL worldmodel");

@@ -2003,7 +2003,8 @@ void UIWidget::Display(const UIRect2D& drawframe, float parent_alpha)
      * Throttled to 1×/sec; prints TOP 5 children by time so we can see
      * if the cost is concentrated in one widget (view3d) or spread
      * across multiple HUD widgets. */
-    if (m_parent == NULL) {
+    extern int vp_on; /* r_vita_perflog (qcommon/vita_prof.h): off for players */
+    if (m_parent == NULL && vp_on) {
         extern int Sys_Milliseconds(void);
         static int _wd_lastPrint = 0;
         int        _wd_t0        = Sys_Milliseconds();

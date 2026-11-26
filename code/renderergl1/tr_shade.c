@@ -2030,7 +2030,7 @@ extern int vp_curType;
 static void RB_EndSurface_Real( void );
 
 void RB_EndSurface( void ) {
-	VP_BEGIN( vpT );
+	VP_FBEGIN( vpT );
 	const int type = vp_curType;
 
 	R_VitaGpuSkin_Unbind();
@@ -2046,7 +2046,7 @@ void RB_EndSurface( void ) {
 	tess.useVitaWorldVBO   = qfalse;
 	tess.vitaVboChunk      = 0;
 	tess.vitaVboRangeCount = 0;
-	vp_rt[VPR_DRAW + ( type >= 0 && type <= VPR_NSURF ? type : VPR_NSURF )] += VP_Now() - vpT;
+	vp_rt[VPR_DRAW + ( type >= 0 && type <= VPR_NSURF ? type : VPR_NSURF )] += VP_FNow() - vpT;
 }
 
 static void RB_EndSurface_Real( void ) {

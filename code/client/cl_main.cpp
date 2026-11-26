@@ -2837,7 +2837,8 @@ void CL_Frame ( int msec ) {
 	int                 _vita_t1, _vita_t2, _vita_t3, _vita_t4, _vita_t5, _vita_t6;
 	static int          _vita_lastPrint = 0;
 	int                 _vita_now = _vita_t0;
-	qboolean            _vita_doPrint = (_vita_now - _vita_lastPrint) >= 1000;
+	extern int          vp_on; /* r_vita_perflog (qcommon/vita_prof.h): off for players */
+	qboolean            _vita_doPrint = vp_on && (_vita_now - _vita_lastPrint) >= 1000;
 #endif
 	// see if we need to update any userinfo
 	CL_CheckUserinfo();

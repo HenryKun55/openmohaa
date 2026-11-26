@@ -57,7 +57,7 @@ static int R_RenderThread(SceSize args, void *argp)
 		backEnd.data     = s_data;
 		backEnd.smpFrame = s_smpFrame;
 		{
-			VP_BEGIN(vpRt);
+			VP_FBEGIN(vpRt);
 			RB_ExecuteRenderCommands(s_cmds);
 			VP_END(VP_RTHREAD, vpRt);
 		}
@@ -164,7 +164,9 @@ void R_SmpHandoff(const void *cmds)
 			n += Com_sprintf(line + n, sizeof(line) - n, " %p x%d %dms", s_prof[i].caller, s_prof[i].count,
 				s_prof[i].usec / 1000);
 		}
-		ri.Printf(PRINT_ALL, "%s\n", line);
+		if (vp_on) {	// r_vita_perflog: off for players
+			ri.Printf(PRINT_ALL, "%s\n", line);
+		}
 		memset(s_prof, 0, sizeof(s_prof));
 		s_profFrames = 0;
 		s_profHandoffWaitUs = 0;

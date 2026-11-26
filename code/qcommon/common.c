@@ -2862,7 +2862,7 @@ void Com_Frame( void ) {
 #ifdef __vita__
 	Com_VitaProfFrame();
 #endif
-    VP_BEGIN( vpIdle );
+    VP_FBEGIN( vpIdle );
     do
     {
         if (com_sv_running->integer)
@@ -2926,7 +2926,7 @@ void Com_Frame( void ) {
     }
 
 	{
-		VP_BEGIN( vpSv );
+		VP_FBEGIN( vpSv );
 		SV_Frame( msec );
 		VP_END( VP_SV, vpSv );
 	}
@@ -2962,7 +2962,7 @@ void Com_Frame( void ) {
 		timeBeforeEvents = Sys_Milliseconds ();
 	}
 	{
-		VP_BEGIN( vpEv );
+		VP_FBEGIN( vpEv );
 		Com_EventLoop();
 		if (CL_FinishedIntro()) {
 			Cbuf_Execute(msec);
@@ -2979,7 +2979,7 @@ void Com_Frame( void ) {
 	}
 
 	{
-		VP_BEGIN( vpCl );
+		VP_FBEGIN( vpCl );
 		CL_Frame( msec );
 		VP_END( VP_CL, vpCl );
 	}

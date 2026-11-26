@@ -1478,7 +1478,7 @@ void R_GenerateDrawSurfs( void ) {
     R_AddTerrainMarkSurfaces();
 
 	{
-		VP_BEGIN( vpEnts );
+		VP_FBEGIN( vpEnts );
 		R_AddEntitySurfaces();
 		VP_END( VP_ENTS, vpEnts );
 	}
@@ -1797,7 +1797,7 @@ void R_RenderView (viewParms_t *parms) {
 	R_GenerateDrawSurfs();
 
 	{
-		VP_BEGIN( vpSort );
+		VP_FBEGIN( vpSort );
 		R_SortDrawSurfs(
 			tr.refdef.drawSurfs + firstDrawSurf, tr.refdef.numDrawSurfs - firstDrawSurf,
 			tr.refdef.spriteSurfs + firstSpriteSurf, tr.refdef.numSpriteSurfs - firstSpriteSurf

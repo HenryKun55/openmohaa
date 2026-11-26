@@ -712,10 +712,10 @@ int vp_curType = VPR_NSURF;
 
 #define RB_VP_TESS( surf ) do { \
 		const int _vpType = *( surf ); \
-		VP_BEGIN( _vpT ); \
+		VP_FBEGIN( _vpT ); \
 		vp_curType = _vpType; \
 		rb_surfaceTable[ _vpType ]( ( surf ) ); \
-		vp_rt[VPR_TESS + _vpType] += VP_Now() - _vpT; \
+		vp_rt[VPR_TESS + _vpType] += VP_FNow() - _vpT; \
 	} while ( 0 )
 #else
 #define RB_VP_TESS( surf ) rb_surfaceTable[ *( surf ) ]( ( surf ) )
@@ -1550,9 +1550,9 @@ const void	*RB_DrawSurfs( const void *data ) {
 	RB_SetupFog();
 #ifdef __vita__
 	{
-		VP_BEGIN( vpList );
+		VP_FBEGIN( vpList );
 		RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
-		vp_rt[VPR_LIST] += VP_Now() - vpList;
+		vp_rt[VPR_LIST] += VP_FNow() - vpList;
 	}
 #else
 	RB_RenderDrawSurfList( cmd->drawSurfs, cmd->numDrawSurfs );
@@ -1791,7 +1791,7 @@ const void	*RB_SwapBuffers( const void *data ) {
 		}
 		if (used > cap) overflows++;
 		if (seqN < 8) seq[seqN++] = idx;
-		if (++n >= 60) {
+		if (++n >= 60 && vp_on) {
 			ri.Printf(PRINT_ALL, "VGL-POOL: slots %d%d%d%d%d%d%d%d | max used %d KB / cap %d KB | overflow frames %d/60 | immediate max %d KB / %d KB\n",
 				seq[0], seq[1], seq[2], seq[3], seq[4], seq[5], seq[6], seq[7],
 				maxUsed / 1024, cap / 1024, overflows, maxImm / 1024, immCap / 1024);
@@ -1847,7 +1847,7 @@ void RB_ExecuteRenderCommands( const void *data ) {
 
 #ifdef __vita__
 		const int vpCmd = *(const int *)data;
-		VP_BEGIN( vpCmdT );
+		VP_FBEGIN( vpCmdT );
 #endif
 		switch ( *(const int *)data ) {
 		case RC_SET_COLOR:
@@ -1908,7 +1908,7 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			case RC_UPLOAD_DLIGHTS:	vpSlot = VPR_DLIGHTS; break;
 			default:				vpSlot = VPR_OTHER; break;
 			}
-			vp_rt[vpSlot] += VP_Now() - vpCmdT;
+			vp_rt[vpSlot] += VP_FNow() - vpCmdT;
 			vp_curType = VPR_NSURF;
 			R_VitaGpuSkin_Unbind();
 		}

@@ -249,7 +249,8 @@ void UIWindowManager::UpdateViews(void)
     int        _uv_bgms = 0, _uv_childms = 0;
     int        _uv_bigChild = -1, _uv_bigChildMs = 0;
     static int _uv_lastPrint = 0;
-    qboolean   _uv_doPrint = (_uv_t0 - _uv_lastPrint) >= 1000;
+    extern int vp_on; /* r_vita_perflog (qcommon/vita_prof.h): off for players */
+    qboolean   _uv_doPrint = vp_on && (_uv_t0 - _uv_lastPrint) >= 1000;
 #endif
 
     if (m_backgroundwidget) {

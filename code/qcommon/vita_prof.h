@@ -124,7 +124,15 @@ static inline unsigned int VP_Now( void ) {
 }
 
 #define VP_BEGIN( var )			unsigned int var = VP_Now()
-#define VP_END( slot, var )		( vp_acc[slot] += VP_Now() - ( var ) )
+
+// The per-frame timings read the clock only with the perf log on (vp_on): they run many
+// times a frame (per surface, per draw) for every player otherwise. VP_BEGIN / VP_Now
+// stay unconditional for the load timings in boot.log.
+static inline unsigned int VP_FNow( void ) {
+	return vp_on ? sceKernelGetProcessTimeLow() : 0;
+}
+#define VP_FBEGIN( var )		unsigned int var = VP_FNow()
+#define VP_END( slot, var )		do { if ( vp_on ) vp_acc[slot] += VP_Now() - ( var ); } while ( 0 )
 
 #ifdef __cplusplus
 }
@@ -133,6 +141,7 @@ static inline unsigned int VP_Now( void ) {
 #else
 
 #define VP_BEGIN( var )
+#define VP_FBEGIN( var )
 #define VP_END( slot, var )
 
 #endif // __vita__

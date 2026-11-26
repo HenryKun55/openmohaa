@@ -1555,7 +1555,8 @@ void GLimp_EndFrame( void )
 			vglSwapBuffers( 1 );
 			int swap_t1 = Sys_Milliseconds();
 			int now = swap_t1;
-			if ((now - s_lastSwapPrint) >= 1000) {
+			extern int vp_on; /* r_vita_perflog (qcommon/vita_prof.h): off for players */
+			if (vp_on && (now - s_lastSwapPrint) >= 1000) {
 				s_lastSwapPrint = now;
 				ri.Printf(PRINT_ALL, "GFX-SWAP: vglSwapBuffers=%d ms\n", swap_t1 - swap_t0);
 			}

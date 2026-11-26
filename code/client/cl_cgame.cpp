@@ -1031,7 +1031,7 @@ void CL_CGameRendering( stereoFrame_t stereo ) {
 	}
 
 	{
-		VP_BEGIN( vpCg );
+		VP_FBEGIN( vpCg );
 		cge->CG_DrawActiveFrame( cl.serverTime, cl.serverTime - cl.oldServerTime, stereo, clc.demoplaying );
 		VP_END( VP_CG, vpCg );
 	}
