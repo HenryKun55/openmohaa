@@ -1,0 +1,92 @@
+menu "vita_internet" 640 479 NONE 0
+bgcolor 1 1 1 1
+borderstyle NONE
+bgfill 0 0 0 1
+fullscreen 1
+virtualres 1
+// The PS Vita's internet server list for Allied Assault (part of the OpenMoHAA Vita port,
+// GPL). Its "Launch GameSpy" button opens this menu (cl_uigamespy.cpp): the servers come
+// from the community master servers. Up/Down choose, Cross or Connect joins.
+include "ui/multiplayerback.inc"
+
+resource
+Label
+{
+name "Default"
+rect 16 24 608 32
+fgcolor 1.00 1.00 1.00 1.00
+bgcolor 0.00 0.00 0.00 0.00
+borderstyle "NONE"
+title "Internet Servers"
+font facfont-20
+}
+
+resource
+FAKKServerList
+{
+name "serverlist"
+rect 16 64 608 320
+fgcolor 1.00 1.00 1.00 1.00
+bgcolor 0.00 0.00 0.00 0.60
+borderstyle "3D_BORDER"
+font verdana-12
+}
+
+resource
+Label
+{
+name "Default"
+rect 16 390 608 20
+fgcolor 1.00 1.00 1.00 1.00
+bgcolor 0.00 0.00 0.00 0.00
+borderstyle "NONE"
+linkcvar "dm_serverstatus"
+font verdana-12
+}
+
+resource
+Button
+{
+name "refresh"
+title "Refresh"
+rect 168 416 144 24
+fgcolor 1.00 1.00 1.00 1.00
+bgcolor 0.50 0.50 0.50 0.00
+borderstyle "NONE"
+shader "menu_button_trans"
+hovershader "menu_button_glow"
+clicksound "sound/menu/apply.wav"
+stuffcommand "widgetcommand serverlist refreshserverlist"
+font facfont-20
+}
+
+resource
+Button
+{
+name "Default"
+title "Connect"
+rect 328 416 144 24
+fgcolor 1.00 1.00 1.00 1.00
+bgcolor 0.50 0.50 0.50 0.00
+borderstyle "NONE"
+shader "menu_button_trans"
+hovershader "menu_button_glow"
+clicksound "sound/menu/apply.wav"
+stuffcommand "widgetcommand serverlist connect"
+font facfont-20
+}
+
+resource
+Button
+{
+name "Default"
+rect 8 448 96 24
+fgcolor 1.00 1.00 1.00 1.00
+bgcolor 0.50 0.50 0.50 0.00
+borderstyle "3D_BORDER"
+shader "textures/mohmenu/back"
+hovershader "textures/mohmenu/back_h"
+clicksound "sound/menu/back.wav"
+stuffcommand "widgetcommand serverlist cancelrefresh;popmenu 0"
+}
+end.

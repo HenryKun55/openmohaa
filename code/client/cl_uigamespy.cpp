@@ -102,6 +102,17 @@ void GameSpyDialog::Create(
 
 void UI_LaunchGameSpy_f(void)
 {
+#ifdef __vita__
+    // Allied Assault's "Launch GameSpy" started GameSpy Arcade on the PC. On the Vita it
+    // opens a server list of its own (main/ui/vita_internet.urc in the vpk), filled from
+    // the community master servers that replaced GameSpy's.
+    if (!CL_VitaNetEnsure()) {
+        return;
+    }
+    UI_PushMenu("vita_internet");
+    Cbuf_AddText("widgetcommand serverlist refreshserverlist\n");
+    return;
+#endif
     GameSpyDialog *dialog = new GameSpyDialog();
 
     dialog->Create(

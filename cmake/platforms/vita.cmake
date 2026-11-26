@@ -384,6 +384,8 @@ function(package_vita_vpk)
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/fonts/OFL.txt=main/fonts/Oswald-OFL.txt
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga=main/gfx/fonts/vita-14.tga
                     --add ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader=main/scripts/vita.shader
+                    # Internet server list for Allied Assault (cl_uigamespy.cpp)
+                    --add ${CMAKE_SOURCE_DIR}/misc/vita/main/ui/vita_internet.urc=main/ui/vita_internet.urc
                     ${VITA_LANG_ADD}
                     # Game / cgame PRX modules at the VPK root so they
                     # sit next to eboot.bin and Sys_LoadDll finds them
@@ -408,6 +410,7 @@ function(package_vita_vpk)
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/gfx/fonts/vita-14.tga
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/fonts/vita-boot.font
                 ${CMAKE_SOURCE_DIR}/misc/vita/main/scripts/vita.shader
+                ${CMAKE_SOURCE_DIR}/misc/vita/main/ui/vita_internet.urc
                 ${VITA_LANG_FILES}
                 ${VITA_ART_DEPENDS}
         COMMENT "Packaging ${VPK_FILE}"
