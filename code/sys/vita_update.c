@@ -268,6 +268,38 @@ static size_t VU_Header(char *line, size_t size, size_t n, void *user)
     return size * n;
 }
 
+// The certificate list, read once with sceIo and handed to curl in memory. The vdpm
+// OpenSSL 3 build fails to open "app0:cacert.pem" by itself on the console (curl 77, "error
+// adding trust anchors"; Vita3K opened it fine): only sceIo touches the file now.
+static char  *s_caBlob;
+static size_t s_caLen;
+
+static void VU_LoadCA(void)
+{
+    SceUID fd;
+    SceOff size;
+
+    if (s_caBlob) {
+        return;
+    }
+    fd = sceIoOpen(CA_FILE, SCE_O_RDONLY, 0);
+    if (fd < 0) {
+        return;
+    }
+    size = sceIoLseek(fd, 0, SCE_SEEK_END);
+    sceIoLseek(fd, 0, SCE_SEEK_SET);
+    if (size > 0 && size < 4 * 1024 * 1024) {
+        char *buf = (char *)malloc((size_t)size);
+        if (buf && sceIoRead(fd, buf, (SceSize)size) == (int)size) {
+            s_caBlob = buf;
+            s_caLen  = (size_t)size;
+        } else {
+            free(buf);
+        }
+    }
+    sceIoClose(fd);
+}
+
 static CURL *VU_Curl(char *errbuf)
 {
     CURL *c = curl_easy_init();
@@ -278,7 +310,17 @@ static CURL *VU_Curl(char *errbuf)
     errbuf[0] = 0;
     curl_easy_setopt(c, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(c, CURLOPT_USERAGENT, USER_AGENT);
-    curl_easy_setopt(c, CURLOPT_CAINFO, CA_FILE);
+    VU_LoadCA();
+    if (s_caBlob) {
+        struct curl_blob blob;
+        blob.data  = s_caBlob;
+        blob.len   = s_caLen;
+        blob.flags = CURL_BLOB_NOCOPY; // s_caBlob lives as long as the game
+        curl_easy_setopt(c, CURLOPT_CAINFO_BLOB, &blob);
+        curl_easy_setopt(c, CURLOPT_CAINFO, NULL);  // no default file on top of it
+    } else {
+        curl_easy_setopt(c, CURLOPT_CAINFO, CA_FILE);
+    }
     curl_easy_setopt(c, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(c, CURLOPT_SSL_VERIFYHOST, 2L);
     curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
