@@ -1153,6 +1153,54 @@ static float IN_VitaTouchSetting( const cvar_t *setting, float maxValue )
 	return value >= 0.0f ? Com_Clamp( 0.0f, maxValue, value ) : 0.0f;
 }
 
+/*
+vita_touch_test (temporary, Vita3K test runs: tools/vita-bench/aimtest.py): front panel
+swipes replacing the hardware reports, since Vita3K only turns a mouse drag into touch
+while its window has the focus. "start x0 y0 x1 y1 ms|start ..." in raw panel units
+(0..1920 x 0..1088), each start in ms from the first gameplay frame that reads it.
+*/
+static qboolean IN_VitaTouchTestReports( SceTouchData *data )
+{
+	static cvar_t *test;
+	static int origin;
+	char buf[MAX_CVAR_VALUE_STRING];
+	char *gesture, *next;
+	int elapsed;
+
+	if ( !test )
+		test = Cvar_Get( "vita_touch_test", "", CVAR_TEMP );
+	if ( !test->string[0] )
+	{
+		origin = 0;
+		return qfalse;
+	}
+	if ( !origin )
+		origin = Sys_Milliseconds();
+	elapsed = Sys_Milliseconds() - origin;
+
+	data->reportNum = 0;
+	Q_strncpyz( buf, test->string, sizeof( buf ) );
+	for ( gesture = buf; gesture; gesture = next )
+	{
+		int start, x0, y0, x1, y1, ms;
+
+		next = strchr( gesture, '|' );
+		if ( next )
+			*next++ = 0;
+		if ( sscanf( gesture, "%d %d %d %d %d %d", &start, &x0, &y0, &x1, &y1, &ms ) == 6 &&
+			 elapsed >= start && elapsed <= start + ms && ms > 0 )
+		{
+			const float t = (float)( elapsed - start ) / ms;
+			data->reportNum = 1;
+			data->report[0].id = (uint8_t)( 100 + ( start & 0x1f ) );
+			data->report[0].x = (uint16_t)( x0 + ( x1 - x0 ) * t );
+			data->report[0].y = (uint16_t)( y0 + ( y1 - y0 ) * t );
+			break;
+		}
+	}
+	return qtrue;
+}
+
 static void IN_VitaTouchAim( void )
 {
 	static int lastX, lastY, lastPoll, lastElapsed;
@@ -1174,6 +1222,8 @@ static void IN_VitaTouchAim( void )
 	}
 
 	count = sceTouchPeek( SCE_TOUCH_PORT_FRONT, &data, 1 );
+	if ( IN_VitaTouchTestReports( &data ) )
+		count = 1;
 	if ( count <= 0 )
 	{
 		vita_touch_contact = -1;

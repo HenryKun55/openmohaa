@@ -1192,6 +1192,22 @@ void CL_VitaAimDebugDraw( void ) {
 	     vitaDebugFrame.serverId != cl.serverId || CL_VitaPerfMenu_IsActive() )
 		return;
 
+	if ( vita_aim_debug->integer >= 2 ) {
+		// Once a second into boot.log for test scripts (tools/vita-bench/aimtest.py).
+		static int nextLog;
+		const int now = Sys_Milliseconds();
+		if ( now >= nextLog ) {
+			const vitaAimDebug_t& g = vitaDebugFrame.game;
+			nextLog = now + 1000;
+			Com_Printf( "[AIM] status=\"%s\" enemies=%d eligible=%d cone=%d visible=%d nearest=%d@%.1f "
+			            "target=%d friction=%.3f mag=%.5f/%.5f rot=%.5f frames=%u queries=%u selected=%u applied=%u encoded=%u\n",
+			            vitaDebugFrame.status ? vitaDebugFrame.status : "waiting", g.enemies, g.eligible, g.inCone,
+			            g.visible, g.nearest, g.nearestAngle, vitaDebugFrame.target, g.frictionMultiplier,
+			            g.magYaw.applied, g.magPitch.applied, g.rotationalYaw, vitaDebugFrames, vitaDebugQueries,
+			            vitaDebugSelected, vitaDebugApplied, vitaDebugEncoded );
+		}
+	}
+
 	const int screenWidth = cls.glconfig.vidWidth;
 	const int screenHeight = cls.glconfig.vidHeight;
 	if ( screenWidth < 17 || screenHeight < 1 )
