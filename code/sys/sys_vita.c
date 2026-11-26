@@ -202,8 +202,8 @@ void Sys_PlatformInit(void)
     /* Start touch sampling on both pads. SDL2-Vita exposes the touch
      * devices (SDL_GetNumTouchDevices returned 2 in our boot.log) but its
      * own pump doesn't call sceTouchPeek, so no FINGER/MOUSEMOTION events
-     * ever fire from finger taps. We poll the hardware ourselves from
-     * sdl_input.c::IN_VitaPollTouch and synthesise SDL mouse events. */
+     * ever fire from finger taps. sdl_input.c polls the front panel for
+     * relative gameplay aiming. */
     sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
     sceTouchSetSamplingState(SCE_TOUCH_PORT_BACK,  SCE_TOUCH_SAMPLING_STATE_START);
 

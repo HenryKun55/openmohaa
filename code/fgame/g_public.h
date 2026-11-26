@@ -505,6 +505,9 @@ typedef struct gameImport_s {
 
 } game_import_t;
 
+#ifdef __vita__
+struct vitaAimTarget_s;
+#endif
 typedef struct gameExport_s {
     int apiversion;
 
@@ -593,6 +596,10 @@ typedef struct gameExport_s {
     int               max_entities;
 
     const char *errorMessage;
+#ifdef __vita__
+    void (*VitaAimTarget)(const gentity_t *player, const vec3_t eye, const vec3_t angles,
+                          float radiusTangent, qboolean (*snapshotVisible)(int), struct vitaAimTarget_s *target);
+#endif
 } game_export_t;
 
 #ifdef __cplusplus

@@ -1403,6 +1403,11 @@ int Com_EventLoop( void ) {
 			case SE_MOUSE:
 				CL_MouseEvent( ev.evValue, ev.evValue2, ev.evTime );
 			break;
+#ifdef __vita__
+			case SE_VITA_TOUCH_MOUSE:
+				CL_VitaTouchEvent( ev.evValue, ev.evValue2, ev.evTime );
+			break;
+#endif
 			case SE_JOYSTICK_AXIS:
 				CL_JoystickEvent( ev.evValue, ev.evValue2, ev.evTime );
 			break;
@@ -2904,6 +2909,11 @@ void Com_Frame( void ) {
         Com_DetectAltivec();
         com_altivec->modified = qfalse;
     }
+
+#ifdef __vita__
+    // Reuse one target for both inputs while the server game worker is joined.
+    CL_VitaPrepareAimAssist( msec );
+#endif
 
     // mess with msec if needed
     msec = Com_ModifyMsec(msec);

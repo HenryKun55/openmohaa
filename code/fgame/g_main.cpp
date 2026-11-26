@@ -42,6 +42,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "../corepp/tiki.h"
 
+#ifdef __vita__
+#    include "../qcommon/vita_aim_assist.h"
+#    include "g_utils.h"
+#    include "worldspawn.h"
+#endif
+
 #ifdef WIN32
 #    include <intrin.h>
 #endif
@@ -1690,6 +1696,140 @@ qboolean G_ReadLevel(const char *filename, byte **savedCgameState, size_t *saved
     return status;
 }
 
+#ifdef __vita__
+struct VitaAimSight {
+    int playerNum;
+    const float *eye;
+    qboolean (*snapshotVisible)(int);
+    vitaAimDebug_t *debug;
+};
+
+static int G_VitaAimVisible(const vitaAimCandidate_t *candidate, void *context)
+{
+    const auto *sight = static_cast<const VitaAimSight *>(context);
+    vitaAimDebug_t *debug = sight->debug;
+    if (debug) {
+        ++debug->checked;
+        debug->lastChecked = candidate->target.entityNum;
+    }
+    if (!sight->snapshotVisible(candidate->target.entityNum)) {
+        if (debug) ++debug->snapshotRejected;
+        return false;
+    }
+    vec3_t start, end;
+    VectorCopy(sight->eye, start);
+    VectorCopy(candidate->point, end);
+    if (!gi.InPVS(start, end)) {
+        if (debug) ++debug->pvsRejected;
+        return false;
+    }
+
+    if (!gi.SightTrace(start, vec3_origin, vec3_origin, end,
+                       sight->playerNum, candidate->target.entityNum, MASK_CANSEE, qfalse)) {
+        if (debug) ++debug->solidRejected;
+        return false;
+    }
+    const bool visible = G_VisualObfuscation(Vector(start), Vector(end)) < 1.0f;
+    if (debug) {
+        if (visible) ++debug->visible;
+        else ++debug->smokeRejected;
+    }
+    return visible;
+}
+
+static void G_VitaAimTarget(const gentity_t *viewer, const vec3_t eye, const vec3_t angles,
+                           float radiusTangent, qboolean (*snapshotVisible)(int), vitaAimTarget_t *target)
+{
+    vitaAimDebug_t *debug = target->debug;
+    if (g_gametype->integer != GT_SINGLE_PLAYER) {
+        if (debug) debug->stage = VITA_AIM_BAD_MODE;
+        return;
+    }
+    if (!viewer->inuse || !viewer->client || !viewer->entity || !viewer->entity->IsSubclassOfPlayer()) {
+        if (debug) debug->stage = VITA_AIM_BAD_PLAYER;
+        return;
+    }
+    const playerState_t& ps = viewer->client->ps;
+    if (ps.pm_type != PM_NORMAL || ps.stats[STAT_HEALTH] <= 0 || (ps.stats[STAT_CINEMATIC] & 1)
+        || (ps.pm_flags & (PMF_CAMERA_VIEW | PMF_FROZEN | PMF_INTERMISSION | PMF_TURRET))) {
+        if (debug) debug->stage = VITA_AIM_BAD_STATE;
+        return;
+    }
+
+    const auto *player = static_cast<const Player *>(viewer->entity);
+    if (debug) debug->playerTeam = player->m_Team;
+    if (player->m_Team != TEAM_AMERICAN && player->m_Team != TEAM_GERMAN) {
+        if (debug) debug->stage = VITA_AIM_BAD_TEAM;
+        return;
+    }
+    const int opposingTeam = player->m_Team == TEAM_AMERICAN ? TEAM_GERMAN : TEAM_AMERICAN;
+    if (debug) {
+        debug->stage = VITA_AIM_SCANNED;
+        debug->enemyTeam = opposingTeam;
+    }
+    float range = 1536.0f;
+    if (world && world->farplane_distance > 0.0f && world->farplane_distance < range) {
+        range = world->farplane_distance;
+    }
+
+    vec3_t forward, right, up;
+    const vec3_t lookAngles = {angles[PITCH], angles[YAW], 0.0f};
+    AngleVectors(lookAngles, forward, right, up);
+    const float lateralSpeed = DotProduct(ps.velocity, right);
+    const int preferredEntity = target->entityNum;
+    vitaAimCandidate_t best[VITA_AIM_TRACE_BUDGET] = {};
+    float nearestCosineSquared = 0.0f;
+    for (const Sentient *actor = level.m_HeadSentient[opposingTeam]; actor; actor = actor->m_NextSentient) {
+        const gentity_t *ent = actor->edict;
+        if (debug && (ent->r.svFlags & SVF_MONSTER)) ++debug->enemies;
+        if (!(ent->r.svFlags & SVF_MONSTER) || ent->solid != SOLID_BBOX
+            || (ent->r.svFlags & SVF_NOCLIENT) || (ent->s.renderfx & RF_DONTDRAW) || !ent->s.modelindex
+            || ent->s.alpha <= 0.0f || actor->takedamage == DAMAGE_NO
+            || !VitaAimActorActive(ent->inuse && ent->r.linked, actor->IsDead(), actor->health)) {
+            continue;
+        }
+        if (debug) ++debug->eligible;
+
+        vitaAimCandidate_t candidate = {};
+        VectorCopy(ent->r.centroid, candidate.point);
+        candidate.point[2] += 0.15f * (ent->r.maxs[2] - ent->r.mins[2]);
+        vec3_t delta;
+        VectorSubtract(candidate.point, eye, delta);
+        candidate.distanceSquared = VectorLengthSquared(delta);
+        if (candidate.distanceSquared < 1.0f || candidate.distanceSquared > range * range) {
+            continue;
+        }
+        const float depth = DotProduct(delta, forward);
+        if (debug && depth > 0.0f) {
+            const float cosineSquared = depth * depth / candidate.distanceSquared;
+            if (cosineSquared > nearestCosineSquared) {
+                nearestCosineSquared = cosineSquared;
+                debug->nearest = ent->s.number;
+            }
+        }
+        candidate.target = VitaAimProject(depth, DotProduct(delta, right), DotProduct(delta, up), radiusTangent);
+        if (candidate.target.weight > 0.0f) {
+            if (debug) ++debug->inCone;
+            candidate.target.entityNum = ent->s.number;
+            candidate.target.strafeYawRate = RAD2DEG(lateralSpeed / fmaxf(64.0f, depth));
+            VitaAimRank(best, candidate, preferredEntity);
+        }
+    }
+
+    VitaAimSight sight = {viewer->s.number, eye, snapshotVisible, debug};
+    *target = VitaAimVisibleTarget(best, G_VitaAimVisible, &sight);
+    target->debug = debug;
+    if (debug) {
+        if (debug->nearest >= 0) {
+            debug->nearestAngle = RAD2DEG(acosf(sqrtf(fminf(1.0f, nearestCosineSquared))));
+        }
+        if (target->weight > 0.0f) {
+            debug->selectedAngle = RAD2DEG(atanf(radiusTangent * hypotf(target->right, target->down)));
+        }
+    }
+}
+#endif
+
 /*
 ================
 GetGameAPI
@@ -1765,6 +1905,10 @@ extern "C" game_export_t *GetGameAPI(game_import_t *import)
 
     globals.GetNumSimulatedPlayers   = G_GetNumBots;
     globals.GetSimulatedPlayersSkill = G_GetBotSkill;
+
+#ifdef __vita__
+    globals.VitaAimTarget = G_VitaAimTarget;
+#endif
 
     return &globals;
 }

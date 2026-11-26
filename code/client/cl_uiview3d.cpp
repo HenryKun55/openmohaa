@@ -518,11 +518,65 @@ static VitaPerfMenuItem g_smDisplay[] = {
     { "Text Language",    "vita_language",   qfalse, 0, NULL, qtrue,  VPM_CHOICES(g_pcLanguage) }, /* restart: menu pictures */
 };
 
+#ifdef __vita__
+extern int CL_VitaAimPresetIndex( void );
+extern void CL_VitaApplyAimPreset( int index );
+static const VitaPerfChoice g_pcAimPresets[] = {
+    { "Balanced", nullptr, nullptr },
+    { "Strong", nullptr, nullptr },
+    { "Very Strong", nullptr, nullptr },
+};
+static const VitaPerfChoice g_pcAimFriction[] = {
+    { "Off", "0", "seta vita_aim_friction 0" },
+    { "15%", "0.15", "seta vita_aim_friction 0.15" },
+    { "25%", "0.25", "seta vita_aim_friction 0.25" },
+    { "35%", "0.35", "seta vita_aim_friction 0.35" },
+    { "40%", "0.40", "seta vita_aim_friction 0.40" },
+    { "45%", "0.45", "seta vita_aim_friction 0.45" },
+    { "55%", "0.55", "seta vita_aim_friction 0.55" },
+    { "65%", "0.65", "seta vita_aim_friction 0.65" },
+};
+static const VitaPerfChoice g_pcAimRadius[] = {
+    { "Off", "0", "seta vita_aim_radius 0" },
+    { "3 deg", "3", "seta vita_aim_radius 3" },
+    { "5 deg", "5", "seta vita_aim_radius 5" },
+    { "7 deg", "7", "seta vita_aim_radius 7" },
+    { "8 deg", "8", "seta vita_aim_radius 8" },
+    { "10 deg", "10", "seta vita_aim_radius 10" },
+    { "12 deg", "12", "seta vita_aim_radius 12" },
+};
+static const VitaPerfChoice g_pcAimMagnetism[] = {
+    { "Legacy", "-1", "seta vita_aim_magnetism_gain -1" },
+    { "Off", "0", "seta vita_aim_magnetism_gain 0" },
+    { "5%", "0.05", "seta vita_aim_magnetism_gain 0.05" },
+    { "10%", "0.10", "seta vita_aim_magnetism_gain 0.10" },
+    { "15%", "0.15", "seta vita_aim_magnetism_gain 0.15" },
+    { "25%", "0.25", "seta vita_aim_magnetism_gain 0.25" },
+    { "35%", "0.35", "seta vita_aim_magnetism_gain 0.35" },
+};
+static const VitaPerfChoice g_pcAimRotationCap[] = {
+    { "0.12 deg", "0.12", "seta vita_aim_rotational_cap 0.12" },
+    { "0.16 deg", "0.16", "seta vita_aim_rotational_cap 0.16" },
+    { "0.25 deg", "0.25", "seta vita_aim_rotational_cap 0.25" },
+    { "0.32 deg", "0.32", "seta vita_aim_rotational_cap 0.32" },
+};
+#endif
+
 static VitaPerfMenuItem g_smControls[] = {
     { "Look Sens (hip)",  "vita_hip_sens",     qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while NOT aiming */
     { "Look Sens (aim)",  "vita_aim_sens",     qfalse, 10 }, /* 0..10 = 0.0x..1.0x look speed while aiming */
     { "Crosshair (hip)",  "cg_crosshair_hip",  qfalse, 0 },
     { "Crosshair (aim)",  "cg_crosshair_zoom", qfalse, 0 },
+#ifdef __vita__
+    { "Aim Assist",        "vita_aim_assist",     qfalse, 0 },
+    { "Aim Assist Preset", "vita_aim_friction",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimPresets) },
+    { "Friction Strength", "vita_aim_friction",   qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimFriction) },
+    { "Assist Radius",     "vita_aim_radius",     qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimRadius) },
+    { "Magnetism Strength","vita_aim_magnetism_gain", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimMagnetism) },
+    { "Rotational Assist", "vita_aim_rotational", qfalse, 0 },
+    { "Rotation Cap",      "vita_aim_rotational_cap", qfalse, 0, NULL, qfalse, VPM_CHOICES(g_pcAimRotationCap) },
+    { "Aim Assist Debug",  "vita_aim_debug",      qfalse, 0 },
+#endif
 };
 
 /* SYSTEM items run menu actions (see VitaPerfMenu_Action), not console commands. */
@@ -716,6 +770,11 @@ static const char *VitaPerfMenu_CvarString(const char *name)
 
 static int VitaPerfMenu_ChoiceIndex(const VitaPerfMenuItem *it)
 {
+#ifdef __vita__
+    if (it->choices == g_pcAimPresets) {
+        return CL_VitaAimPresetIndex();
+    }
+#endif
     const char *cur = VitaPerfMenu_CvarString(it->cvarName);
     for (int i = 0; i < it->numChoices; i++) {
         const char *v = it->choices[i].value;
@@ -774,6 +833,12 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
         const int      next = (VitaPerfMenu_ChoiceIndex(it) + 1) % it->numChoices;
         const cvar_t *cv;
 
+#ifdef __vita__
+        if (it->choices == g_pcAimPresets) {
+            CL_VitaApplyAimPreset(next);
+            return;
+        }
+#endif
         VitaPerfMenu_RunNow(it->choices[next].cmd);
         cv = Cvar_FindVar(it->cvarName);
         if (it->restart || (cv && (cv->flags & CVAR_LATCH))) {
@@ -805,6 +870,9 @@ static void VitaPerfMenu_ToggleItem(VitaPerfMenuItem *it)
      * archived so the choice persists across launches. */
     Cvar_Set2(it->cvarName, buf, qtrue);
 #ifdef __vita__
+    if (!strcmp(it->cvarName, "vita_aim_debug")) {
+        return; // This diagnostic toggle is session-only.
+    }
     if (!strcmp(it->cvarName, "vita_config_per_campaign")) {
         /* kept outside the configurations, as it decides which one is read (files.cpp) */
         FILE *f = fopen("ux0:data/openmohaa/vita_config.txt", "w");
@@ -1535,6 +1603,12 @@ void CL_VitaPerfMenu_Draw(class UIFont *menuFont, float screenW, float screenH)
     menuFont->setColor(UWhite);
     menuFont->Print(boxX + 12.0f, boxY + boxH - 24.0f,
         VitaMenu_Latin1(VT("L/R: tab   D-pad: select   X: change   O: close")), -1, NULL);
+#ifdef __vita__
+    const char *buildMarker = "AIM ASSIST V2 PRESETS";
+    menuFont->setColor(UYellow);
+    menuFont->Print(boxX + boxW - 12.0f - (float)menuFont->getWidth(buildMarker, -1),
+                    boxY + boxH - 24.0f, buildMarker, -1, NULL);
+#endif
 
     re.SetColor(NULL);
 }
